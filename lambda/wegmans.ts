@@ -3,6 +3,7 @@ import { logger } from '../lib/Logger';
 import { HandlerInput, RequestHandler } from 'ask-sdk-core';
 import { Response, IntentRequest } from 'ask-sdk-model';
 import { WegmansDao } from '../lib/WegmansDao';
+import { KMS } from "aws-sdk";
 import config from '../lib/config';
 
 const APP_ID = 'amzn1.ask.skill.ee768e33-44df-48f8-8fcd-1a187d502b75';
@@ -14,6 +15,38 @@ const PRODUCT_SLOT = 'product';
 
 const wegmansDao = new WegmansDao();
 
+//TODO: abstract this shit out
+let decryptionPromise = Promise.resolve();
+if (config.get('wegmans.encrypted')) {
+  // Decrypt code should run once and variables stored outside of the function
+  // handler so that these are decrypted once per container
+  const encryptedKeys = ['wegmans.apikey', 'wegmans.email', 'wegmans.password'];
+  const decryptionPromises = [];
+  encryptedKeys.forEach(key => {
+    decryptionPromises.push(decryptKMS(key));
+  });
+  config.set('wegmans.encrypted', false);
+  decryptionPromise = Promise.all(decryptionPromises).then(() => {});
+}
+
+const kms = new KMS();
+async function decryptKMS(key): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+
+    const encrypted = config.get(key);
+    let decrypted;
+    kms.decrypt({ CiphertextBlob: new Buffer(encrypted, 'base64') }, (err, data) => {
+      if (err) {
+        reject(err);
+      }
+      else {
+        config.set(key, data.Plaintext.toString());
+        resolve();
+      }
+    });
+  });
+}
+
 export const AddToShoppingList: RequestHandler = {
   canHandle: function (handlerInput: HandlerInput): Promise<boolean> | boolean {
     const request = handlerInput.requestEnvelope.request;
@@ -22,6 +55,8 @@ export const AddToShoppingList: RequestHandler = {
     && request.intent.name === 'AddToShoppingList';
   },
   handle: async function (handlerInput: HandlerInput): Promise<Response> {
+    //TODO: await decryption before everytihng?
+    await decryptionPromise;
     const request = handlerInput.requestEnvelope.request as IntentRequest;
     const intent = request.intent;
     if (!wegmansDao.getAuthToken()) {

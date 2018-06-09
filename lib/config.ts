@@ -69,6 +69,12 @@ const config = convict({
       default: '',
       format: String,
       env: 'WEGMANS_APIKEY',
+    },
+    encrypted: {
+      doc: 'Whether AWS KMS encryption was used to encrypt the credentials',
+      default: false,
+      format: Boolean,
+      env: 'WEGMANS_ENCRYPTED',
     }
   }
 });
