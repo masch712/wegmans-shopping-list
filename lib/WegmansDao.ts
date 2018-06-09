@@ -3,15 +3,12 @@ import * as request from "request-promise-native";
 import config from "./config";
 import { Product } from "../models/Product";
 import { logger } from "./Logger";
-//TODO: env var
 
 export class WegmansDao {
 
   private authToken: string;
-  private shoppingListId: number;
 
   constructor() {
-    this.shoppingListId = 3469096;
   }
 
   getAuthToken() {
@@ -19,8 +16,6 @@ export class WegmansDao {
   }
 
   async login(email: string, password: string): Promise<void> {
-    // If this succeeds, the wegmans_access (and others) cookie will be set on the agent 
-    // for future requests.
     try {
       await request({
         method: 'POST',
@@ -47,15 +42,23 @@ export class WegmansDao {
     return;
   }
 
-  private async loadCategories() {
-    // const response = await request
-    //   .get("https://sp1004f27d.guided.ss-omtrdc.net");
+  async getShoppingListId(): Promise<number> {
+    const response = await request.get("https://wegapi.azure-api.net/shoppinglists/all/?api-version=1.0",
+      {
+        headers: {
+          Authorization: this.authToken,
+          'Ocp-Apim-Subscription-Key': config.get('wegmans.apikey'),
+        },
+        json: true,
+      });
 
-    // response.body.
+    const shoppingListId = response[0].Id;
+
+    return shoppingListId;
   }
 
   async searchForProduct(query: string): Promise<Product> {
-    
+
     const response = await request.get("https://sp1004f27d.guided.ss-omtrdc.net", {
       qs: {
         q: query,
@@ -78,6 +81,7 @@ export class WegmansDao {
   }
 
   async addProductToShoppingList(product: Product, quantity: number = 1): Promise<void> {
+    const shoppingListId = await this.getShoppingListId();
     const response = await request("https://wegapi.azure-api.net/shoppinglists/shoppinglistitem/my/?api-version=1.1",
       {
         method: 'POST',
@@ -89,7 +93,7 @@ export class WegmansDao {
         },
         body: JSON.stringify([
           {
-            ShoppingListId: this.shoppingListId,
+            ShoppingListId: shoppingListId,
             Quantity: quantity,
             Sku: product.sku,
           },
