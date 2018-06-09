@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "target": "es5",
+    // "moduleResolution": "node",
+    "outDir": "build/Debug",
+    "sourceMap": true,
+    "lib": [
+      "es2017"
+    ]
+  },
+  "exclude": [
+    "node_modules",
+    "build",
+    "test"
+  ]
+}
