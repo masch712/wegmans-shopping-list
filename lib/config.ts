@@ -26,13 +26,6 @@ const config = convict({
       env: 'LOGGING_LEVEL',
     },
   },
-  wunderground: {
-    apiKey: {
-      doc: 'API key for Wunderground',
-      env: 'WUNDERGROUND_APIKEY',
-      default: '',
-    },
-  },
   aws: {
     dynamodb: {
       endpoint: {

@@ -16,6 +16,7 @@ const PRODUCT_SLOT = 'product';
 const wegmansDao = new WegmansDao();
 
 //TODO: abstract this shit out
+const kms = new KMS();
 let decryptionPromise = Promise.resolve();
 if (config.get('wegmans.encrypted')) {
   // Decrypt code should run once and variables stored outside of the function
@@ -29,7 +30,6 @@ if (config.get('wegmans.encrypted')) {
   decryptionPromise = Promise.all(decryptionPromises).then(() => {});
 }
 
-const kms = new KMS();
 async function decryptKMS(key): Promise<void> {
   return new Promise<void>((resolve, reject) => {
 
@@ -66,6 +66,8 @@ export const AddToShoppingList: RequestHandler = {
     const productQuery = intent.slots[PRODUCT_SLOT].value;
 
     const product = await wegmansDao.searchForProduct(productQuery);
+
+    await wegmansDao.addProductToShoppingList(product);
 
     return Promise.resolve(
       handlerInput.responseBuilder

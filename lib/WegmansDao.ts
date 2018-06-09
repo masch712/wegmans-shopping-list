@@ -5,8 +5,6 @@ import { Product } from "../models/Product";
 import { logger } from "./Logger";
 //TODO: env var
 
-const APIKEY = config.get('wegmans.apikey');
-
 export class WegmansDao {
 
   private authToken: string;
@@ -57,17 +55,12 @@ export class WegmansDao {
   }
 
   async searchForProduct(query: string): Promise<Product> {
-    // Load categories if necessary
-    // Search categories
-    // Return the first product in the category
-
-    // for now, just search subcategories and pic the first shit
+    
     const response = await request.get("https://sp1004f27d.guided.ss-omtrdc.net", {
       qs: {
-        i: 1,
-        q1: query,
+        q: query,
         rank: 'rank-wegmans',
-        x1: 'subcategory',
+        storeNumber: 59 //TODO: break this out into config
       }
     })
     const body = JSON.parse(response);
@@ -91,7 +84,7 @@ export class WegmansDao {
         qs: { 'api-version': '1.1' },
         headers: {
           'Content-Type': 'application/json',
-          'Ocp-Apim-Subscription-Key': APIKEY,
+          'Ocp-Apim-Subscription-Key': config.get('wegmans.apikey'),
           'Authorization': this.authToken,
         },
         body: JSON.stringify([
