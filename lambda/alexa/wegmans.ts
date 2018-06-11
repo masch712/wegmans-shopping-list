@@ -1,10 +1,10 @@
 import * as _ from 'lodash';
-import { logger } from '../lib/Logger';
+import { logger } from '../../lib/Logger';
 import { HandlerInput, RequestHandler } from 'ask-sdk-core';
 import { Response, IntentRequest } from 'ask-sdk-model';
-import { WegmansDao } from '../lib/WegmansDao';
+import { WegmansDao } from '../../lib/WegmansDao';
 import { KMS } from "aws-sdk";
-import config from '../lib/config';
+import config from '../../lib/config';
 
 const APP_ID = 'amzn1.ask.skill.ee768e33-44df-48f8-8fcd-1a187d502b75';
 
@@ -13,7 +13,7 @@ const STOP_MESSAGE: string = 'Bye';
 
 const PRODUCT_SLOT = 'product';
 
-const wegmansDao = new WegmansDao();
+const wegmansDao = new WegmansDao(config.get('wegmans.apikey'));
 
 //TODO: abstract this shit out
 const kms = new KMS();

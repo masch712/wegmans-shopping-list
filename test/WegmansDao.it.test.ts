@@ -3,7 +3,7 @@ import config from "../lib/config";
 import {WegmansDao} from "../lib/WegmansDao";
 
 describe('login', () => {
-  const wegmans = new WegmansDao();
+  const wegmans = new WegmansDao(config.get('wegmans.apikey'));
   beforeAll(async () => {
     await wegmans.login(config.get('wegmans.email'), config.get('wegmans.password'));
     expect(wegmans.getAuthToken()).toBeDefined();

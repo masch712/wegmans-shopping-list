@@ -1,15 +1,16 @@
 import * as _ from "lodash";
 import * as request from "request-promise-native";
-import config from "./config";
 import { Product } from "../models/Product";
 import { logger } from "./Logger";
 
 export class WegmansDao {
 
+  private apiKey: string;
   private shoppingListId: number;
   private authToken: string;
 
-  constructor() {
+  constructor(apiKey: string) {
+    this.apiKey = apiKey;
   }
 
   getAuthToken() {
@@ -34,6 +35,7 @@ export class WegmansDao {
           }
       });
     } catch (err) {
+      // We get a redirect response, which `request` considers an error.  whotevs
       const accessCookie = _.find<string>(err.response.headers['set-cookie'],
         (cookie: string) => !!cookie.match(/wegmans_access=/));
       this.authToken = accessCookie.substring("wegmans_access=".length, accessCookie.indexOf(';'));
@@ -53,7 +55,7 @@ export class WegmansDao {
       {
         headers: {
           Authorization: this.authToken,
-          'Ocp-Apim-Subscription-Key': config.get('wegmans.apikey'),
+          'Ocp-Apim-Subscription-Key': this.apiKey,
         },
         json: true,
       });
@@ -95,7 +97,7 @@ export class WegmansDao {
         qs: { 'api-version': '1.1' },
         headers: {
           'Content-Type': 'application/json',
-          'Ocp-Apim-Subscription-Key': config.get('wegmans.apikey'),
+          'Ocp-Apim-Subscription-Key': this.apiKey,
           'Authorization': this.authToken,
         },
         body: JSON.stringify([
