@@ -63,3 +63,5 @@ typings/
 
 # local config (contains passwords)
 config/local.yaml
+
+hax.ts

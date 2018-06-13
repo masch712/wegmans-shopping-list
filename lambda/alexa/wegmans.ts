@@ -13,7 +13,6 @@ const STOP_MESSAGE: string = 'Bye';
 
 const PRODUCT_SLOT = 'product';
 
-const wegmansDao = new WegmansDao(config.get('wegmans.apikey'));
 
 //TODO: abstract this shit out
 const kms = new KMS();
@@ -29,6 +28,7 @@ if (config.get('wegmans.encrypted')) {
   config.set('wegmans.encrypted', false);
   decryptionPromise = Promise.all(decryptionPromises).then(() => {});
 }
+const wegmansDaoPromise = decryptionPromise.then(() => new WegmansDao(config.get('wegmans.apikey')));
 
 async function decryptKMS(key): Promise<void> {
   return new Promise<void>((resolve, reject) => {
@@ -55,6 +55,7 @@ export const AddToShoppingList: RequestHandler = {
     && request.intent.name === 'AddToShoppingList';
   },
   handle: async function (handlerInput: HandlerInput): Promise<Response> {
+    const wegmansDao = await wegmansDaoPromise;
     //TODO: await decryption before everytihng?
     await decryptionPromise;
     const request = handlerInput.requestEnvelope.request as IntentRequest;
@@ -72,6 +73,25 @@ export const AddToShoppingList: RequestHandler = {
     return Promise.resolve(
       handlerInput.responseBuilder
         .speak(`Added ${product.name} to your wegmans shopping list.`)
+        .getResponse()
+    );
+  }
+};
+
+
+export const TestAuth: RequestHandler = {
+  canHandle: function (handlerInput: HandlerInput): Promise<boolean> | boolean {
+    const request = handlerInput.requestEnvelope.request;
+    
+    return request.type === 'IntentRequest'
+    && request.intent.name === 'TestAuth';
+  },
+  handle: async function (handlerInput: HandlerInput): Promise<Response> {
+    
+    return Promise.resolve(
+      handlerInput.responseBuilder
+        .speak(`Auth yoself please`)
+        .withLinkAccountCard()
         .getResponse()
     );
   }

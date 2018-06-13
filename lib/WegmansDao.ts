@@ -3,6 +3,10 @@ import * as request from "request-promise-native";
 import { Product } from "../models/Product";
 import { logger } from "./Logger";
 
+interface AccessToken {
+  access: string;
+  refresh: string;
+}
 export class WegmansDao {
 
   private apiKey: string;
@@ -17,7 +21,8 @@ export class WegmansDao {
     return this.authToken;
   }
 
-  async login(email: string, password: string): Promise<void> {
+  async login(email: string, password: string): Promise<AccessToken> {
+    let tokens: AccessToken;
     try {
       await request({
         method: 'POST',
@@ -38,11 +43,16 @@ export class WegmansDao {
       // We get a redirect response, which `request` considers an error.  whotevs
       const accessCookie = _.find<string>(err.response.headers['set-cookie'],
         (cookie: string) => !!cookie.match(/wegmans_access=/));
-      this.authToken = accessCookie.substring("wegmans_access=".length, accessCookie.indexOf(';'));
+      const refreshCookie = _.find<string>(err.response.headers['set-cookie'],
+        (cookie: string) => !!cookie.match(/wegmans_refresh=/));
+      const access = accessCookie.substring("wegmans_access=".length, accessCookie.indexOf(';'));
+      const refresh = refreshCookie.substring("wegmans_refresh=".length, accessCookie.indexOf(';'));
+      tokens = { access, refresh};
+      this.authToken = access;
       logger.debug('Logged in and saved authToken of length ' + this.authToken.length);
     }
 
-    return;
+    return Promise.resolve(tokens);
   }
 
   async getShoppingListId(): Promise<number> {
