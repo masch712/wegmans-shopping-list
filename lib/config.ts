@@ -18,6 +18,7 @@ const config = convict({
     default: 'local',
     env: 'LOGICAL_ENV',
   },
+
   logging: {
     level: {
       doc: 'Logging level',
@@ -63,11 +64,27 @@ const config = convict({
       format: String,
       env: 'WEGMANS_APIKEY',
     },
-    encrypted: {
-      doc: 'Whether AWS KMS encryption was used to encrypt the credentials',
-      default: false,
-      format: Boolean,
-      env: 'WEGMANS_ENCRYPTED',
+  },
+  encrypted: {
+    doc: 'Whether AWS KMS encryption was used to encrypt credentials',
+    default: false,
+    format: Boolean,
+    env: 'AWS_ENCRYPTED',
+  },
+  alexa: {
+    skill: {
+      name: {
+        doc: 'Name of the alexa skill.  Used for authenticating access token request.',
+        default: '',
+        format: String,
+        env: 'ALEXA_SKILL_NAME'
+      },
+      secret: {
+        doc: 'The skill client secret created during Account Linking config.',
+        default: '',
+        format: String,
+        env: 'ALEXA_SKILL_SECRET'
+      }
     }
   }
 });

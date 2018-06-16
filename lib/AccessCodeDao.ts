@@ -73,7 +73,7 @@ class AccessCodeDao {
       });
     }
     
-  async getTokens(code: string) {
+  async getTokens(code: string): Promise<AccessCodeTableItem> {
    const dbTokens = await this.docClient.get({
      TableName: TABLENAME,
      Key: {
@@ -81,7 +81,7 @@ class AccessCodeDao {
      },
    }).promise();
 
-   return dbTokens.Item;
+   return Promise.resolve(dbTokens.Item as AccessCodeTableItem);
   }
   
   async dropTable() {

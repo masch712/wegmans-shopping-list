@@ -5,20 +5,25 @@ import { KMS } from "aws-sdk";
 import config from "../../lib/config";
 import { AccessCodeTableItem, accessCodeDao } from "../../lib/AccessCodeDao";
 import { logger } from "../../lib/Logger";
+import * as basic from "basic-auth";
+import * as querystring from 'querystring';
 
 //TODO: abstract all this shit
 const kms = new KMS();
 let decryptionPromise = Promise.resolve();
-if (config.get('wegmans.encrypted')) {
+if (config.get('encrypted')) {
   // Decrypt code should run once and variables stored outside of the function
   // handler so that these are decrypted once per container
-  const encryptedKeys = ['wegmans.apikey', 'wegmans.email', 'wegmans.password'];
+  const encryptedKeys = ['wegmans.apikey', 'alexa.skill.secret'];
   const decryptionPromises = [];
   encryptedKeys.forEach(key => {
-    decryptionPromises.push(decryptKMS(key));
+    // Only decrypt if there's data to decrypt
+    if (config.get(key)) {
+      decryptionPromises.push(decryptKMS(key));
+    }
   });
-  config.set('wegmans.encrypted', false);
-  decryptionPromise = Promise.all(decryptionPromises).then(() => {});
+  config.set('encrypted', false);
+  decryptionPromise = Promise.all(decryptionPromises).then(() => { });
 }
 
 async function decryptKMS(key): Promise<void> {
@@ -46,17 +51,25 @@ const wegmansDaoPromise = decryptionPromise.then(() => new WegmansDao(config.get
  * Overwrite any code that's already in the db for the given user.
  * Respond with the code.
  */
-export const generateAuthCode: APIGatewayProxyHandler = async function(event, context, callback) : Promise<APIGatewayProxyResult> {
+export const generateAuthCode: APIGatewayProxyHandler = async function (event, context, callback): Promise<APIGatewayProxyResult> {
   console.log("Event received: " + JSON.stringify(event, null, 2));
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      body: '',
+      headers: corsHeaders,
+    };
+  }
+  
   const code = uuid();
   const body = JSON.parse(event.body);
   const username = body.username;
   const password = body.password;
-//TODO: write some damn tests
+  //TODO: write some damn tests
   const wegmansDao = await wegmansDaoPromise;
   logger.debug('Got wegmans DAO.  Logging in');
   //TODO: give wegmansDao its own npm package?  its own lambda?
-  
+
   let tokens: AccessToken;
 
   // short-circuit for test user
@@ -92,11 +105,38 @@ export const generateAuthCode: APIGatewayProxyHandler = async function(event, co
   };
 };
 
-export const getTokensByAuthCode: APIGatewayProxyHandler = async function(event, context, callback) : Promise<APIGatewayProxyResult> {
-  console.log(JSON.stringify(event, null, 2));
+export const getTokensByAuthCode: APIGatewayProxyHandler = async function (event, context, callback): Promise<APIGatewayProxyResult> {
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      body: '',
+      headers: corsHeaders,
+    };
+  }
 
+  const authHeader = event.headers.Authorization;
+  if (!authHeader) {
+    throw new Error('No Authorization header found');
+  }
+
+  const parsedAuth = basic.parse(authHeader);
+  if (parsedAuth.name !== config.get('alexa.skill.name')
+    || parsedAuth.pass !== config.get('alexa.skill.secret')) {
+    throw new Error('Alexa credentials invalid');
+  }
+
+  logger.debug('creds are good!');
+  const body = querystring.parse(event.body);
+  
+  logger.debug('getting tokens');
+  const tokens = await accessCodeDao.getTokens(body.code as string);
+  if (!tokens.access_token) {
+    throw new Error('No access token found for given code');
+  }
+
+  logger.debug('got tokens');
   const response: APIGatewayProxyResult = {
-    body: JSON.stringify({harm: 'blarm'}),
+    body: JSON.stringify({ access_token: tokens.access_token, refresh_token: tokens.refresh_token }),
     statusCode: 200,
     headers: corsHeaders,
   };
