@@ -17,15 +17,17 @@ const PRODUCT_SLOT = 'product';
 //TODO: abstract this shit out
 const kms = new KMS();
 let decryptionPromise = Promise.resolve();
-if (config.get('wegmans.encrypted')) {
+if (config.get('encrypted')) {
   // Decrypt code should run once and variables stored outside of the function
   // handler so that these are decrypted once per container
   const encryptedKeys = ['wegmans.apikey', 'wegmans.email', 'wegmans.password'];
   const decryptionPromises = [];
   encryptedKeys.forEach(key => {
-    decryptionPromises.push(decryptKMS(key));
+    if (config.get(key)) {
+      decryptionPromises.push(decryptKMS(key));
+    }
   });
-  config.set('wegmans.encrypted', false);
+  config.set('encrypted', false);
   decryptionPromise = Promise.all(decryptionPromises).then(() => {});
 }
 const wegmansDaoPromise = decryptionPromise.then(() => new WegmansDao(config.get('wegmans.apikey')));

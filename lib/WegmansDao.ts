@@ -46,6 +46,7 @@ export class WegmansDao {
       const refreshCookie = _.find<string>(err.response.headers['set-cookie'],
         (cookie: string) => !!cookie.match(/wegmans_refresh=/));
       if (!accessCookie || !refreshCookie) {
+        logger.debug(JSON.stringify(err, null, 2));
         throw new Error('No access tokens in response; bad login credentials?');
       }
       const access = accessCookie.substring("wegmans_access=".length, accessCookie.indexOf(';'));
