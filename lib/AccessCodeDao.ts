@@ -1,6 +1,6 @@
 import { logger } from '../lib/Logger';
 import * as AWS from 'aws-sdk';
-const TABLENAME = 'Forecasts';
+const TABLENAME = 'WegmansAccess';
 const BATCH_GET_SIZE = 100;
 const BATCH_PUT_SIZE = 25;
 const {DateTime} = require('luxon');
@@ -28,11 +28,9 @@ const params: AWS.DynamoDB.CreateTableInput = {
 
 export class AccessCodeTableItem {
 
-  primary_key: string;
-  constructor(public accessToken: string, 
-    public refreshToken: string, 
-    public authCode: string) {
-      this.primary_key = authCode;
+  constructor(public access_token: string, 
+    public refresh_token: string, 
+    public access_code: string) {
   }
 
 }

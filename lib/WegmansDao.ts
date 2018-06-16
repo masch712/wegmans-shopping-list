@@ -3,7 +3,7 @@ import * as request from "request-promise-native";
 import { Product } from "../models/Product";
 import { logger } from "./Logger";
 
-interface AccessToken {
+export interface AccessToken {
   access: string;
   refresh: string;
 }
@@ -45,6 +45,9 @@ export class WegmansDao {
         (cookie: string) => !!cookie.match(/wegmans_access=/));
       const refreshCookie = _.find<string>(err.response.headers['set-cookie'],
         (cookie: string) => !!cookie.match(/wegmans_refresh=/));
+      if (!accessCookie || !refreshCookie) {
+        throw new Error('No access tokens in response; bad login credentials?');
+      }
       const access = accessCookie.substring("wegmans_access=".length, accessCookie.indexOf(';'));
       const refresh = refreshCookie.substring("wegmans_refresh=".length, accessCookie.indexOf(';'));
       tokens = { access, refresh};
