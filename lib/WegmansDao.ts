@@ -6,19 +6,15 @@ import { logger } from "./Logger";
 export interface AccessToken {
   access: string;
   refresh: string;
+  user: string;
 }
 export class WegmansDao {
 
   private apiKey: string;
   private shoppingListId: number;
-  private authToken: string;
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
-  }
-
-  getAuthToken() {
-    return this.authToken;
   }
 
   async login(email: string, password: string): Promise<AccessToken> {
@@ -41,25 +37,71 @@ export class WegmansDao {
       });
     } catch (err) {
       // We get a redirect response, which `request` considers an error.  whotevs
-      const accessCookie = _.find<string>(err.response.headers['set-cookie'],
-        (cookie: string) => !!cookie.match(/wegmans_access=/));
-      const refreshCookie = _.find<string>(err.response.headers['set-cookie'],
-        (cookie: string) => !!cookie.match(/wegmans_refresh=/));
-      if (!accessCookie || !refreshCookie) {
+      const access = WegmansDao.getCookie(err.response, 'wegmans_access');
+      const refresh = WegmansDao.getCookie(err.response, 'wegmans_refresh');
+      const user = WegmansDao.getCookie(err.response, 'wegmans_user');
+      if (!access || !refresh) {
         logger.debug(JSON.stringify(err, null, 2));
         throw new Error('No access tokens in response; bad login credentials?');
       }
-      const access = accessCookie.substring("wegmans_access=".length, accessCookie.indexOf(';'));
-      const refresh = refreshCookie.substring("wegmans_refresh=".length, accessCookie.indexOf(';'));
-      tokens = { access, refresh};
-      this.authToken = access;
-      logger.debug('Logged in and saved authToken of length ' + this.authToken.length);
+      tokens = { access, refresh, user};
+      logger.debug('Logged in and got access token of length ' + access.length);
     }
 
     return Promise.resolve(tokens);
   }
 
-  async getShoppingListId(): Promise<number> {
+  //TODO: pull out auth shit into AcccessCodeDao and rename it to AuthDao
+  /**
+   * Send a refresh token to Wegmans and get back fresh access and user tokens.
+   * @param refreshToken The refresh token
+   */
+  async refreshTokens(refreshToken: string, userToken: string) : Promise<AccessToken> {
+    
+    try {
+      const jar = request.jar();
+      const refreshCookie = request.cookie(`wegmans_refresh=${refreshToken}`);
+      const userCookie = request.cookie(`wegmans_user=${userToken}`);
+      jar.setCookie(refreshCookie, 'https://www.wegmans.com');
+      jar.setCookie(userCookie, 'https://www.wegmans.com');
+
+      await request({
+        method: 'GET',
+        jar: jar,
+        url: 'https://www.wegmans.com/j_security_check',
+        headers:
+          {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Cache-Control': 'no-cache'
+          },
+      });
+    } catch (err) {
+      // We get a redirect response, which `request` considers an error.  whotevs
+      const access = WegmansDao.getCookie(err.response, 'wegmans_access');
+      const refresh = WegmansDao.getCookie(err.response, 'wegmans_refresh');
+      const user = WegmansDao.getCookie(err.response, 'wegmans_user');
+      if (!access || !refresh) {
+        logger.debug(JSON.stringify(err, null, 2));
+        throw new Error('No access tokens in response; bad login credentials?');
+      }
+      const tokens: AccessToken = { access, refresh, user};
+      logger.debug('Logged in and got access token of length ' + access.length);
+      return Promise.resolve(tokens);
+    }
+    
+    throw new Error('Unable to refresh access token');
+  }
+
+  static getCookie(response: any, cookieKey: string) {
+    const cookie = _.find<string>(response.headers['set-cookie'],
+        (cookie: string) => !!cookie.match(`${cookieKey}=`));
+    if (!cookie) { return; }
+    
+    const value = cookie.substring(`${cookieKey}=`.length, cookie.indexOf(';'));
+    return value;
+  }
+
+  async getShoppingListId(accessToken): Promise<number> {
     
     if (this.shoppingListId) {
       return this.shoppingListId;
@@ -68,7 +110,7 @@ export class WegmansDao {
     const response = await request.get("https://wegapi.azure-api.net/shoppinglists/all/?api-version=1.0",
       {
         headers: {
-          Authorization: this.authToken,
+          Authorization: accessToken,
           'Ocp-Apim-Subscription-Key': this.apiKey,
         },
         json: true,
@@ -103,8 +145,8 @@ export class WegmansDao {
     return product;
   }
 
-  async addProductToShoppingList(product: Product, quantity: number = 1): Promise<void> {
-    const shoppingListId = await this.getShoppingListId();
+  async addProductToShoppingList(accessToken: string, product: Product, quantity: number = 1): Promise<void> {
+    const shoppingListId = await this.getShoppingListId(accessToken);
     const response = await request("https://wegapi.azure-api.net/shoppinglists/shoppinglistitem/my/?api-version=1.1",
       {
         method: 'POST',
@@ -112,7 +154,7 @@ export class WegmansDao {
         headers: {
           'Content-Type': 'application/json',
           'Ocp-Apim-Subscription-Key': this.apiKey,
-          'Authorization': this.authToken,
+          'Authorization': accessToken,
         },
         body: JSON.stringify([
           {

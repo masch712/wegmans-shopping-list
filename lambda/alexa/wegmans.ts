@@ -13,7 +13,7 @@ const STOP_MESSAGE: string = 'Bye';
 
 const PRODUCT_SLOT = 'product';
 
-
+logger.debug('wtf');
 //TODO: abstract this shit out
 const kms = new KMS();
 let decryptionPromise = Promise.resolve();
@@ -36,12 +36,16 @@ async function decryptKMS(key): Promise<void> {
   return new Promise<void>((resolve, reject) => {
 
     const encrypted = config.get(key);
+    logger.debug(`Encrypted ${key}: ${encrypted}`);
+
     let decrypted;
     kms.decrypt({ CiphertextBlob: new Buffer(encrypted, 'base64') }, (err, data) => {
       if (err) {
+        logger.error(JSON.stringify(err, null, 2));
         reject(err);
       }
       else {
+        logger.debug('Setting plaintext data on ' + key);
         config.set(key, data.Plaintext.toString());
         resolve();
       }
@@ -57,20 +61,29 @@ export const AddToShoppingList: RequestHandler = {
     && request.intent.name === 'AddToShoppingList';
   },
   handle: async function (handlerInput: HandlerInput): Promise<Response> {
+
     const wegmansDao = await wegmansDaoPromise;
     //TODO: await decryption before everytihng?
     await decryptionPromise;
     const request = handlerInput.requestEnvelope.request as IntentRequest;
     const intent = request.intent;
-    if (!wegmansDao.getAuthToken()) {
-      await wegmansDao.login(config.get('wegmans.email'), config.get('wegmans.password'));
+    
+    let accessToken = handlerInput.requestEnvelope.session.user.accessToken
+    
+    if (!accessToken) {
+      logger.info('No access token found; trying wegmans.email and wegmans.password');
+      const tokens = await wegmansDao.login(config.get('wegmans.email'), config.get('wegmans.password'));
+      accessToken = tokens.access;
+    }
+    else {
+      logger.debug('Access token: ' + accessToken);
     }
 
     const productQuery = intent.slots[PRODUCT_SLOT].value;
 
     const product = await wegmansDao.searchForProduct(productQuery);
 
-    await wegmansDao.addProductToShoppingList(product);
+    await wegmansDao.addProductToShoppingList(accessToken, product);
 
     return Promise.resolve(
       handlerInput.responseBuilder

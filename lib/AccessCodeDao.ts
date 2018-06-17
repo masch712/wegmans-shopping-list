@@ -29,8 +29,9 @@ const params: AWS.DynamoDB.CreateTableInput = {
 export class AccessCodeTableItem {
 
   constructor(public access_token: string, 
-    public refresh_token: string, 
-    public access_code: string) {
+    public refresh_token: string,
+    public access_code: string,
+    public wegmans_user: string) {
   }
 
 }

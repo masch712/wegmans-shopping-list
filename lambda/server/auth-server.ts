@@ -7,6 +7,7 @@ import { AccessCodeTableItem, accessCodeDao } from "../../lib/AccessCodeDao";
 import { logger } from "../../lib/Logger";
 import * as basic from "basic-auth";
 import * as querystring from 'querystring';
+import { decode } from "jsonwebtoken";
 
 //TODO: abstract all this shit
 const kms = new KMS();
@@ -30,12 +31,17 @@ async function decryptKMS(key): Promise<void> {
   return new Promise<void>((resolve, reject) => {
 
     const encrypted = config.get(key);
+    logger.debug(`decrypting: ${key}: ${encrypted}`);
     let decrypted;
     kms.decrypt({ CiphertextBlob: new Buffer(encrypted, 'base64') }, (err, data) => {
       if (err) {
-        reject(err);
+        // If we failed to decrypt, log and move on.  Hopefully it's already decrypted
+        logger.error(`error decrypting ${key}: ` + JSON.stringify(err, null, 2));
+        resolve();
+        // reject(err);
       }
       else {
+        logger.debug(`decrypted ${key}`);
         config.set(key, data.Plaintext.toString());
         resolve();
       }
@@ -79,14 +85,16 @@ export const generateAuthCode: APIGatewayProxyHandler = async function (event, c
     tokens = {
       access: 'access_test' + uuid(),
       refresh: 'refresh_test' + uuid(),
+      user: 'user_test' + uuid(),
     };
   }
   else {
     tokens = await wegmansDao.login(username, password);
   }
   logger.debug('Login resolved');
-  const accessCodeTableItem = new AccessCodeTableItem(tokens.access, tokens.refresh, code);
+  const accessCodeTableItem = new AccessCodeTableItem(tokens.access, tokens.refresh, code, tokens.user);
 
+  //TODO: dump this check
   if (!await accessCodeDao.tableExists()) {
     logger.debug('Creating table');
     await accessCodeDao.createTable();
@@ -94,7 +102,6 @@ export const generateAuthCode: APIGatewayProxyHandler = async function (event, c
 
   logger.debug('Putting accesscodetableitem');
   await accessCodeDao.put(accessCodeTableItem);
-
 
   return {
     statusCode: 200,
@@ -119,6 +126,8 @@ export const getTokensByAuthCode: APIGatewayProxyHandler = async function (event
     throw new Error('No Authorization header found');
   }
 
+  await decryptionPromise;
+
   const parsedAuth = basic.parse(authHeader);
   if (parsedAuth.name !== config.get('alexa.skill.name')
     || parsedAuth.pass !== config.get('alexa.skill.secret')) {
@@ -135,14 +144,60 @@ export const getTokensByAuthCode: APIGatewayProxyHandler = async function (event
   }
 
   logger.debug('got tokens');
+  logger.debug('access: ' + tokens.access_token);
+
+  const jwt = decode(tokens.access_token) as { [key: string]: any };
+  logger.debug('decoded: ' + JSON.stringify(jwt, null, 2));
+  const now = Math.floor(new Date().getTime()/1000);
+  const expires_in = 10;//jwt.exp - now;
+
   const response: APIGatewayProxyResult = {
-    body: JSON.stringify({ access_token: tokens.access_token, refresh_token: tokens.refresh_token }),
+    body: JSON.stringify({ 
+      access_token: tokens.access_token, 
+      refresh_token: tokens.refresh_token,
+      // expires_in,
+      expires_in,
+    }),
     statusCode: 200,
     headers: corsHeaders,
   };
 
   return Promise.resolve(response);
 }
+
+export const refreshTokens: APIGatewayProxyHandler = async function (event, context, callback): Promise<APIGatewayProxyResult> {
+  logger.debug('refresh requested');
+  logger.debug(JSON.stringify(event, null, 2));
+  throw new Error("can't refresh yet");
+  // const authHeader = event.headers.Authorization;
+  // if (!authHeader) {
+  //   throw new Error('No Authorization header found');
+  // }
+
+  // const parsedAuth = basic.parse(authHeader);
+  // if (parsedAuth.name !== config.get('alexa.skill.name')
+  //   || parsedAuth.pass !== config.get('alexa.skill.secret')) {
+  //   throw new Error('Alexa credentials invalid');
+  // }
+
+  // //TODO: factor out creds check
+  // logger.debug('creds are good!');
+  // const body = querystring.parse(event.body);
+  
+  // logger.debug('refreshing tokens');
+  // const wegmansDao = await wegmansDaoPromise;
+  // const tokens = await wegmansDao.refreshTokens(body.refresh_token as string);
+  
+
+  // logger.debug('got tokens');
+  // const response: APIGatewayProxyResult = {
+  //   body: JSON.stringify({ access_token: tokens.access_token, refresh_token: tokens.refresh_token }),
+  //   statusCode: 200,
+  //   headers: corsHeaders,
+  // };
+
+  // return Promise.resolve(response);
+};
 
 const corsHeaders = Object.freeze({
   'Access-Control-Allow-Origin': '*',
