@@ -2,12 +2,8 @@ import * as _ from "lodash";
 import * as request from "request-promise-native";
 import { Product } from "../models/Product";
 import { logger } from "./Logger";
+import { AccessToken } from "../models/AccessToken";
 
-export interface AccessToken {
-  access: string;
-  refresh: string;
-  user: string;
-}
 export class WegmansDao {
 
   private apiKey: string;

@@ -1,13 +1,14 @@
 import { Handler, APIGatewayProxyHandler, APIGatewayProxyResult } from "aws-lambda";
 import * as uuid from 'uuid/v4';
-import { WegmansDao, AccessToken } from "../../lib/WegmansDao";
+import { WegmansDao } from "../../lib/WegmansDao";
 import { KMS } from "aws-sdk";
 import config from "../../lib/config";
-import { AccessCodeTableItem, accessCodeDao } from "../../lib/AccessCodeDao";
+import { accessCodeDao } from "../../lib/AccessCodeDao";
 import { logger } from "../../lib/Logger";
 import * as basic from "basic-auth";
 import * as querystring from 'querystring';
 import { decode } from "jsonwebtoken";
+import { AccessToken } from "../../models/AccessToken";
 
 //TODO: abstract all this shit
 const kms = new KMS();
@@ -92,13 +93,15 @@ export const generateAuthCode: APIGatewayProxyHandler = async function (event, c
     tokens = await wegmansDao.login(username, password);
   }
   logger.debug('Login resolved');
-  const accessCodeTableItem = new AccessCodeTableItem(tokens.access, tokens.refresh, code, tokens.user);
+  const accessCodeTableItem: AccessToken = {
+    access: tokens.access, 
+    refresh: tokens.refresh, 
+    access_code: code,
+    user: tokens.user,
+  };
 
   //TODO: dump this check
-  if (!await accessCodeDao.tableExists()) {
-    logger.debug('Creating table');
-    await accessCodeDao.createTable();
-  }
+  await accessCodeDao.initTables();
 
   logger.debug('Putting accesscodetableitem');
   await accessCodeDao.put(accessCodeTableItem);
@@ -112,7 +115,7 @@ export const generateAuthCode: APIGatewayProxyHandler = async function (event, c
   };
 };
 
-export const getTokensByAuthCode: APIGatewayProxyHandler = async function (event, context, callback): Promise<APIGatewayProxyResult> {
+export const getTokens: APIGatewayProxyHandler = async function (event, context, callback): Promise<APIGatewayProxyResult> {
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
@@ -135,26 +138,40 @@ export const getTokensByAuthCode: APIGatewayProxyHandler = async function (event
   }
 
   logger.debug('creds are good!');
+
   const body = querystring.parse(event.body);
-  
+  logger.debug('request body: ' + JSON.stringify(body, null, 2));
   logger.debug('getting tokens');
-  const tokens = await accessCodeDao.getTokens(body.code as string);
-  if (!tokens.access_token) {
+  let tokens: AccessToken;
+  if (body.code) {
+    logger.debug('getting token by code');
+    tokens = await accessCodeDao.getTokensByCode(body.code as string);
+  }
+  if (body.refresh_token) {
+    //TODO: CAN I GET THE DAO HERE?  IS SHIT ENCRYTPED? DO I HAVE API KEY
+    logger.debug('getting token by refresh token');
+    const wegmansDao = await wegmansDaoPromise;
+    tokens = await accessCodeDao.getTokensByRefresh(body.refresh_token as string);
+    tokens = await wegmansDao.refreshTokens(body.refresh_token as string, tokens.user)
+  }
+
+  
+  if (!tokens.access) {
     throw new Error('No access token found for given code');
   }
 
   logger.debug('got tokens');
-  logger.debug('access: ' + tokens.access_token);
+  logger.debug('access: ' + tokens.access);
 
-  const jwt = decode(tokens.access_token) as { [key: string]: any };
+  const jwt = decode(tokens.access) as { [key: string]: any };
   logger.debug('decoded: ' + JSON.stringify(jwt, null, 2));
   const now = Math.floor(new Date().getTime()/1000);
-  const expires_in = 10;//jwt.exp - now;
+  const expires_in = jwt.exp - now;
 
   const response: APIGatewayProxyResult = {
     body: JSON.stringify({ 
-      access_token: tokens.access_token, 
-      refresh_token: tokens.refresh_token,
+      access_token: tokens.access, 
+      refresh_token: tokens.refresh,
       // expires_in,
       expires_in,
     }),
@@ -162,51 +179,12 @@ export const getTokensByAuthCode: APIGatewayProxyHandler = async function (event
     headers: corsHeaders,
   };
 
+  logger.debug('Response: ' + JSON.stringify(response, null, 2));
   return Promise.resolve(response);
 }
-
-export const refreshTokens: APIGatewayProxyHandler = async function (event, context, callback): Promise<APIGatewayProxyResult> {
-  logger.debug('refresh requested');
-  logger.debug(JSON.stringify(event, null, 2));
-  throw new Error("can't refresh yet");
-  // const authHeader = event.headers.Authorization;
-  // if (!authHeader) {
-  //   throw new Error('No Authorization header found');
-  // }
-
-  // const parsedAuth = basic.parse(authHeader);
-  // if (parsedAuth.name !== config.get('alexa.skill.name')
-  //   || parsedAuth.pass !== config.get('alexa.skill.secret')) {
-  //   throw new Error('Alexa credentials invalid');
-  // }
-
-  // //TODO: factor out creds check
-  // logger.debug('creds are good!');
-  // const body = querystring.parse(event.body);
-  
-  // logger.debug('refreshing tokens');
-  // const wegmansDao = await wegmansDaoPromise;
-  // const tokens = await wegmansDao.refreshTokens(body.refresh_token as string);
-  
-
-  // logger.debug('got tokens');
-  // const response: APIGatewayProxyResult = {
-  //   body: JSON.stringify({ access_token: tokens.access_token, refresh_token: tokens.refresh_token }),
-  //   statusCode: 200,
-  //   headers: corsHeaders,
-  // };
-
-  // return Promise.resolve(response);
-};
 
 const corsHeaders = Object.freeze({
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
   'Access-Control-Allow-Methods': 'OPTIONS,GET,POST',
 });
-
-/**
- * Given an access code, lookup the access/refresh tokens from the database
- */
-// export const accessTokenEndpoint: APIGatewayProxyHandler = async function (event, context, callback): Promise<APIGatewayProxyResult> {
-// }

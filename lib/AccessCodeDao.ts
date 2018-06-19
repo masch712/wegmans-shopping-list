@@ -1,10 +1,12 @@
 import { logger } from '../lib/Logger';
 import * as AWS from 'aws-sdk';
-const TABLENAME = 'WegmansAccess';
+const TABLENAME_TOKENSBYCODE = 'WegmansAccessByCode';
+const TABLENAME_TOKENSBYREFRESH = 'WegmansAccessByRefresh';
 const BATCH_GET_SIZE = 100;
 const BATCH_PUT_SIZE = 25;
 const {DateTime} = require('luxon');
 import { AttributeMap } from "aws-sdk/clients/dynamodb";
+import { AccessToken } from '../models/AccessToken';
 
 //TODO: is tihs necessary?
 AWS.config.update({
@@ -12,8 +14,8 @@ AWS.config.update({
 });
 
 
-const params: AWS.DynamoDB.CreateTableInput = {
-  TableName: TABLENAME,
+const params_TokensByCode: AWS.DynamoDB.CreateTableInput = {
+  TableName: TABLENAME_TOKENSBYCODE,
   KeySchema: [
     {AttributeName: 'access_code', KeyType: 'HASH'}, // Partition key
   ],
@@ -26,20 +28,24 @@ const params: AWS.DynamoDB.CreateTableInput = {
   },
 };
 
-export class AccessCodeTableItem {
-
-  constructor(public access_token: string, 
-    public refresh_token: string,
-    public access_code: string,
-    public wegmans_user: string) {
-  }
-
-}
+const params_TokensByRefresh: AWS.DynamoDB.CreateTableInput = {
+  TableName: TABLENAME_TOKENSBYREFRESH,
+  KeySchema: [
+    {AttributeName: 'refresh', KeyType: 'HASH'}, // Partition key
+  ],
+  AttributeDefinitions: [
+    {AttributeName: 'refresh', AttributeType: 'S'},
+  ],
+  ProvisionedThroughput: {
+    ReadCapacityUnits: 10,
+    WriteCapacityUnits: 10,
+  },
+};
 
 class AccessCodeDao {
 
   private static _instance: AccessCodeDao;
-  private dynamodb;
+  private dynamodb: AWS.DynamoDB;
   private docClient;// = new AWS.DynamoDB.DocumentClient(connParams);
 
   apiKey: string;
@@ -59,10 +65,10 @@ class AccessCodeDao {
     return AccessCodeDao._instance;
   }
   
-  public tableExists():Promise<Boolean> {
+  private tableExists(tableName = TABLENAME_TOKENSBYCODE):Promise<Boolean> {
     return this.dynamodb.describeTable(
       {
-        TableName: TABLENAME,
+        TableName: tableName,
       }
     ).promise()
     .then((data) => {
@@ -74,21 +80,32 @@ class AccessCodeDao {
       });
     }
     
-  async getTokens(code: string): Promise<AccessCodeTableItem> {
+  async getTokensByCode(code: string): Promise<AccessToken> {
    const dbTokens = await this.docClient.get({
-     TableName: TABLENAME,
+     TableName: TABLENAME_TOKENSBYCODE,
      Key: {
        access_code: code,
      },
    }).promise();
 
-   return Promise.resolve(dbTokens.Item as AccessCodeTableItem);
+   return Promise.resolve(dbTokens.Item as AccessToken);
+  }
+
+  async getTokensByRefresh(refreshToken: string): Promise<AccessToken> {
+    const dbTokens = await this.docClient.get({
+      TableName: TABLENAME_TOKENSBYREFRESH,
+      Key: {
+        refresh: refreshToken,
+      },
+    }).promise();
+
+    return Promise.resolve(dbTokens.Item as AccessToken);
   }
   
-  async dropTable() {
+  async dropTable(tableName) {
     const promise = new Promise((resolve, reject) => {
       this.dynamodb.deleteTable({
-        TableName: TABLENAME,
+        TableName: tableName,
       }, (err, data) => {
         if (err) reject(err);
         else resolve(data);
@@ -96,10 +113,17 @@ class AccessCodeDao {
     });
     return promise;
   }
+
+  async dropTables() {
+    return Promise.all([
+      this.dropTable(TABLENAME_TOKENSBYCODE),
+      this.dropTable(TABLENAME_TOKENSBYREFRESH),
+    ]);
+  }
   
-  async createTable() {
+  private async createTable(tableName = TABLENAME_TOKENSBYCODE) {
     const promise = new Promise((resolve, reject) => {
-      this.dynamodb.createTable(params, (err, data) => {
+      this.dynamodb.createTable(params_TokensByCode, (err, data) => {
         if (err) reject(err);
         else resolve(data);
       });
@@ -107,18 +131,50 @@ class AccessCodeDao {
     return promise;
   }
 
-  /**
-   * Upsert forecasts.
-   * @param {WeatherForecast[]} forecasts
-   * @return {Promise}
-   */
-  async put(item: AccessCodeTableItem): Promise<void> {
-    const dbResult = await this.docClient.put({
-      TableName: TABLENAME,
+  async initTables() {
+    logger.debug('initting tables');
+    const tablesAndSchemas = {
+      [TABLENAME_TOKENSBYCODE]: params_TokensByCode,
+      [TABLENAME_TOKENSBYREFRESH]: params_TokensByRefresh,
+    };
+
+    const tableNames = Object.keys(tablesAndSchemas);
+
+    let tableExists: { [key: string]: Boolean } = {};
+    for(let i = 0; i < tableNames.length; i++) {
+      tableExists[tableNames[i]] = await this.tableExists(tableNames[i]);
+    }
+    
+    //TODO: why do i need this?
+    const self = this;
+    const promises = tableNames.map((tableName) => {
+      logger.debug(tableName);
+      if (!tableExists[tableName]) {
+        logger.debug('create table ' + tableName);
+        return self.dynamodb.createTable(tablesAndSchemas[tableName]).promise().then(() => {
+          logger.debug(`${tableName} created`);
+        });
+      }
+      return Promise.resolve();
+    });
+
+    await Promise.all(promises);
+
+    return;
+  }
+
+  async put(item: AccessToken): Promise<void> {
+    const tokensByCodePromise = item.access_code ? this.docClient.put({
+      TableName: TABLENAME_TOKENSBYCODE,
+      Item: item,
+    }).promise() : Promise.resolve();
+
+    const tokensByRefreshTokenPromise = this.docClient.put({
+      TableName: TABLENAME_TOKENSBYREFRESH,
       Item: item,
     }).promise();
 
-    return;
+    return Promise.all([tokensByRefreshTokenPromise, tokensByCodePromise]).then(() => {});
   }
 }
 
