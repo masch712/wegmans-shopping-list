@@ -1,7 +1,7 @@
 import { logger } from '../lib/Logger';
 import * as AWS from 'aws-sdk';
-const TABLENAME_TOKENSBYCODE = 'WegmansAccessByCode2';
-const TABLENAME_TOKENSBYREFRESH = 'WegmansAccessByRefresh2';
+export const TABLENAME_TOKENSBYCODE = 'WegmansAccessByCode';
+export const TABLENAME_TOKENSBYREFRESH = 'WegmansAccessByRefresh';
 const BATCH_GET_SIZE = 100;
 const BATCH_PUT_SIZE = 25;
 const { DateTime } = require('luxon');
@@ -12,7 +12,6 @@ import config from "./config";
 AWS.config.update({
   region: 'us-east-1',
 });
-
 
 const params_TokensByCode: AWS.DynamoDB.CreateTableInput = {
   TableName: TABLENAME_TOKENSBYCODE,
@@ -67,7 +66,7 @@ class AccessCodeDao {
     return AccessCodeDao._instance;
   }
 
-  private async tableExists(tableName, timeout = 10000): Promise<Boolean> {
+  async tableExists(tableName, timeout = 30000): Promise<Boolean> {
     let tableStatus;
     const startTime = new Date().getTime();
     let duration = 0;
@@ -86,7 +85,7 @@ class AccessCodeDao {
       }
       tableStatus = data.Table && data.Table.TableStatus;
       logger.debug(`got table: status ${tableStatus}`);
-      duration += new Date().getTime() - startTime;
+      duration += new Date().getTime() - (startTime + duration);
     } while (tableStatus && tableStatus !== 'ACTIVE' && duration < timeout && await sleep(2000));
     if (tableStatus && tableStatus !== 'ACTIVE') {
       throw new Error(`Table ${tableName} is ${tableStatus}`);
@@ -193,7 +192,7 @@ class AccessCodeDao {
 }
 
 function sleep(time) {
-  return new Promise((resolve) => setTimeout(resolve, time));
+  return new Promise((resolve) => setTimeout(() => resolve(true), time));
 }
 
 export const accessCodeDao = AccessCodeDao.getInstance(config.get('aws.dynamodb.endpoint'));

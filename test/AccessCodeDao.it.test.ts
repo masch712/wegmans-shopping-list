@@ -1,5 +1,6 @@
 import config from "../lib/config";
-import { accessCodeDao } from "../lib/AccessCodeDao";
+import { accessCodeDao, TABLENAME_TOKENSBYCODE } from "../lib/AccessCodeDao";
+jest.setTimeout(30000);
 
 describe('login', () => {
   beforeEach(async () => {
@@ -9,6 +10,11 @@ describe('login', () => {
       // console.warn(err);
     }
     await accessCodeDao.initTables();
+  });
+
+  test.only('tableexists', async () => {
+    const result = await accessCodeDao.tableExists(TABLENAME_TOKENSBYCODE);
+    expect(result).toBeTruthy();
   });
 
   test('puts and gets token with code', async () => {
