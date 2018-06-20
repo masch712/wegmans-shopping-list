@@ -1,11 +1,11 @@
 import { logger } from '../lib/Logger';
 import * as AWS from 'aws-sdk';
-const TABLENAME_TOKENSBYCODE = 'WegmansAccessByCode';
-const TABLENAME_TOKENSBYREFRESH = 'WegmansAccessByRefresh';
+const TABLENAME_TOKENSBYCODE = 'WegmansAccessByCode2';
+const TABLENAME_TOKENSBYREFRESH = 'WegmansAccessByRefresh2';
 const BATCH_GET_SIZE = 100;
 const BATCH_PUT_SIZE = 25;
 const { DateTime } = require('luxon');
-import { AttributeMap } from "aws-sdk/clients/dynamodb";
+import { AttributeMap, DescribeTableOutput } from "aws-sdk/clients/dynamodb";
 import { AccessToken } from '../models/AccessToken';
 import config from "./config";
 //TODO: is tihs necessary?
@@ -55,7 +55,7 @@ class AccessCodeDao {
       throw new Error('Singleton already instantiated');
     }
     const options = endpoint ? { endpoint } : undefined;
-    logger.debug(`options: ` + JSON.stringify(options));
+    logger.debug(`DynamoDB options: ` + JSON.stringify(options));
     this.dynamodb = new AWS.DynamoDB(options);
     this.docClient = new AWS.DynamoDB.DocumentClient(options);
   }
@@ -67,21 +67,31 @@ class AccessCodeDao {
     return AccessCodeDao._instance;
   }
 
-  private async tableExists(tableName = TABLENAME_TOKENSBYCODE): Promise<Boolean> {
-    logger.debug('describing table ' + tableName);
-    return this.dynamodb.describeTable(
-      {
-        TableName: tableName,
-      }
-    ).promise()
-      .then((data) => {
-        logger.debug('got table');
-        return data.Table != null;
-      })
-      .catch((err) => {
-        // TODO: parse the error?
+  private async tableExists(tableName, timeout = 10000): Promise<Boolean> {
+    let tableStatus;
+    const startTime = new Date().getTime();
+    let duration = 0;
+    do {
+      logger.debug('describing table ' + tableName);
+      let data: DescribeTableOutput = {};
+      try {
+        data = await this.dynamodb.describeTable(
+          {
+            TableName: tableName,
+          }
+        ).promise();
+      } catch (err) {
+        logger.debug(`couldn't get ${tableName}; assuming table doesn't exist`);
         return false;
-      });
+      }
+      tableStatus = data.Table && data.Table.TableStatus;
+      logger.debug(`got table: status ${tableStatus}`);
+      duration += new Date().getTime() - startTime;
+    } while (tableStatus && tableStatus !== 'ACTIVE' && duration < timeout && await sleep(2000));
+    if (tableStatus && tableStatus !== 'ACTIVE') {
+      throw new Error(`Table ${tableName} is ${tableStatus}`);
+    }
+    return true;
   }
 
   async getTokensByCode(code: string): Promise<AccessToken> {
@@ -152,7 +162,7 @@ class AccessCodeDao {
     //TODO: why do i need this?
     const self = this;
     const promises = tableNames.map((tableName) => {
-      logger.debug(tableName);
+      logger.debug(`initting ${tableName}`);
       if (!tableExists[tableName]) {
         logger.debug('create table ' + tableName);
         return self.dynamodb.createTable(tablesAndSchemas[tableName]).promise().then(() => {
@@ -180,6 +190,10 @@ class AccessCodeDao {
 
     return Promise.all([tokensByRefreshTokenPromise, tokensByCodePromise]).then(() => { });
   }
+}
+
+function sleep(time) {
+  return new Promise((resolve) => setTimeout(resolve, time));
 }
 
 export const accessCodeDao = AccessCodeDao.getInstance(config.get('aws.dynamodb.endpoint'));

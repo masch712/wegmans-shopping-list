@@ -3,7 +3,15 @@ import { resolve } from "path";
 import * as convict from "convict";
 import { KMS } from "aws-sdk";
 
-convict.addParser({extension: ['yml', 'yaml'], parse: yaml.safeLoad });
+convict.addParser({
+  extension: ['yml', 'yaml'], parse: (str) => {
+    if (str && str.length) {
+      return yaml.safeLoad(str);
+    }
+    return {};
+
+  }
+});
 
 // Define a schema
 const config = convict({
@@ -33,7 +41,7 @@ const config = convict({
       endpoint: {
         doc: 'DynamoDB endpoint',
         format: String,
-        default: null,
+        default: '',
       },
     },
     accessKeyId: {
@@ -97,6 +105,6 @@ const configFile = resolve('config', env + '.yaml');
 config.loadFile(configFile);
 
 // Perform validation
-config.validate({allowed: 'strict'});
+config.validate({ allowed: 'strict' });
 
 export default config;

@@ -6,12 +6,12 @@ describe('login', () => {
     try {
       await accessCodeDao.dropTables();
     } catch (err) {
-      console.warn(err);
+      // console.warn(err);
     }
     await accessCodeDao.initTables();
   });
 
-  test('puts and gets', async () => {
+  test('puts and gets token with code', async () => {
     const token = {
       access: '123',
       refresh: '456',
@@ -32,6 +32,18 @@ describe('login', () => {
     expect(byRefresh).toEqual(tokenWithCode);
   });
 
+  test('puts and gets token', async () => {
+    const token = {
+      access: '123',
+      refresh: '456',
+      user: '789',
+    };
+
+    await accessCodeDao.put(token);
+
+    const byRefresh = await accessCodeDao.getTokensByRefresh(token.refresh);
+    expect(byRefresh).toEqual(token);
+  });
 
 
 });
