@@ -33,7 +33,7 @@ const config = convict({
       endpoint: {
         doc: 'DynamoDB endpoint',
         format: String,
-        default: undefined,
+        default: null,
       },
     },
     accessKeyId: {
@@ -94,7 +94,6 @@ const config = convict({
 // Load environment dependent configuration
 const env = config.get('logical_env');
 const configFile = resolve('config', env + '.yaml');
-
 config.loadFile(configFile);
 
 // Perform validation
