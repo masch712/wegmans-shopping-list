@@ -9,46 +9,8 @@ import * as basic from "basic-auth";
 import * as querystring from 'querystring';
 import { decode } from "jsonwebtoken";
 import { AccessToken } from "../../models/AccessToken";
+import { decryptionPromise } from "../../lib/decrypt-config";
 
-//TODO: abstract all this shit
-const kms = new KMS();
-let decryptionPromise = Promise.resolve();
-if (config.get('encrypted')) {
-  // Decrypt code should run once and variables stored outside of the function
-  // handler so that these are decrypted once per container
-  const encryptedKeys = ['wegmans.apikey', 'alexa.skill.secret'];
-  const decryptionPromises = [];
-  encryptedKeys.forEach(key => {
-    // Only decrypt if there's data to decrypt
-    if (config.get(key)) {
-      decryptionPromises.push(decryptKMS(key));
-    }
-  });
-  config.set('encrypted', false);
-  decryptionPromise = Promise.all(decryptionPromises).then(() => { });
-}
-
-async function decryptKMS(key): Promise<void> {
-  return new Promise<void>((resolve, reject) => {
-
-    const encrypted = config.get(key);
-    logger.debug(`decrypting: ${key}: ${encrypted}`);
-    let decrypted;
-    kms.decrypt({ CiphertextBlob: new Buffer(encrypted, 'base64') }, (err, data) => {
-      if (err) {
-        // If we failed to decrypt, log and move on.  Hopefully it's already decrypted
-        logger.error(`error decrypting ${key}: ` + JSON.stringify(err, null, 2));
-        resolve();
-        // reject(err);
-      }
-      else {
-        logger.debug(`decrypted ${key}`);
-        config.set(key, data.Plaintext.toString());
-        resolve();
-      }
-    });
-  });
-}
 const wegmansDaoPromise = decryptionPromise.then(() => new WegmansDao(config.get('wegmans.apikey')));
 
 /**
@@ -146,6 +108,7 @@ export const getTokens: APIGatewayProxyHandler = async function (event, context,
   if (body.code) {
     logger.debug('getting token by code');
     tokens = await accessCodeDao.getTokensByCode(body.code as string);
+    //TODO: delete the item from the tokensbycode table once we get it
   }
   if (body.refresh_token) {
     //TODO: CAN I GET THE DAO HERE?  IS SHIT ENCRYTPED? DO I HAVE API KEY
@@ -172,7 +135,6 @@ export const getTokens: APIGatewayProxyHandler = async function (event, context,
     body: JSON.stringify({ 
       access_token: tokens.access, 
       refresh_token: tokens.refresh,
-      // expires_in,
       expires_in,
     }),
     statusCode: 200,

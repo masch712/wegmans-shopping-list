@@ -1,3 +1,4 @@
+
 import * as _ from 'lodash';
 import { logger } from '../../lib/Logger';
 import { HandlerInput, RequestHandler } from 'ask-sdk-core';
@@ -5,6 +6,7 @@ import { Response, IntentRequest } from 'ask-sdk-model';
 import { WegmansDao } from '../../lib/WegmansDao';
 import { KMS } from "aws-sdk";
 import config from '../../lib/config';
+import { decryptionPromise } from '../../lib/decrypt-config';
 
 const APP_ID = 'amzn1.ask.skill.ee768e33-44df-48f8-8fcd-1a187d502b75';
 
@@ -13,45 +15,7 @@ const STOP_MESSAGE: string = 'Bye';
 
 const PRODUCT_SLOT = 'product';
 
-logger.debug('wtf');
-//TODO: abstract this shit out
-const kms = new KMS();
-let decryptionPromise = Promise.resolve();
-if (config.get('encrypted')) {
-  // Decrypt code should run once and variables stored outside of the function
-  // handler so that these are decrypted once per container
-  const encryptedKeys = ['wegmans.apikey', 'wegmans.email', 'wegmans.password'];
-  const decryptionPromises = [];
-  encryptedKeys.forEach(key => {
-    if (config.get(key)) {
-      decryptionPromises.push(decryptKMS(key));
-    }
-  });
-  config.set('encrypted', false);
-  decryptionPromise = Promise.all(decryptionPromises).then(() => {});
-}
 const wegmansDaoPromise = decryptionPromise.then(() => new WegmansDao(config.get('wegmans.apikey')));
-
-async function decryptKMS(key): Promise<void> {
-  return new Promise<void>((resolve, reject) => {
-
-    const encrypted = config.get(key);
-    logger.debug(`Encrypted ${key}: ${encrypted}`);
-
-    let decrypted;
-    kms.decrypt({ CiphertextBlob: new Buffer(encrypted, 'base64') }, (err, data) => {
-      if (err) {
-        logger.error(JSON.stringify(err, null, 2));
-        reject(err);
-      }
-      else {
-        logger.debug('Setting plaintext data on ' + key);
-        config.set(key, data.Plaintext.toString());
-        resolve();
-      }
-    });
-  });
-}
 
 export const AddToShoppingList: RequestHandler = {
   canHandle: function (handlerInput: HandlerInput): Promise<boolean> | boolean {

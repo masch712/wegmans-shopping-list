@@ -1,6 +1,7 @@
 import * as yaml from "js-yaml";
 import { resolve } from "path";
 import * as convict from "convict";
+import { KMS } from "aws-sdk";
 
 convict.addParser({extension: ['yml', 'yaml'], parse: yaml.safeLoad });
 
@@ -31,7 +32,8 @@ const config = convict({
     dynamodb: {
       endpoint: {
         doc: 'DynamoDB endpoint',
-        default: 'http://localhost:8000',
+        format: String,
+        default: undefined,
       },
     },
     accessKeyId: {

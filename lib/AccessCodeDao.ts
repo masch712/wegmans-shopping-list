@@ -7,7 +7,7 @@ const BATCH_PUT_SIZE = 25;
 const {DateTime} = require('luxon');
 import { AttributeMap } from "aws-sdk/clients/dynamodb";
 import { AccessToken } from '../models/AccessToken';
-
+import config from "./config";
 //TODO: is tihs necessary?
 AWS.config.update({
   region: 'us-east-1',
@@ -178,4 +178,4 @@ class AccessCodeDao {
   }
 }
 
-export const accessCodeDao = AccessCodeDao.getInstance();
+export const accessCodeDao = AccessCodeDao.getInstance(config.get('aws.dynamodb.endpoint'));
