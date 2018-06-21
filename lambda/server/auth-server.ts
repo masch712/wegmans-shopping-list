@@ -37,12 +37,10 @@ export const generateAuthCode: APIGatewayProxyHandler = async function (event, c
   //TODO: write some damn tests
   const wegmansDao = await wegmansDaoPromise;
   logger.debug('Got wegmans DAO.  Logging in');
-  //TODO: give wegmansDao its own npm package?  its own lambda?
 
   let tokens: AccessToken;
 
   // short-circuit for test user
-  //TODO: factor into env var?
   if (username === 'test') {
     logger.debug('Test login found');
     tokens = {
@@ -62,7 +60,6 @@ export const generateAuthCode: APIGatewayProxyHandler = async function (event, c
     user: tokens.user,
   };
 
-  //TODO: dump this check
   await accessCodeDao.initTables();
 
   logger.debug('Putting accesscodetableitem');
@@ -111,7 +108,6 @@ export const getTokens: APIGatewayProxyHandler = async function (event, context,
     //TODO: delete the item from the tokensbycode table once we get it
   }
   if (body.refresh_token) {
-    //TODO: CAN I GET THE DAO HERE?  IS SHIT ENCRYTPED? DO I HAVE API KEY
     logger.debug('getting token by refresh token');
     const wegmansDao = await wegmansDaoPromise;
     tokens = await accessCodeDao.getTokensByRefresh(body.refresh_token as string);

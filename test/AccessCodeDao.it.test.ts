@@ -5,14 +5,14 @@ jest.setTimeout(30000);
 describe('login', () => {
   beforeEach(async () => {
     try {
-      await accessCodeDao.dropTables();
+      await accessCodeDao.dropTables(accessCodeDao.tableParams.map(tp => tp.TableName));
     } catch (err) {
       // console.warn(err);
     }
     await accessCodeDao.initTables();
   });
 
-  test.only('tableexists', async () => {
+  test('tableexists', async () => {
     const result = await accessCodeDao.tableExists(TABLENAME_TOKENSBYCODE);
     expect(result).toBeTruthy();
   });
@@ -50,6 +50,20 @@ describe('login', () => {
     const byRefresh = await accessCodeDao.getTokensByRefresh(token.refresh);
     expect(byRefresh).toEqual(token);
   });
+  test('puts and deletes', async () => {
+    const token = {
+      access: '123',
+      refresh: '456',
+      user: '789',
+      access_code: '43214321',
+    };
+
+    await accessCodeDao.put(token);
+
+    await accessCodeDao.deleteAccessCode(token.access_code);
+    const byCode = await accessCodeDao.getTokensByCode('43214321');
+    expect(byCode).toBeFalsy();
+  })
 
 
 });
