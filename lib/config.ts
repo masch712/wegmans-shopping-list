@@ -1,8 +1,17 @@
 import * as yaml from "js-yaml";
 import { resolve } from "path";
 import * as convict from "convict";
+import { KMS } from "aws-sdk";
 
-convict.addParser({extension: ['yml', 'yaml'], parse: yaml.safeLoad });
+convict.addParser({
+  extension: ['yml', 'yaml'], parse: (str) => {
+    if (str && str.length) {
+      return yaml.safeLoad(str);
+    }
+    return {};
+
+  }
+});
 
 // Define a schema
 const config = convict({
@@ -18,6 +27,7 @@ const config = convict({
     default: 'local',
     env: 'LOGICAL_ENV',
   },
+
   logging: {
     level: {
       doc: 'Logging level',
@@ -30,7 +40,8 @@ const config = convict({
     dynamodb: {
       endpoint: {
         doc: 'DynamoDB endpoint',
-        default: 'http://localhost:8000',
+        format: String,
+        default: '',
       },
     },
     accessKeyId: {
@@ -63,11 +74,27 @@ const config = convict({
       format: String,
       env: 'WEGMANS_APIKEY',
     },
-    encrypted: {
-      doc: 'Whether AWS KMS encryption was used to encrypt the credentials',
-      default: false,
-      format: Boolean,
-      env: 'WEGMANS_ENCRYPTED',
+  },
+  encrypted: {
+    doc: 'Whether AWS KMS encryption was used to encrypt credentials',
+    default: false,
+    format: Boolean,
+    env: 'AWS_ENCRYPTED',
+  },
+  alexa: {
+    skill: {
+      name: {
+        doc: 'Name of the alexa skill.  Used for authenticating access token request.',
+        default: '',
+        format: String,
+        env: 'ALEXA_SKILL_NAME'
+      },
+      secret: {
+        doc: 'The skill client secret created during Account Linking config.',
+        default: '',
+        format: String,
+        env: 'ALEXA_SKILL_SECRET'
+      }
     }
   }
 });
@@ -75,10 +102,9 @@ const config = convict({
 // Load environment dependent configuration
 const env = config.get('logical_env');
 const configFile = resolve('config', env + '.yaml');
-
 config.loadFile(configFile);
 
 // Perform validation
-config.validate({allowed: 'strict'});
+config.validate({ allowed: 'strict' });
 
 export default config;
