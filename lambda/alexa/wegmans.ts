@@ -27,8 +27,7 @@ export const AddToShoppingList: RequestHandler = {
   handle: async function (handlerInput: HandlerInput): Promise<Response> {
 
     const wegmansDao = await wegmansDaoPromise;
-    //TODO: await decryption before everytihng?
-    await decryptionPromise;
+    
     const request = handlerInput.requestEnvelope.request as IntentRequest;
     const intent = request.intent;
     

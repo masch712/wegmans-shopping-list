@@ -13,7 +13,7 @@ import { DynamoDao } from './DynamoDao';
 AWS.config.update({
   region: 'us-east-1',
 });
-
+//TODO: salt the access code?
 const params_TokensByCode: AWS.DynamoDB.CreateTableInput = {
   TableName: TABLENAME_TOKENSBYCODE,
   KeySchema: [

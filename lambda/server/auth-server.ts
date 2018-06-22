@@ -108,7 +108,7 @@ export const getTokens: APIGatewayProxyHandler = async function (event, context,
     //TODO: delete the item from the tokensbycode table once we get it
   }
   if (body.refresh_token) {
-    logger.debug('getting token by refresh token');
+    logger.debug(`getting token by refresh token: ${body.refresh_token}`);
     const wegmansDao = await wegmansDaoPromise;
     tokens = await accessCodeDao.getTokensByRefresh(body.refresh_token as string);
     tokens = await wegmansDao.refreshTokens(body.refresh_token as string, tokens.user)
