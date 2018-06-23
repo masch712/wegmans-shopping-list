@@ -1,0 +1,17 @@
+{
+    "defaultSeverity": "error",
+    "extends": [
+        "tslint:recommended"
+    ],
+    "jsRules": {},
+    "rules": {
+      "no-empty": [true, "allow-empty-functions"]
+    },
+    "rulesDirectory": [],
+    "linterOptions": {
+      "exclude": [
+        "node_modules/"
+      ]
+    }
+
+}

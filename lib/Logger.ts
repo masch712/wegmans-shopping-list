@@ -1,17 +1,17 @@
 import * as winston from "winston";
-import config from './config';
+import config from "./config";
 
-//TODO: winston v3 @types
+// TODO: winston v3 @types
 
 export const logger = new winston.Logger({
   transports: [new winston.transports.Console({
     timestamp: true,
     showLevel: true,
-    level: config.get('logging.level'),
+    level: config.get("logging.level"),
   })],
 });
 
-//winston3 style:
+// winston3 style:
 // export const logger = winston.createLogger({
 //   transports: [
 //     new winston.transports.Console({

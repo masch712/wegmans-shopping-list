@@ -6,7 +6,7 @@ const skillBuilder = SkillBuilders.custom();
 exports.handler = skillBuilder
   .addRequestHandlers(
     AddToShoppingList,
-    TestAuth
+    TestAuth,
   )
   // .addErrorHandlers(UserConfigErrorHandler)
   .lambda();
