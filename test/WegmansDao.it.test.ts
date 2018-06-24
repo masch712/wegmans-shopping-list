@@ -1,5 +1,5 @@
 import * as request from "request-promise-native";
-import config from "../lib/config";
+import { config } from "../lib/config";
 import {WegmansDao} from "../lib/WegmansDao";
 import { AccessToken } from "../models/AccessToken";
 
@@ -19,9 +19,9 @@ describe('login', () => {
   test('gets shopping list id', async () => {
     const shoppingListId = await wegmans.getShoppingListId(tokens.access);
     expect(shoppingListId).toBeGreaterThan(0);
-  })
+  });
   test('adds goat cheese to list', async () => {
     const goat = await wegmans.searchForProduct('goat cheese');
     await wegmans.addProductToShoppingList(tokens.access, goat);
-  })
+  });
 });

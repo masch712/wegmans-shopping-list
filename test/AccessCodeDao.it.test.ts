@@ -1,4 +1,4 @@
-import config from "../lib/config";
+import { config } from "../lib/config";
 import { accessCodeDao, TABLENAME_TOKENSBYCODE } from "../lib/AccessCodeDao";
 jest.setTimeout(30000);
 
@@ -63,7 +63,7 @@ describe('login', () => {
     await accessCodeDao.deleteAccessCode(token.access_code);
     const byCode = await accessCodeDao.getTokensByCode('43214321');
     expect(byCode).toBeFalsy();
-  })
+  });
 
 
 });

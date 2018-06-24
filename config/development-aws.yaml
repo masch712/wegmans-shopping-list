@@ -1,2 +1,2 @@
 logging:
-  level: info
+  level: debug
