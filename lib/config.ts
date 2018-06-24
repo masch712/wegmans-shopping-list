@@ -14,7 +14,7 @@ convict.addParser({
 });
 
 // Define a schema
-const config = convict({
+export const config = convict({
   env: {
     doc: "The application environment.",
     format: ["production", "development", "test", "development-aws"],
@@ -106,5 +106,3 @@ config.loadFile(configFile);
 
 // Perform validation
 config.validate({ allowed: "strict" });
-
-export default config;

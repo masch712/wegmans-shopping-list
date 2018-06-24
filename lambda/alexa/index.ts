@@ -1,12 +1,12 @@
 import { SkillBuilders } from "ask-sdk-core";
-import { AddToShoppingList, TestAuth } from "./wegmans";
+import { addToShoppingList, testAuth } from "./wegmans";
 const skillBuilder = SkillBuilders.custom();
 
 /* LAMBDA SETUP */
 exports.handler = skillBuilder
   .addRequestHandlers(
-    AddToShoppingList,
-    TestAuth,
+    addToShoppingList,
+    testAuth,
   )
   // .addErrorHandlers(UserConfigErrorHandler)
   .lambda();

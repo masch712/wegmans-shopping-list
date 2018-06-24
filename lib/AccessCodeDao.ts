@@ -7,7 +7,7 @@ const BATCH_PUT_SIZE = 25;
 const { DateTime } = require("luxon");
 import { AttributeMap, DescribeTableOutput } from "aws-sdk/clients/dynamodb";
 import { AccessToken } from "../models/AccessToken";
-import config from "./config";
+import { config } from "./config";
 import { DynamoDao } from "./DynamoDao";
 
 AWS.config.update({
@@ -44,7 +44,7 @@ const params_TokensByRefresh: AWS.DynamoDB.CreateTableInput = {
 
 class AccessCodeDao extends DynamoDao {
   
-  public static getInstance(endpoint?: string): AccessCodeDao {
+  static getInstance(endpoint?: string): AccessCodeDao {
     if (!AccessCodeDao._instance) {
       AccessCodeDao._instance = new AccessCodeDao(endpoint);
     }
@@ -52,14 +52,14 @@ class AccessCodeDao extends DynamoDao {
   }
   private static _instance: AccessCodeDao;
   
-              public tableParams: AWS.DynamoDB.CreateTableInput[] = [
+              tableParams: AWS.DynamoDB.CreateTableInput[] = [
                 params_TokensByCode,
                 params_TokensByRefresh,
               ];
-  public apiKey: string;
+  apiKey: string;
 
 
-  public async getTokensByCode(code: string): Promise<AccessToken> {
+  async getTokensByCode(code: string): Promise<AccessToken> {
     const dbTokens = await this.docClient.get({
       Key: {
         access_code: code,
@@ -70,7 +70,7 @@ class AccessCodeDao extends DynamoDao {
     return Promise.resolve(dbTokens.Item as AccessToken);
   }
 
-  public async getTokensByRefresh(refreshToken: string): Promise<AccessToken> {
+  async getTokensByRefresh(refreshToken: string): Promise<AccessToken> {
     const dbTokens = await this.docClient.get({
       Key: {
         refresh: refreshToken,
@@ -81,7 +81,7 @@ class AccessCodeDao extends DynamoDao {
     return Promise.resolve(dbTokens.Item as AccessToken);
   }
 
-  public async put(item: AccessToken): Promise<void> {
+  async put(item: AccessToken): Promise<void> {
     const tokensByCodePromise = item.access_code ? this.docClient.put({
       Item: item,
       TableName: TABLENAME_TOKENSBYCODE,
@@ -95,7 +95,7 @@ class AccessCodeDao extends DynamoDao {
     await Promise.all([tokensByRefreshTokenPromise, tokensByCodePromise]).then(() => { });
   }
 
-  public async deleteAccessCode(access_code: string): Promise<void> {
+  async deleteAccessCode(access_code: string): Promise<void> {
     await this.docClient.delete({
       TableName: TABLENAME_TOKENSBYCODE,
       Key: { access_code },

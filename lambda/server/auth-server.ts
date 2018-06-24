@@ -5,7 +5,7 @@ import { decode } from "jsonwebtoken";
 import * as querystring from "querystring";
 import * as uuid from "uuid/v4";
 import { accessCodeDao } from "../../lib/AccessCodeDao";
-import config from "../../lib/config";
+import { config } from "../../lib/config";
 import { decryptionPromise } from "../../lib/decrypt-config";
 import { logger } from "../../lib/Logger";
 import { WegmansDao } from "../../lib/WegmansDao";
@@ -20,13 +20,14 @@ const wegmansDaoPromise = decryptionPromise.then(() => new WegmansDao(config.get
  * Overwrite any code that's already in the db for the given user.
  * Respond with the code.
  */
-export const generateAuthCode: APIGatewayProxyHandler = async function(event, context, callback): Promise<APIGatewayProxyResult> {
-  console.log("Event received: " + JSON.stringify(event, null, 2));
+export const generateAuthCode: APIGatewayProxyHandler =
+async (event, context, callback): Promise<APIGatewayProxyResult> => {
+  logger.debug("Event received: " + JSON.stringify(event, null, 2));
   if (event.httpMethod === "OPTIONS") {
     return {
-      statusCode: 200,
       body: "",
       headers: corsHeaders,
+      statusCode: 200,
     };
   }
 
@@ -53,9 +54,10 @@ export const generateAuthCode: APIGatewayProxyHandler = async function(event, co
   }
   logger.debug("Login resolved");
   const accessCodeTableItem: AccessToken = {
+    access_code: code,
+
     access: tokens.access,
     refresh: tokens.refresh,
-    access_code: code,
     user: tokens.user,
   };
 
@@ -65,20 +67,21 @@ export const generateAuthCode: APIGatewayProxyHandler = async function(event, co
   await accessCodeDao.put(accessCodeTableItem);
 
   return {
-    statusCode: 200,
     body: JSON.stringify({
       code,
     }),
     headers: corsHeaders,
+    statusCode: 200,
   };
 };
 
-export const getTokens: APIGatewayProxyHandler = async function(event, context, callback): Promise<APIGatewayProxyResult> {
+export const getTokens: APIGatewayProxyHandler =
+async (event, context, callback): Promise<APIGatewayProxyResult> => {
   if (event.httpMethod === "OPTIONS") {
     return {
-      statusCode: 200,
       body: "",
       headers: corsHeaders,
+      statusCode: 200,
     };
   }
 
@@ -122,9 +125,11 @@ export const getTokens: APIGatewayProxyHandler = async function(event, context, 
   logger.debug("got tokens");
   logger.debug("access: " + tokens.access);
 
+  // tslint:disable-next-line:no-any
   const jwt = decode(tokens.access) as { [key: string]: any };
   logger.debug("decoded: " + JSON.stringify(jwt, null, 2));
   const now = Math.floor(new Date().getTime() / 1000);
+  // tslint:disable-next-line:variable-name
   const expires_in = jwt.exp - now;
 
   const response: APIGatewayProxyResult = {

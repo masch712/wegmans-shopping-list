@@ -1,7 +1,7 @@
 import * as AWS from "aws-sdk";
 import { AttributeMap, CreateTableInput, DescribeTableOutput } from "aws-sdk/clients/dynamodb";
 import { logger } from "../lib/Logger";
-import config from "./config";
+import { config } from "./config";
 
 AWS.config.update({
   region: "us-east-1",
@@ -12,7 +12,7 @@ export abstract class DynamoDao {
   private isInitted = false;
   protected dynamodb: AWS.DynamoDB;
   protected docClient: AWS.DynamoDB.DocumentClient;
-  public abstract tableParams: CreateTableInput[];
+  abstract tableParams: CreateTableInput[];
 
   constructor(private endpoint: string) {
     const options = endpoint ? { endpoint } : undefined;
@@ -21,7 +21,7 @@ export abstract class DynamoDao {
     this.docClient = new AWS.DynamoDB.DocumentClient(options);
   }
 
-  public async tableExists(tableName, timeout = 30000): Promise<Boolean> {
+  async tableExists(tableName, timeout = 30000): Promise<boolean> {
     let tableStatus;
     const startTime = new Date().getTime();
     let duration = 0;
@@ -48,7 +48,7 @@ export abstract class DynamoDao {
     return true;
   }
 
-  public async dropTables(tableNames: string[]) {
+  async dropTables(tableNames: string[]) {
     const promises = tableNames.map((table) =>
     this.dynamodb.deleteTable({
         TableName: table,
@@ -58,13 +58,13 @@ export abstract class DynamoDao {
     this.isInitted = false;
   }
 
-  public async initTables() {
+  async initTables() {
     if (this.isInitted) {
       return Promise.resolve();
     }
     logger.debug("initting tables");
     const tableParam = this.tableParams;
-    const tableExists: { [key: string]: Boolean } = {};
+    const tableExists: { [key: string]: boolean } = {};
     for (let i = 0; i < tableParam.length; i++) {
       tableExists[tableParam[i].TableName] = await this.tableExists(tableParam[i].TableName);
     }

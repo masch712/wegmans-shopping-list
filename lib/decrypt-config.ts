@@ -1,5 +1,5 @@
 import { KMS } from "aws-sdk";
-import config from "./config";
+import { config } from "./config";
 import { logger } from "./Logger";
 
 // Decrypt the config if appropriate
@@ -25,7 +25,6 @@ async function decryptKMS(key): Promise<void> {
 
     const encrypted = config.get(key);
 
-    let decrypted;
     kms.decrypt({ CiphertextBlob: new Buffer(encrypted, "base64") }, (err, data) => {
       if (err) {
         // If we failed to decrypt, log and move on.  Hopefully it's already decrypted

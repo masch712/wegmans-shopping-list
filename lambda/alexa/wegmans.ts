@@ -3,21 +3,21 @@ import { HandlerInput, RequestHandler } from "ask-sdk-core";
 import { IntentRequest, Response } from "ask-sdk-model";
 import { KMS } from "aws-sdk";
 import * as _ from "lodash";
-import config from "../../lib/config";
+import { config } from "../../lib/config";
 import { decryptionPromise } from "../../lib/decrypt-config";
 import { logger } from "../../lib/Logger";
 import { WegmansDao } from "../../lib/WegmansDao";
 
 const APP_ID = "amzn1.ask.skill.ee768e33-44df-48f8-8fcd-1a187d502b75";
 
-const SPEECH_NOT_IMPLEMENTED: string = "Aaron says: This feature is not yet implemented.";
-const STOP_MESSAGE: string = "Bye";
+const SPEECH_NOT_IMPLEMENTED = "Aaron says: This feature is not yet implemented.";
+const STOP_MESSAGE = "Bye";
 
 const PRODUCT_SLOT = "product";
 
 const wegmansDaoPromise = decryptionPromise.then(() => new WegmansDao(config.get("wegmans.apikey")));
 
-export const AddToShoppingList: RequestHandler = {
+export const addToShoppingList: RequestHandler = {
   canHandle(handlerInput: HandlerInput): Promise<boolean> | boolean {
     const request = handlerInput.requestEnvelope.request;
 
@@ -55,7 +55,7 @@ export const AddToShoppingList: RequestHandler = {
   },
 };
 
-export const TestAuth: RequestHandler = {
+export const testAuth: RequestHandler = {
   canHandle(handlerInput: HandlerInput): Promise<boolean> | boolean {
     const request = handlerInput.requestEnvelope.request;
 
