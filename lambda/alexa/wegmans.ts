@@ -17,12 +17,37 @@ const PRODUCT_SLOT = "product";
 
 const wegmansDaoPromise = decryptionPromise.then(() => new WegmansDao(config.get("wegmans.apikey")));
 
+export const splashResponse: RequestHandler = {
+  canHandle(handlerInput: HandlerInput): Promise<boolean> | boolean {
+    const request = handlerInput.requestEnvelope.request;
+    if (request.type === 'LaunchRequest'
+      || (
+        request.type === 'IntentRequest'
+        && (
+          request.intent.name === "HelpIntent"
+          || request.intent.name === 'FallbackIntent'
+        )
+      )
+    ) {
+      return true;
+    }
+    return false;
+  },
+  handle(handlerInput: HandlerInput): Promise<Response> {
+    return Promise.resolve(
+      handlerInput.responseBuilder
+      .speak("To use the skill, ask wedgies to add something to your list.")
+      .getResponse()
+      );
+  }
+};
+
 export const addToShoppingList: RequestHandler = {
   canHandle(handlerInput: HandlerInput): Promise<boolean> | boolean {
     const request = handlerInput.requestEnvelope.request;
 
     return request.type === "IntentRequest"
-    && request.intent.name === "AddToShoppingList";
+      && request.intent.name === "AddToShoppingList";
   },
   async handle(handlerInput: HandlerInput): Promise<Response> {
 
@@ -60,7 +85,7 @@ export const testAuth: RequestHandler = {
     const request = handlerInput.requestEnvelope.request;
 
     return request.type === "IntentRequest"
-    && request.intent.name === "TestAuth";
+      && request.intent.name === "TestAuth";
   },
   async handle(handlerInput: HandlerInput): Promise<Response> {
 

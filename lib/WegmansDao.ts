@@ -3,6 +3,7 @@ import * as request from "request-promise-native";
 import { AccessToken } from "../models/AccessToken";
 import { Product } from "../models/Product";
 import { logger } from "./Logger";
+import { Response } from "request";
 
 export class WegmansDao {
 
@@ -13,7 +14,7 @@ export class WegmansDao {
     this.apiKey = apiKey;
   }
 
-  public async login(email: string, password: string): Promise<AccessToken> {
+  async login(email: string, password: string): Promise<AccessToken> {
     let tokens: AccessToken;
     try {
       await request({
@@ -52,7 +53,7 @@ export class WegmansDao {
    * Send a refresh token to Wegmans and get back fresh access and user tokens.
    * @param refreshToken The refresh token
    */
-  public async refreshTokens(refreshToken: string, userToken: string): Promise<AccessToken> {
+  async refreshTokens(refreshToken: string, userToken: string): Promise<AccessToken> {
 
     try {
       const jar = request.jar();
@@ -88,7 +89,7 @@ export class WegmansDao {
     throw new Error("Unable to refresh access token");
   }
 
-  public static getCookie(response: any, cookieKey: string) {
+  static getCookie(response: Response, cookieKey: string) {
     const cookie = _.find<string>(response.headers["set-cookie"],
         (cookie: string) => !!cookie.match(`${cookieKey}=`));
     if (!cookie) { return; }
@@ -97,7 +98,7 @@ export class WegmansDao {
     return value;
   }
 
-  public async getShoppingListId(accessToken): Promise<number> {
+  async getShoppingListId(accessToken): Promise<number> {
 
     if (this.shoppingListId) {
       return this.shoppingListId;
@@ -118,7 +119,7 @@ export class WegmansDao {
     return shoppingListId;
   }
 
-  public async searchForProduct(query: string): Promise<Product> {
+  async searchForProduct(query: string): Promise<Product> {
 
     const response = await request.get("https://sp1004f27d.guided.ss-omtrdc.net", {
       qs: {
@@ -141,7 +142,7 @@ export class WegmansDao {
     return product;
   }
 
-  public async addProductToShoppingList(accessToken: string, product: Product, quantity: number = 1): Promise<void> {
+  async addProductToShoppingList(accessToken: string, product: Product, quantity = 1): Promise<void> {
     const shoppingListId = await this.getShoppingListId(accessToken);
     const response = await request("https://wegapi.azure-api.net/shoppinglists/shoppinglistitem/my/?api-version=1.1",
       {
