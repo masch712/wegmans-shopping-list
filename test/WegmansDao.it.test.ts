@@ -4,7 +4,7 @@ import {WegmansDao} from "../lib/WegmansDao";
 import { AccessToken } from "../models/AccessToken";
 
 //Skip these normally; dont wanna spam wegmans
-describe('login', () => {
+describe('wegmans dao', () => {
   const wegmans = new WegmansDao(config.get('wegmans.apikey'));
   let tokens: AccessToken;
   beforeAll(async () => {
@@ -23,5 +23,9 @@ describe('login', () => {
   test('adds goat cheese to list', async () => {
     const goat = await wegmans.searchForProduct('goat cheese');
     await wegmans.addProductToShoppingList(tokens.access, goat);
+  });
+  test('gets purchase history', async () => {
+    const history = await wegmans.getOrderHistory(tokens.access);
+    expect(history.length).toBeGreaterThan(0);
   });
 });

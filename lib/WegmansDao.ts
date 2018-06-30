@@ -4,7 +4,14 @@ import { AccessToken } from "../models/AccessToken";
 import { Product } from "../models/Product";
 import { logger } from "./Logger";
 import { Response } from "request";
+import { OrderedProduct } from "../models/OrderedProduct";
+import { DateTime } from "luxon";
 
+interface OrderHistoryResponseItem {
+  LastPurchaseDate: string;
+  Quantity: number;
+  Sku: number; 
+}
 export class WegmansDao {
 
   private apiKey: string;
@@ -41,7 +48,7 @@ export class WegmansDao {
         logger.debug(JSON.stringify(err, null, 2));
         throw new Error("No access tokens in response; bad login credentials?");
       }
-      tokens = { access, refresh, user};
+      tokens = { access, refresh, user };
       logger.debug("Logged in and got access token of length " + access.length);
     }
 
@@ -81,7 +88,7 @@ export class WegmansDao {
         logger.debug(JSON.stringify(err, null, 2));
         throw new Error("No access tokens in response; bad login credentials?");
       }
-      const tokens: AccessToken = { access, refresh, user};
+      const tokens: AccessToken = { access, refresh, user };
       logger.debug("Logged in and got access token of length " + access.length);
       return Promise.resolve(tokens);
     }
@@ -91,7 +98,7 @@ export class WegmansDao {
 
   static getCookie(response: Response, cookieKey: string) {
     const cookie = _.find<string>(response.headers["set-cookie"],
-        (cookie: string) => !!cookie.match(`${cookieKey}=`));
+      (cookie: string) => !!cookie.match(`${cookieKey}=`));
     if (!cookie) { return; }
 
     const value = cookie.substring(`${cookieKey}=`.length, cookie.indexOf(";"));
@@ -166,5 +173,35 @@ export class WegmansDao {
     logger.debug("addProducttoShoppingList response status: " + response.statusCode);
 
     return;
+  }
+
+  async getOrderHistory(accessToken: string): Promise<OrderedProduct[]> {
+    const response = await request({
+      method: 'GET',
+      url: 'https://wegapi.azure-api.net/purchases/history/summary/59',
+      qs: {
+        offset: 0,
+        records: 1000,
+        start: DateTime.local().plus({ days: -120 }).toFormat('MM/dd/yyyy'),
+        end: DateTime.local().toFormat('MM/dd/yyyy'),
+        onlineshopping: 'False',
+        sortBy: 'popularity',
+        sortOrder: 'desc',
+        'api-version': '1.0'
+      },
+      headers: {
+        'Ocp-Apim-Subscription-Key': this.apiKey,
+        Authorization: accessToken,
+        Accept: 'application/json',
+      }
+    });
+
+    const body = JSON.parse(response) as OrderHistoryResponseItem[];
+    const orderedProducts = body.map(item => {
+      const epochStr = item.LastPurchaseDate.substring(6, 19);
+      const epoch = Number.parseInt(epochStr);
+      return new OrderedProduct(epoch, item.Quantity, item.Sku);
+    });
+    return Promise.resolve(JSON.parse(response) as OrderedProduct[]);
   }
 }
