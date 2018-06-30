@@ -2,7 +2,7 @@ import * as request from "request-promise-native";
 import { config } from "../lib/config";
 import {WegmansDao} from "../lib/WegmansDao";
 import { AccessToken } from "../models/AccessToken";
-
+jest.setTimeout(10000);
 //Skip these normally; dont wanna spam wegmans
 describe('wegmans dao', () => {
   const wegmans = new WegmansDao(config.get('wegmans.apikey'));
@@ -27,5 +27,9 @@ describe('wegmans dao', () => {
   test('gets purchase history', async () => {
     const history = await wegmans.getOrderHistory(tokens.access);
     expect(history.length).toBeGreaterThan(0);
+  });
+  test.only('search products prefer history', async () => {
+    const product = await wegmans.searchForProductPreferHistory(tokens.access, 'Eggs');
+    expect(product).toBeDefined();
   });
 });

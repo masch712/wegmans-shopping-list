@@ -202,10 +202,11 @@ export class WegmansDao {
       const epoch = Number.parseInt(epochStr);
       return new OrderedProduct(epoch, item.Quantity, item.Sku);
     });
-    return Promise.resolve(JSON.parse(response) as OrderedProduct[]);
+    return Promise.resolve(orderedProducts);
   }
 
   async searchSkus(skus: number[], query: string): Promise<Product> {
+    const skuStrings = skus.map(sku => `SKU_${sku}`).join('|');
     const response = await request({
       method: 'POST',
       url: 'https://sp1004f27d.guided.ss-omtrdc.net/',
@@ -219,7 +220,7 @@ export class WegmansDao {
           sp_n: '1',
           sp_x_20: 'id',
           storeNumber: '59', //TODO: get storeNumber from JWT?
-          sp_q_exact_20: skus.map(sku => `SKU_${sku}`).join(' | ')
+          sp_q_exact_20: skuStrings,
         }
     });
 
@@ -232,7 +233,17 @@ export class WegmansDao {
       firstResult.department,
       firstResult.sku,
     );
-
+    
     return Promise.resolve(product);
+  }
+  async searchForProductPreferHistory(accessToken: string, query: string) {
+    const orderedProductsPromise = this.getOrderHistory(accessToken);
+    
+    const products = await Promise.all([
+      this.searchSkus((await orderedProductsPromise).map(orderedProduct => orderedProduct.sku), query),
+      this.searchForProduct(query)
+    ]);
+
+    return _.find(products, _.isObject);
   }
 }
