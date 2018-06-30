@@ -4,6 +4,6 @@ export class Product {
     public category: string,
     public subcategory: string,
     public department: string,
-    public sku: string,
+    public sku: number,
   ) {}
 }

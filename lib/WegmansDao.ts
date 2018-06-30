@@ -12,6 +12,14 @@ interface OrderHistoryResponseItem {
   Quantity: number;
   Sku: number;
 }
+
+interface ProductSearchResultItem {
+  name: string;
+  category: string;
+  subcategory: string;
+  department: string;
+  sku: string;
+}
 export class WegmansDao {
 
   private apiKey: string;
@@ -142,7 +150,7 @@ export class WegmansDao {
       firstResult.category,
       firstResult.subcategory,
       firstResult.department,
-      firstResult.sku,
+      Number.parseInt(firstResult.sku),
     );
     logger.debug("Retrieved product: " + JSON.stringify(product));
 
@@ -202,12 +210,15 @@ export class WegmansDao {
       const epoch = Number.parseInt(epochStr);
       return new OrderedProduct(epoch, item.Quantity, item.Sku);
     });
-    return Promise.resolve(orderedProducts);
+
+    const sortedOrderedProducts = _.sortBy(orderedProducts, (op: OrderedProduct) => op.sku);
+    
+    return Promise.resolve(sortedOrderedProducts);
   }
 
   async searchSkus(skus: number[], query: string): Promise<Product> {
     const skuStrings = skus.map(sku => `SKU_${sku}`).join('|');
-    const response = await request({
+    const responsePromise = request({
       method: 'POST',
       url: 'https://sp1004f27d.guided.ss-omtrdc.net/',
       form:
@@ -224,18 +235,28 @@ export class WegmansDao {
         }
     });
 
+    const skuHash = {};
+    let skuIndex = 0;
+    skus.forEach(sku => { skuHash[sku] = skuIndex++; });
+
+    const response = await responsePromise;
+
     const body = JSON.parse(response);
-    const firstResult = body.results[0];
+    
+    // Find the result with the highest skuIndex (i.e. it was purchased most recently)
+    const bestResult = _.maxBy(body.results as ProductSearchResultItem[], (result) => skuHash[Number.parseInt(result.sku)]);
+    
     const product = new Product(
-      firstResult.name,
-      firstResult.category,
-      firstResult.subcategory,
-      firstResult.department,
-      firstResult.sku,
+      bestResult.name,
+      bestResult.category,
+      bestResult.subcategory,
+      bestResult.department,
+      Number.parseInt(bestResult.sku),
     );
     
     return Promise.resolve(product);
   }
+
   async searchForProductPreferHistory(accessToken: string, query: string) {
     const orderedProductsPromise = this.getOrderHistory(accessToken);
     
@@ -244,6 +265,7 @@ export class WegmansDao {
       this.searchForProduct(query)
     ]);
 
+    // Return the first product, which will be the previously-ordered one if one was found
     return _.find(products, _.isObject);
   }
 }

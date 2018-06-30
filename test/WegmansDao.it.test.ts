@@ -11,7 +11,7 @@ describe('wegmans dao', () => {
     tokens = await wegmans.login(config.get('wegmans.email'), config.get('wegmans.password'));
     expect(tokens).toBeDefined();
   });
-  test('gets goat cheese', async () => {
+  test.only('gets goat cheese', async () => {
     const goat = await wegmans.searchForProduct('goat cheese');
     expect(goat).toBeDefined();
     expect(goat.subcategory).toEqual('Goat Cheese');
