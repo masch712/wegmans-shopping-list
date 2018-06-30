@@ -10,7 +10,7 @@ import { DateTime } from "luxon";
 interface OrderHistoryResponseItem {
   LastPurchaseDate: string;
   Quantity: number;
-  Sku: number; 
+  Sku: number;
 }
 export class WegmansDao {
 
@@ -203,5 +203,36 @@ export class WegmansDao {
       return new OrderedProduct(epoch, item.Quantity, item.Sku);
     });
     return Promise.resolve(JSON.parse(response) as OrderedProduct[]);
+  }
+
+  async searchSkus(skus: number[], query: string): Promise<Product> {
+    const response = await request({
+      method: 'POST',
+      url: 'https://sp1004f27d.guided.ss-omtrdc.net/',
+      form:
+        {
+          do: 'prod-search',
+          i: '1',
+          page: '1',
+          q: query,
+          sp_c: skus.length,
+          sp_n: '1',
+          sp_x_20: 'id',
+          storeNumber: '59', //TODO: get storeNumber from JWT?
+          sp_q_exact_20: skus.map(sku => `SKU_${sku}`).join(' | ')
+        }
+    });
+
+    const body = JSON.parse(response);
+    const firstResult = body.results[0];
+    const product = new Product(
+      firstResult.name,
+      firstResult.category,
+      firstResult.subcategory,
+      firstResult.department,
+      firstResult.sku,
+    );
+
+    return Promise.resolve(product);
   }
 }
