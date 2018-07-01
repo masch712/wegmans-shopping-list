@@ -60,7 +60,7 @@ export class WegmansDao {
       logger.debug("Logged in and got access token of length " + access.length);
     }
 
-    return Promise.resolve(tokens);
+    return tokens;
   }
 
   // TODO: pull out auth shit into AcccessCodeDao and rename it to AuthDao
@@ -98,7 +98,7 @@ export class WegmansDao {
       }
       const tokens: AccessToken = { access, refresh, user };
       logger.debug("Logged in and got access token of length " + access.length);
-      return Promise.resolve(tokens);
+      return tokens;
     }
 
     throw new Error("Unable to refresh access token");
@@ -144,6 +144,11 @@ export class WegmansDao {
       },
     });
     const body = JSON.parse(response);
+
+    if (!body.results || !body.results.length) {
+      return null;
+    }
+
     const firstResult = body.results[0];
     const product = new Product(
       firstResult.name,
@@ -213,7 +218,7 @@ export class WegmansDao {
 
     const sortedOrderedProducts = _.sortBy(orderedProducts, (op: OrderedProduct) => op.sku);
     
-    return Promise.resolve(sortedOrderedProducts);
+    return sortedOrderedProducts;
   }
 
   async searchSkus(skus: number[], query: string): Promise<Product> {
@@ -246,6 +251,10 @@ export class WegmansDao {
     // Find the result with the highest skuIndex (i.e. it was purchased most recently)
     const bestResult = _.maxBy(body.results as ProductSearchResultItem[], (result) => skuHash[Number.parseInt(result.sku)]);
     
+    if (!bestResult) {
+      return null;
+    }
+
     const product = new Product(
       bestResult.name,
       bestResult.category,
@@ -254,7 +263,7 @@ export class WegmansDao {
       Number.parseInt(bestResult.sku),
     );
     
-    return Promise.resolve(product);
+    return product;
   }
 
   async searchForProductPreferHistory(accessToken: string, query: string) {

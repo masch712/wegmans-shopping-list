@@ -68,7 +68,15 @@ export const addToShoppingList: RequestHandler = {
 
     const productQuery = intent.slots[PRODUCT_SLOT].value;
 
-    const product = await wegmansDao.searchForProduct(productQuery);
+    const product = await wegmansDao.searchForProductPreferHistory(accessToken, productQuery);
+
+    if (!product) {
+      return Promise.resolve(
+        handlerInput.responseBuilder
+          .speak(`Sorry, Wegmans doesn't sell ${productQuery}.`)
+          .getResponse(),
+      );
+    }
 
     await wegmansDao.addProductToShoppingList(accessToken, product);
 
