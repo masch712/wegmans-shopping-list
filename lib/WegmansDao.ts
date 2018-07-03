@@ -6,6 +6,8 @@ import { logger } from "./Logger";
 import { Response } from "request";
 import { OrderedProduct } from "../models/OrderedProduct";
 import { DateTime } from "luxon";
+import { orderHistoryDao } from "./OrderHistoryDao";
+import * as jwt from "jsonwebtoken";
 
 interface OrderHistoryResponseItem {
   LastPurchaseDate: string;
@@ -189,35 +191,48 @@ export class WegmansDao {
   }
 
   async getOrderHistory(accessToken: string): Promise<OrderedProduct[]> {
-    const response = await request({
-      method: 'GET',
-      url: 'https://wegapi.azure-api.net/purchases/history/summary/59',
-      qs: {
-        offset: 0,
-        records: 1000,
-        start: DateTime.local().plus({ days: -120 }).toFormat('MM/dd/yyyy'),
-        end: DateTime.local().toFormat('MM/dd/yyyy'),
-        onlineshopping: 'False',
-        sortBy: 'popularity',
-        sortOrder: 'desc',
-        'api-version': '1.0'
-      },
-      headers: {
-        'Ocp-Apim-Subscription-Key': this.apiKey,
-        Authorization: accessToken,
-        Accept: 'application/json',
-      }
-    });
+    const userId = (jwt.decode(accessToken) as { sub: string }).sub;
+    let orderedProducts = await orderHistoryDao.get(userId);
+    let updateCachePromise = Promise.resolve();
 
-    const body = JSON.parse(response) as OrderHistoryResponseItem[];
-    const orderedProducts = body.map(item => {
-      const epochStr = item.LastPurchaseDate.substring(6, 19);
-      const epoch = Number.parseInt(epochStr);
-      return new OrderedProduct(epoch, item.Quantity, item.Sku);
-    });
+    if (!orderedProducts) {
+      logger.debug('order history cache miss');
+      const response = await request({
+        method: 'GET',
+        url: 'https://wegapi.azure-api.net/purchases/history/summary/59',
+        qs: {
+          offset: 0,
+          records: 1000,
+          start: DateTime.local().plus({ days: -120 }).toFormat('MM/dd/yyyy'),
+          end: DateTime.local().toFormat('MM/dd/yyyy'),
+          onlineshopping: 'False',
+          sortBy: 'popularity',
+          sortOrder: 'desc',
+          'api-version': '1.0'
+        },
+        headers: {
+          'Ocp-Apim-Subscription-Key': this.apiKey,
+          Authorization: accessToken,
+          Accept: 'application/json',
+        }
+      });
+
+      const body = JSON.parse(response) as OrderHistoryResponseItem[];
+      orderedProducts = body.map(item => {
+        const epochStr = item.LastPurchaseDate.substring(6, 19);
+        const epoch = Number.parseInt(epochStr);
+        return new OrderedProduct(epoch, item.Quantity, item.Sku);
+      });
+
+      // do cache write in the background
+      updateCachePromise = orderHistoryDao.put(userId, orderedProducts);
+    }
+    else {
+      logger.debug('order history cache hit');
+    }
 
     const sortedOrderedProducts = _.sortBy(orderedProducts, (op: OrderedProduct) => op.sku);
-    
+
     return sortedOrderedProducts;
   }
 
@@ -247,10 +262,10 @@ export class WegmansDao {
     const response = await responsePromise;
 
     const body = JSON.parse(response);
-    
+
     // Find the result with the highest skuIndex (i.e. it was purchased most recently)
     const bestResult = _.maxBy(body.results as ProductSearchResultItem[], (result) => skuHash[Number.parseInt(result.sku)]);
-    
+
     if (!bestResult) {
       return null;
     }
@@ -262,13 +277,13 @@ export class WegmansDao {
       bestResult.department,
       Number.parseInt(bestResult.sku),
     );
-    
+
     return product;
   }
 
   async searchForProductPreferHistory(accessToken: string, query: string) {
     const orderedProductsPromise = this.getOrderHistory(accessToken);
-    
+
     const products = await Promise.all([
       this.searchSkus((await orderedProductsPromise).map(orderedProduct => orderedProduct.sku), query),
       this.searchForProduct(query)
