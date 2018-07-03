@@ -20,7 +20,7 @@ describe('wegmans dao', () => {
     const shoppingListId = await wegmans.getShoppingListId(tokens.access);
     expect(shoppingListId).toBeGreaterThan(0);
   });
-  test.skip('adds goat cheese to list', async () => {
+  test('adds goat cheese to list', async () => {
     const goat = await wegmans.searchForProduct('goat cheese');
     await wegmans.addProductToShoppingList(tokens.access, goat);
   });
