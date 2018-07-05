@@ -1,6 +1,7 @@
 import * as request from "request-promise-native";
 import { config } from "../lib/config";
 import {WegmansDao} from "../lib/WegmansDao";
+import { orderHistoryDao } from "../lib/OrderHistoryDao";
 import { AccessToken } from "../models/AccessToken";
 jest.setTimeout(10000);
 //Skip these normally; dont wanna spam wegmans
@@ -26,9 +27,12 @@ describe('wegmans dao', () => {
   });
   test('gets purchase history', async () => {
     const history = await wegmans.getOrderHistory(tokens.access);
+    // cache should have good stuff
+    const orderedProducts = await orderHistoryDao.get(config.get('wegmans.email'));
+    expect(orderedProducts.length).toBeGreaterThan(0);
     expect(history.length).toBeGreaterThan(0);
   });
-  test('search products prefer history', async () => {
+  test.only('search products prefer history', async () => {
     const product = await wegmans.searchForProductPreferHistory(tokens.access, 'Eggs');
     expect(product).toBeDefined();
   });

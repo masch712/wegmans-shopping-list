@@ -224,7 +224,16 @@ export class WegmansDao {
         return new OrderedProduct(epoch, item.Quantity, item.Sku);
       });
 
+      // Get the actual products.  These are useful later for in-memory fuzzy search
+      const skus = orderedProducts.map(orderedProduct => orderedProduct.sku);
+      const productsBySku = await this.getProductBySku(skus.map(sku => `SKU_${sku}`));
+
+      orderedProducts.forEach(orderedProduct => {
+        orderedProduct.product = productsBySku[orderedProduct.sku][0];
+      });
+       
       // do cache write in the background
+      logger.debug('writing order history to cache');
       updateCachePromise = orderHistoryDao.put(userId, orderedProducts);
     }
     else {
@@ -236,7 +245,43 @@ export class WegmansDao {
     return sortedOrderedProducts;
   }
 
-  async searchSkus(skus: number[], query: string): Promise<Product> {
+  async getProductBySku(skus: string[]): Promise<_.Dictionary<Product[]>> {
+    const responsePromise = request({
+      method: 'POST',
+      url: 'https://sp1004f27d.guided.ss-omtrdc.net/',
+      form:
+        {
+          do: 'prod-search',
+          i: '1',
+          page: '1',
+          // q: query,
+          sp_c: skus.length,
+          sp_n: '1',
+          sp_x_20: 'id',
+          storeNumber: '59', //TODO: get storeNumber from JWT?
+          sp_q_exact_20: skus.join('|'),
+        }
+    });
+    logger.debug('getting products for skus');
+    const response = await responsePromise;
+    logger.debug('got products');
+
+    const body = JSON.parse(response);
+
+    const products = (body.results as ProductSearchResultItem[]).map(result => {
+      return new Product(
+        result.name,
+        result.category,
+        result.subcategory,
+        result.department,
+        Number.parseInt(result.sku)
+      );
+    });
+
+    return _.groupBy(products, 'sku');
+  }
+
+  async searchSkus(skus: number[], query?: string): Promise<Product> {
     const skuStrings = skus.map(sku => `SKU_${sku}`).join('|');
     const responsePromise = request({
       method: 'POST',
@@ -284,11 +329,11 @@ export class WegmansDao {
   async searchForProductPreferHistory(accessToken: string, query: string) {
     const orderedProductsPromise = this.getOrderHistory(accessToken);
 
-    const products = await Promise.all([
-      this.searchSkus((await orderedProductsPromise).map(orderedProduct => orderedProduct.sku), query),
-      this.searchForProduct(query)
-    ]);
+    // Fire off both requests
+    const previouslyOrderedProductPromise = this.searchSkus((await orderedProductsPromise).map(orderedProduct => orderedProduct.sku), query);
+    const productPromise = this.searchForProduct(query);
 
+    const previouslyOrderedProduct = await previouslyOrderedProductPromise;
     // Return the first product, which will be the previously-ordered one if one was found
     return _.find(products, _.isObject);
   }
