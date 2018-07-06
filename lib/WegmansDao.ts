@@ -8,6 +8,10 @@ import { OrderedProduct } from "../models/OrderedProduct";
 import { DateTime } from "luxon";
 import { orderHistoryDao } from "./OrderHistoryDao";
 import * as jwt from "jsonwebtoken";
+import Fuse = require("fuse.js");
+
+//TODO: put searchy stuff in new DAO?  cacheDAO or some shit?
+
 
 interface OrderHistoryResponseItem {
   LastPurchaseDate: string;
@@ -231,7 +235,7 @@ export class WegmansDao {
       orderedProducts.forEach(orderedProduct => {
         orderedProduct.product = productsBySku[orderedProduct.sku][0];
       });
-       
+
       // do cache write in the background
       logger.debug('writing order history to cache');
       updateCachePromise = orderHistoryDao.put(userId, orderedProducts);
@@ -326,15 +330,38 @@ export class WegmansDao {
     return product;
   }
 
-  async searchForProductPreferHistory(accessToken: string, query: string) {
-    const orderedProductsPromise = this.getOrderHistory(accessToken);
+  async searchProducts(products: OrderedProduct[], query: string) {
+    const fuse = new Fuse(products, {
+      shouldSort: true,
+      includeScore: true,
+      threshold: 0.15,
+      location: 0,
+      distance: 100,
+      maxPatternLength: 32,
+      minMatchCharLength: 1,
+      keys: [
+        "product.name",
+        "product.category",
+        "product.subcategory"
+      ]
+    });
 
+    const searchResults = fuse.search(query) as Array<{ item: OrderedProduct, score: number }>;
+    if (searchResults.length) { logger.debug('fuse found ' + searchResults.length + ' matching products'); }
+    else { logger.debug('fuse found nothing for query: ' + query + '; ' + products.length + ' products searhed');}
+
+    const bestProduct = searchResults[0] && _.maxBy(searchResults, result => result.item.purchaseMsSinceEpoch);
+    return bestProduct.item.product;
+  }
+
+  async searchForProductPreferHistory(accessToken: string, query: string): Promise<Product> {
     // Fire off both requests
-    const previouslyOrderedProductPromise = this.searchSkus((await orderedProductsPromise).map(orderedProduct => orderedProduct.sku), query);
+    const orderedProductsPromise = this.getOrderHistory(accessToken);
     const productPromise = this.searchForProduct(query);
+    
+    const previouslyOrderedProduct = this.searchProducts(await orderedProductsPromise, query);
 
-    const previouslyOrderedProduct = await previouslyOrderedProductPromise;
-    // Return the first product, which will be the previously-ordered one if one was found
-    return _.find(products, _.isObject);
+    // If we found a previously-bought product, return that.  otherwise, wait for the search to resolve.
+    return previouslyOrderedProduct || await productPromise;
   }
 }

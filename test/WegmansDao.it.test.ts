@@ -32,7 +32,7 @@ describe('wegmans dao', () => {
     expect(orderedProducts.length).toBeGreaterThan(0);
     expect(history.length).toBeGreaterThan(0);
   });
-  test.only('search products prefer history', async () => {
+  test('search products prefer history', async () => {
     const product = await wegmans.searchForProductPreferHistory(tokens.access, 'Eggs');
     expect(product).toBeDefined();
   });
