@@ -238,7 +238,8 @@ export class WegmansDao {
 
       // do cache write in the background
       logger.debug('writing order history to cache');
-      updateCachePromise = orderHistoryDao.put(userId, orderedProducts);
+      updateCachePromise = orderHistoryDao.put(userId, orderedProducts)
+        .then(() => {logger.debug('order history cache written');});
     }
     else {
       logger.debug('order history cache hit');
@@ -330,7 +331,7 @@ export class WegmansDao {
     return product;
   }
 
-  async searchProducts(products: OrderedProduct[], query: string) {
+  static searchProducts(products: OrderedProduct[], query: string) {
     const fuse = new Fuse(products, {
       shouldSort: true,
       includeScore: true,
@@ -351,7 +352,7 @@ export class WegmansDao {
     else { logger.debug('fuse found nothing for query: ' + query + '; ' + products.length + ' products searhed');}
 
     const bestProduct = searchResults[0] && _.maxBy(searchResults, result => result.item.purchaseMsSinceEpoch);
-    return bestProduct.item.product;
+    return bestProduct && bestProduct.item.product;
   }
 
   async searchForProductPreferHistory(accessToken: string, query: string): Promise<Product> {
@@ -359,7 +360,7 @@ export class WegmansDao {
     const orderedProductsPromise = this.getOrderHistory(accessToken);
     const productPromise = this.searchForProduct(query);
     
-    const previouslyOrderedProduct = this.searchProducts(await orderedProductsPromise, query);
+    const previouslyOrderedProduct = WegmansDao.searchProducts(await orderedProductsPromise, query);
 
     // If we found a previously-bought product, return that.  otherwise, wait for the search to resolve.
     return previouslyOrderedProduct || await productPromise;

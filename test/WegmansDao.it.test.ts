@@ -4,6 +4,7 @@ import {WegmansDao} from "../lib/WegmansDao";
 import { orderHistoryDao } from "../lib/OrderHistoryDao";
 import { AccessToken } from "../models/AccessToken";
 jest.setTimeout(10000);
+
 //Skip these normally; dont wanna spam wegmans
 describe('wegmans dao', () => {
   const wegmans = new WegmansDao(config.get('wegmans.apikey'));
@@ -36,4 +37,6 @@ describe('wegmans dao', () => {
     const product = await wegmans.searchForProductPreferHistory(tokens.access, 'Eggs');
     expect(product).toBeDefined();
   });
+  //TODO: write a test that mocks fuse to return no products.  make sure product comes from actual wegmans search
+  //TODO: write unit tests that mock wegmans
 });
