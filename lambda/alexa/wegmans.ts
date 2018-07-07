@@ -50,6 +50,7 @@ export const addToShoppingList: RequestHandler = {
       && request.intent.name === "AddToShoppingList";
   },
   async handle(handlerInput: HandlerInput): Promise<Response> {
+    const startMs = new Date().valueOf();
 
     const wegmansDao = await wegmansDaoPromise;
 
@@ -68,10 +69,22 @@ export const addToShoppingList: RequestHandler = {
 
     const productQuery = intent.slots[PRODUCT_SLOT].value;
 
-    const product = await wegmansDao.searchForProduct(productQuery);
+    const product = await wegmansDao.searchForProductPreferHistory(accessToken, productQuery);
+
+    logger.debug('found product ' + product.name + ' in ' + (new Date().valueOf() - startMs) + ' ms');
+
+    if (!product) {
+      return Promise.resolve(
+        handlerInput.responseBuilder
+          .speak(`Sorry, Wegmans doesn't sell ${productQuery}.`)
+          .getResponse(),
+      );
+    }
 
     await wegmansDao.addProductToShoppingList(accessToken, product);
 
+    logger.debug('Returning alexa response');
+    
     return Promise.resolve(
       handlerInput.responseBuilder
         .speak(`Added ${product.name} to your wegmans shopping list.`)

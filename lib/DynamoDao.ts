@@ -35,6 +35,7 @@ export abstract class DynamoDao {
           },
         ).promise();
       } catch (err) {
+        logger.warn(err);
         logger.debug(`couldn't get ${tableName}; assuming table doesn't exist`);
         return false;
       }
@@ -68,7 +69,6 @@ export abstract class DynamoDao {
     for (let i = 0; i < tableParam.length; i++) {
       tableExists[tableParam[i].TableName] = await this.tableExists(tableParam[i].TableName);
     }
-    // TODO: tslint?
     // TODO: why do i need this?
     const self = this;
     const promises = tableParam.map((param) => {

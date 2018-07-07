@@ -7,3 +7,4 @@ aws lambda update-function-configuration --function-name wegmans-auth_get-access
 
 aws lambda update-function-code --function-name wegmans-auth_get-access-tokens --s3-bucket wegmans-lambda-builds --s3-key build.zip --profile wegmans;
 aws lambda update-function-configuration --function-name wegmans-auth_get-access-tokens --handler 'lambda/server/auth-server.getTokens' --profile wegmans;
+# TODO: set env vars and IAM user in this script

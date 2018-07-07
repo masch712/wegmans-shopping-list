@@ -1,7 +1,10 @@
+import { Product } from "./Product";
+
 export class OrderedProduct {
   constructor(
-    public lastPurchaseDate: string, //TODO: make this a lastPurchaseDate
+    public purchaseMsSinceEpoch: number,
     public quantity: number,
-    public sku: string,
+    public sku: number,
+    public product?:Product
   ) {}
 }
