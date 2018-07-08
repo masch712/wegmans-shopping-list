@@ -26,6 +26,11 @@ export class WegmansDao {
     this.apiKey = apiKey;
   }
 
+  static getStoreIdFromTokens(token: AccessToken) : number {
+    const userToken = jwt.decode(token.user);
+    return userToken['wfm_profile_store'];
+  }
+
   async login(email: string, password: string): Promise<AccessToken> {
     let tokens: AccessToken;
     try {
@@ -157,7 +162,7 @@ export class WegmansDao {
     return;
   }
 
-  async getOrderHistory(accessToken: string): Promise<OrderedProduct[]> {
+  async getOrderHistory(accessToken: string, storeId): Promise<OrderedProduct[]> {
     const userId = (jwt.decode(accessToken) as { sub: string }).sub;
     let orderedProducts = await orderHistoryDao.get(userId);
     let updateCachePromise = Promise.resolve();
@@ -166,7 +171,7 @@ export class WegmansDao {
       logger.debug('order history cache miss');
       const response = await request({
         method: 'GET',
-        url: 'https://wegapi.azure-api.net/purchases/history/summary/59',
+        url: `https://wegapi.azure-api.net/purchases/history/summary/${storeId}`,
         qs: {
           offset: 0,
           records: 1000,
@@ -193,7 +198,7 @@ export class WegmansDao {
 
       // Get the actual products.  These are useful later for in-memory fuzzy search
       const skus = orderedProducts.map(orderedProduct => orderedProduct.sku);
-      const productsBySku = await ProductSearch.getProductBySku(skus.map(sku => `SKU_${sku}`));
+      const productsBySku = await ProductSearch.getProductBySku(skus.map(sku => `SKU_${sku}`), storeId);
 
       orderedProducts.forEach(orderedProduct => {
         orderedProduct.product = productsBySku[orderedProduct.sku][0];

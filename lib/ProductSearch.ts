@@ -18,13 +18,13 @@ interface ProductSearchResultItem {
 
 export class ProductSearch {
 
-  static async searchForProduct(query: string): Promise<Product> {
+  static async searchForProduct(query: string, storeId: number): Promise<Product> {
 
     const response = await request.get("https://sp1004f27d.guided.ss-omtrdc.net", {
       qs: {
         q: query,
         rank: "rank-wegmans",
-        storeNumber: 59, // TODO: break this out into config
+        storeNumber: storeId, // TODO: break this out into config
       },
     });
     const body = JSON.parse(response);
@@ -46,7 +46,7 @@ export class ProductSearch {
     return product;
   }
 
-  static async getProductBySku(skus: string[]): Promise<_.Dictionary<Product[]>> {
+  static async getProductBySku(skus: string[], storeId: number): Promise<_.Dictionary<Product[]>> {
     const responsePromise = request({
       method: 'POST',
       url: 'https://sp1004f27d.guided.ss-omtrdc.net/',
@@ -59,7 +59,7 @@ export class ProductSearch {
           sp_c: skus.length,
           sp_n: '1',
           sp_x_20: 'id',
-          storeNumber: '59', //TODO: get storeNumber from JWT?
+          storeNumber: storeId, //TODO: get storeNumber from JWT?
           sp_q_exact_20: skus.join('|'),
         }
     });
@@ -82,7 +82,7 @@ export class ProductSearch {
     return _.groupBy(products, 'sku');
   }
 
-  static async searchSkus(skus: number[], query?: string): Promise<Product> {
+  static async searchSkus(skus: number[], query: string, storeId: number): Promise<Product> {
     const skuStrings = skus.map(sku => `SKU_${sku}`).join('|');
     const responsePromise = request({
       method: 'POST',
@@ -96,7 +96,7 @@ export class ProductSearch {
           sp_c: skus.length,
           sp_n: '1',
           sp_x_20: 'id',
-          storeNumber: '59', //TODO: get storeNumber from JWT?
+          storeNumber: storeId, //TODO: get storeNumber from JWT?
           sp_q_exact_20: skuStrings,
         }
     });
@@ -151,9 +151,9 @@ export class ProductSearch {
     return bestProduct && bestProduct.item.product;
   }
 
-  static async searchForProductPreferHistory(orderedProductsPromise: Promise<OrderedProduct[]>, query: string): Promise<Product> {
+  static async searchForProductPreferHistory(orderedProductsPromise: Promise<OrderedProduct[]>, query: string, storeId: number): Promise<Product> {
     // Fire off both requests
-    const productPromise = ProductSearch.searchForProduct(query);
+    const productPromise = ProductSearch.searchForProduct(query, storeId);
     
     const previouslyOrderedProduct = ProductSearch.searchProducts(await orderedProductsPromise, query);
 

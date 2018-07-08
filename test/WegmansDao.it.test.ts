@@ -10,8 +10,10 @@ jest.setTimeout(10000);
 describe('wegmans dao', () => {
   const wegmans = new WegmansDao(config.get('wegmans.apikey'));
   let tokens: AccessToken;
+  let storeId: number;
   beforeAll(async () => {
     tokens = await wegmans.login(config.get('wegmans.email'), config.get('wegmans.password'));
+    storeId = WegmansDao.getStoreIdFromTokens(tokens);
     expect(tokens).toBeDefined();
   });
   test('gets goat cheese', async () => {
