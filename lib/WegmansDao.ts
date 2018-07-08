@@ -157,7 +157,7 @@ export class WegmansDao {
     return;
   }
 
-  async getOrderHistory(accessToken: string, storeId): Promise<OrderedProduct[]> {
+  async getOrderHistory(accessToken: string): Promise<OrderedProduct[]> {
     const userId = (jwt.decode(accessToken) as { sub: string }).sub;
     let orderedProducts = await orderHistoryDao.get(userId);
     let updateCachePromise = Promise.resolve();
