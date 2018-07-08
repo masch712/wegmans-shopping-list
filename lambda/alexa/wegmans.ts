@@ -7,9 +7,10 @@ import { config } from "../../lib/config";
 import { decryptionPromise } from "../../lib/decrypt-config";
 import { logger } from "../../lib/Logger";
 import { WegmansDao } from "../../lib/WegmansDao";
+import { ProductSearch } from "../../lib/ProductSearch";
 
 const APP_ID = "amzn1.ask.skill.ee768e33-44df-48f8-8fcd-1a187d502b75";
-
+//TODO: support adding quantities: "add 5 goat cheeses"
 const SPEECH_NOT_IMPLEMENTED = "Aaron says: This feature is not yet implemented.";
 const STOP_MESSAGE = "Bye";
 
@@ -69,7 +70,7 @@ export const addToShoppingList: RequestHandler = {
 
     const productQuery = intent.slots[PRODUCT_SLOT].value;
 
-    const product = await wegmansDao.searchForProductPreferHistory(accessToken, productQuery);
+    const product = await ProductSearch.searchForProductPreferHistory(wegmansDao.getOrderHistory(accessToken), productQuery);
 
     logger.debug('found product ' + product.name + ' in ' + (new Date().valueOf() - startMs) + ' ms');
 

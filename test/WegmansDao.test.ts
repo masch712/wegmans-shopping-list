@@ -1,5 +1,6 @@
 import {WegmansDao} from "../lib/WegmansDao";
 import nock = require("nock");
+import { ProductSearch } from "../lib/ProductSearch";
 
 // Cool way to mock servers:
 // nock("https://sp1004f27d.guided.ss-omtrdc.net")
@@ -13,5 +14,5 @@ import nock = require("nock");
 //TODO: STORENUMBER IN USER CONFIG!  DIFF STORES FOR DIFF USERS BRAH
 
 test('searchProducts with empty history', ()=> {
-  WegmansDao.searchProducts([], 'whatevs');
+  ProductSearch.searchProducts([], 'whatevs');
 });

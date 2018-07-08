@@ -3,6 +3,7 @@ import { config } from "../lib/config";
 import {WegmansDao} from "../lib/WegmansDao";
 import { orderHistoryDao } from "../lib/OrderHistoryDao";
 import { AccessToken } from "../models/AccessToken";
+import { ProductSearch } from "../lib/ProductSearch";
 jest.setTimeout(10000);
 
 //Skip these normally; dont wanna spam wegmans
@@ -14,7 +15,7 @@ describe('wegmans dao', () => {
     expect(tokens).toBeDefined();
   });
   test('gets goat cheese', async () => {
-    const goat = await wegmans.searchForProduct('goat cheese');
+    const goat = await ProductSearch.searchForProduct('goat cheese');
     expect(goat).toBeDefined();
     expect(goat.subcategory).toEqual('Goat Cheese');
   });
@@ -23,7 +24,7 @@ describe('wegmans dao', () => {
     expect(shoppingListId).toBeGreaterThan(0);
   });
   test('adds goat cheese to list', async () => {
-    const goat = await wegmans.searchForProduct('goat cheese');
+    const goat = await ProductSearch.searchForProduct('goat cheese');
     await wegmans.addProductToShoppingList(tokens.access, goat);
   });
   test('gets purchase history', async () => {
@@ -34,7 +35,7 @@ describe('wegmans dao', () => {
     expect(history.length).toBeGreaterThan(0);
   });
   test('search products prefer history', async () => {
-    const product = await wegmans.searchForProductPreferHistory(tokens.access, 'Eggs');
+    const product = await ProductSearch.searchForProductPreferHistory(wegmans.getOrderHistory(tokens.access), 'Eggs');
     expect(product).toBeDefined();
   });
   //TODO: write a test that mocks fuse to return no products.  make sure product comes from actual wegmans search
