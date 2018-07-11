@@ -1,6 +1,7 @@
 import * as AWS from "aws-sdk";
 import { logger } from "../lib/Logger";
 export const TABLENAME_TOKENSBYCODE = "WegmansAccessByCode";
+export const TABLENAME_TOKENSBYACCESS = "WegmansAccessByAccess";
 export const TABLENAME_TOKENSBYREFRESH = "WegmansAccessByRefresh";
 const BATCH_GET_SIZE = 100;
 const BATCH_PUT_SIZE = 25;
@@ -13,6 +14,8 @@ import { DynamoDao } from "./DynamoDao";
 AWS.config.update({
   region: "us-east-1",
 });
+
+//TODO: clean out tables periodically
 // TODO: salt the access code?
 const params_TokensByCode: AWS.DynamoDB.CreateTableInput = {
   TableName: TABLENAME_TOKENSBYCODE,
@@ -42,6 +45,20 @@ const params_TokensByRefresh: AWS.DynamoDB.CreateTableInput = {
   },
 };
 
+const params_TokensByAccessToken: AWS.DynamoDB.CreateTableInput = {
+  TableName: TABLENAME_TOKENSBYACCESS,
+  KeySchema: [
+    { AttributeName: "access", KeyType: "HASH" }, // Partition key
+  ],
+  AttributeDefinitions: [
+    { AttributeName: "access", AttributeType: "S" },
+  ],
+  ProvisionedThroughput: {
+    ReadCapacityUnits: 10,
+    WriteCapacityUnits: 10,
+  },
+};
+
 class AccessCodeDao extends DynamoDao {
   
   static getInstance(endpoint?: string): AccessCodeDao {
@@ -55,6 +72,7 @@ class AccessCodeDao extends DynamoDao {
               tableParams: AWS.DynamoDB.CreateTableInput[] = [
                 params_TokensByCode,
                 params_TokensByRefresh,
+                params_TokensByAccessToken
               ];
   apiKey: string;
 
@@ -65,6 +83,15 @@ class AccessCodeDao extends DynamoDao {
         access_code: code,
       },
       TableName: TABLENAME_TOKENSBYCODE,
+    }).promise();
+
+    return Promise.resolve(dbTokens.Item as AccessToken);
+  }
+
+  async getTokensByAccess(access: string): Promise<AccessToken> {
+    const dbTokens = await this.docClient.get({
+      Key: { access },
+      TableName: TABLENAME_TOKENSBYACCESS,
     }).promise();
 
     return Promise.resolve(dbTokens.Item as AccessToken);
@@ -90,16 +117,21 @@ class AccessCodeDao extends DynamoDao {
     const tokensByRefreshTokenPromise = this.docClient.put({
       Item: item,
       TableName: TABLENAME_TOKENSBYREFRESH,
-    }).promise().then();
+    }).promise();
 
-    await Promise.all([tokensByRefreshTokenPromise, tokensByCodePromise]).then(() => { });
+    const tokensByAccessTokenPromise = this.docClient.put({
+      Item: item,
+      TableName: TABLENAME_TOKENSBYACCESS
+    }).promise();
+
+    return Promise.all([tokensByRefreshTokenPromise, tokensByCodePromise, tokensByAccessTokenPromise]).then(() => { });
   }
 
   async deleteAccessCode(access_code: string): Promise<void> {
-    await this.docClient.delete({
+    return this.docClient.delete({
       TableName: TABLENAME_TOKENSBYCODE,
       Key: { access_code },
-    }).promise();
+    }).promise().then(() => {});
   }
 }
 
