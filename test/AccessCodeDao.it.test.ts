@@ -48,7 +48,9 @@ describe('login', () => {
     await accessCodeDao.put(token);
 
     const byRefresh = await accessCodeDao.getTokensByRefresh(token.refresh);
+    const byAccess = await accessCodeDao.getTokensByAccess(token.access);
     expect(byRefresh).toEqual(token);
+    expect(byAccess).toEqual(token);
   });
   test('puts and deletes', async () => {
     const token = {

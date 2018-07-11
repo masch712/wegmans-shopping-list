@@ -11,8 +11,6 @@ import { ProductSearch } from "../lib/ProductSearch";
 //   storeNumber: 59, // TODO: break this out into config
 // });
 
-//TODO: STORENUMBER IN USER CONFIG!  DIFF STORES FOR DIFF USERS BRAH
-
 test('searchProducts with empty history', ()=> {
   ProductSearch.searchProducts([], 'whatevs');
 });

@@ -27,6 +27,11 @@ export class WegmansDao {
   }
 
   static getStoreIdFromTokens(token: AccessToken) : number {
+    // Temporary hack: return 59
+    if (!token) {
+      logger.warn('no user token yet; using 59');
+      return 59;
+    }
     const userToken = jwt.decode(token.user);
     return userToken['wfm_profile_store'];
   }

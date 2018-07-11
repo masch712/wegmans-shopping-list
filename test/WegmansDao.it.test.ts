@@ -17,7 +17,7 @@ describe('wegmans dao', () => {
     expect(tokens).toBeDefined();
   });
   test('gets goat cheese', async () => {
-    const goat = await ProductSearch.searchForProduct('goat cheese');
+    const goat = await ProductSearch.searchForProduct('goat cheese', storeId);
     expect(goat).toBeDefined();
     expect(goat.subcategory).toEqual('Goat Cheese');
   });
@@ -26,18 +26,18 @@ describe('wegmans dao', () => {
     expect(shoppingListId).toBeGreaterThan(0);
   });
   test('adds goat cheese to list', async () => {
-    const goat = await ProductSearch.searchForProduct('goat cheese');
+    const goat = await ProductSearch.searchForProduct('goat cheese', storeId);
     await wegmans.addProductToShoppingList(tokens.access, goat);
   });
   test('gets purchase history', async () => {
-    const history = await wegmans.getOrderHistory(tokens.access);
+    const history = await wegmans.getOrderHistory(tokens.access, storeId);
     // cache should have good stuff
     const orderedProducts = await orderHistoryDao.get(config.get('wegmans.email'));
     expect(orderedProducts.length).toBeGreaterThan(0);
     expect(history.length).toBeGreaterThan(0);
   });
   test('search products prefer history', async () => {
-    const product = await ProductSearch.searchForProductPreferHistory(wegmans.getOrderHistory(tokens.access), 'Eggs');
+    const product = await ProductSearch.searchForProductPreferHistory(wegmans.getOrderHistory(tokens.access, storeId), 'Eggs', storeId);
     expect(product).toBeDefined();
   });
   //TODO: write a test that mocks fuse to return no products.  make sure product comes from actual wegmans search
