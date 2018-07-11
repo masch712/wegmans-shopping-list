@@ -11,7 +11,7 @@ import { OrderedProduct } from "../models/OrderedProduct";
 AWS.config.update({
   region: "us-east-1",
 });
-// TODO: salt the access code?
+
 const params_OrderHistoryByUser: AWS.DynamoDB.CreateTableInput = {
   TableName: TABLENAME_ORDERHISTORYBYUSER,
   KeySchema: [
