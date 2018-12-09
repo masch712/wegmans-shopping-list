@@ -1,6 +1,6 @@
 import * as AWS from "aws-sdk";
 import { AttributeMap, CreateTableInput, DescribeTableOutput } from "aws-sdk/clients/dynamodb";
-import { logger } from "../lib/Logger";
+import { logger, traceMethod } from "../lib/Logger";
 import { config } from "./config";
 
 AWS.config.update({
@@ -16,17 +16,16 @@ export abstract class DynamoDao {
 
   constructor(private endpoint: string) {
     const options = endpoint ? { endpoint } : undefined;
-    logger.debug(`DynamoDB options: ` + JSON.stringify(options));
     this.dynamodb = new AWS.DynamoDB(options);
     this.docClient = new AWS.DynamoDB.DocumentClient(options);
   }
 
+  // @traceMethod
   async tableExists(tableName, timeout = 30000): Promise<boolean> {
     let tableStatus;
     const startTime = new Date().getTime();
     let duration = 0;
     do {
-      logger.debug("describing table " + tableName);
       let data: DescribeTableOutput = {};
       try {
         data = await this.dynamodb.describeTable(
@@ -36,11 +35,9 @@ export abstract class DynamoDao {
         ).promise();
       } catch (err) {
         logger.warn(err);
-        logger.debug(`couldn't get ${tableName}; assuming table doesn't exist`);
         return false;
       }
       tableStatus = data.Table && data.Table.TableStatus;
-      logger.debug(`got table: status ${tableStatus}`);
       duration += new Date().getTime() - (startTime + duration);
     } while (tableStatus && tableStatus !== "ACTIVE" && duration < timeout && await sleep(2000));
     if (tableStatus && tableStatus !== "ACTIVE") {
@@ -49,9 +46,10 @@ export abstract class DynamoDao {
     return true;
   }
 
+  // @traceMethod
   async dropTables(tableNames: string[]) {
     const promises = tableNames.map((table) =>
-    this.dynamodb.deleteTable({
+      this.dynamodb.deleteTable({
         TableName: table,
       }).promise());
 
@@ -63,7 +61,6 @@ export abstract class DynamoDao {
     if (this.isInitted) {
       return Promise.resolve();
     }
-    logger.debug("initting tables");
     const tableParam = this.tableParams;
     const tableExists: { [key: string]: boolean } = {};
     for (let i = 0; i < tableParam.length; i++) {
@@ -72,11 +69,8 @@ export abstract class DynamoDao {
     // TODO: why do i need this?
     const self = this;
     const promises = tableParam.map((param) => {
-      logger.debug(`initting ${param.TableName}`);
       if (!tableExists[param.TableName]) {
-        logger.debug("create table " + param.TableName);
         return self.dynamodb.createTable(param).promise().then(() => {
-          logger.debug(`${param.TableName} created`);
         });
       }
       return Promise.resolve();
