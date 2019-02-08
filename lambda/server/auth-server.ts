@@ -35,7 +35,6 @@ async (event, context, callback): Promise<APIGatewayProxyResult> => {
   const body = JSON.parse(event.body);
   const username = body.username;
   const password = body.password;
-  // TODO: write some damn tests
   const wegmansDao = await wegmansDaoPromise;
   logger.debug("Got wegmans DAO.  Logging in");
 
@@ -104,10 +103,14 @@ async (event, context, callback): Promise<APIGatewayProxyResult> => {
   logger.debug("request body: " + JSON.stringify(body, null, 2));
   logger.debug("getting tokens");
   let tokens: AccessToken;
+  let deletePromise;
   if (body.code) {
     logger.debug("getting token by code");
     tokens = await accessCodeDao.getTokensByCode(body.code as string);
-    // TODO: delete the item from the tokensbycode table once we get it
+
+    logger.debug("deleting access code: " + body.code);
+    deletePromise = accessCodeDao.deleteAccessCode(body.code as string)
+    .then(() => logger.debug("access code delete complete."));
   }
   if (body.refresh_token) {
     logger.debug(`getting token by refresh token: ${body.refresh_token}`);
@@ -142,6 +145,7 @@ async (event, context, callback): Promise<APIGatewayProxyResult> => {
     headers: corsHeaders,
   };
 
+  await deletePromise;
   logger.debug("Response: " + JSON.stringify(response, null, 2));
   return Promise.resolve(response);
 };

@@ -9,6 +9,8 @@ import { logger } from "../../lib/Logger";
 import { WegmansDao } from "../../lib/WegmansDao";
 import { ProductSearch } from "../../lib/ProductSearch";
 import { accessCodeDao } from "../../lib/AccessCodeDao";
+import { AccessTokenNotFoundLoggedEvent } from "../../models/logged-events/AccessTokenNotFound";
+import { LoggedEvent } from "../../models/LoggedEvent";
 
 const APP_ID = "amzn1.ask.skill.ee768e33-44df-48f8-8fcd-1a187d502b75";
 //TODO: support adding quantities: "add 5 goat cheeses"
@@ -66,39 +68,38 @@ export const addToShoppingList: RequestHandler = {
 
 
     if (!accessToken) {
-      logger.info("No access token found; trying wegmans.email and wegmans.password");
+      logger.info(new AccessTokenNotFoundLoggedEvent().toString());
       const tokens = await wegmansDao.login(config.get("wegmans.email"), config.get("wegmans.password"));
       accessToken = tokens.access;
-    } else {
-      logger.debug("Access token: " + accessToken);
-    }
+    } 
 
     const productQuery = intent.slots[PRODUCT_SLOT].value;
 
     const storeId = WegmansDao.getStoreIdFromTokens(await tokensPromise);
-    logger.debug('storeId: ' + storeId);
     
     const product = await ProductSearch.searchForProductPreferHistory(wegmansDao.getOrderHistory(accessToken, storeId), productQuery, storeId);
-
-    logger.debug('found product ' + product.name + ' in ' + (new Date().valueOf() - startMs) + ' ms');
+    logger.debug(new LoggedEvent('foundProduct').addProperty('name', product.name).addProperty('ms',  (new Date().valueOf() - startMs)).toString());
 
     if (!product) {
+      const msg = `Sorry, Wegmans doesn't sell ${productQuery}.`;
+      logger.info(new LoggedEvent('response').addProperty('msg', msg).toString());
       return Promise.resolve(
         handlerInput.responseBuilder
-          .speak(`Sorry, Wegmans doesn't sell ${productQuery}.`)
+          .speak(msg)
           .getResponse(),
       );
     }
 
-    await wegmansDao.addProductToShoppingList(accessToken, product);
+    // Add to shopping list asynchronously; don't hold up the response.
+    const addToShoppingListPromise = wegmansDao.addProductToShoppingList(accessToken, product);
 
-    logger.debug('Returning alexa response');
+    const alexaFriendlyProductName = product.name.replace(/\&/g, 'and');
 
-    return Promise.resolve(
-      handlerInput.responseBuilder
-        .speak(`Added ${product.name} to your wegmans shopping list.`)
-        .getResponse(),
-    );
+    const msg = `Added ${alexaFriendlyProductName} to your wegmans shopping list.`;
+    logger.info(new LoggedEvent('response').addProperty('msg', msg).toString());
+    return handlerInput.responseBuilder
+      .speak(msg)
+      .getResponse();
   },
 };
 

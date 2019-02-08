@@ -26,7 +26,7 @@ export class WegmansDao {
     this.apiKey = apiKey;
   }
 
-  static getStoreIdFromTokens(token: AccessToken) : number {
+  static getStoreIdFromTokens(token: AccessToken): number {
     // Temporary hack: return 59
     if (!token) {
       logger.warn('no user token yet; using 59');
@@ -43,16 +43,16 @@ export class WegmansDao {
         method: "POST",
         url: "https://www.wegmans.com/j_security_check",
         headers:
-          {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Cache-Control": "no-cache",
-          },
+        {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Cache-Control": "no-cache",
+        },
         form:
-          {
-            j_username: email,
-            j_password: password,
-            j_staysigned: "on",
-          },
+        {
+          j_username: email,
+          j_password: password,
+          j_staysigned: "on",
+        },
       });
     } catch (err) {
       // We get a redirect response, which `request` considers an error.  whotevs
@@ -89,10 +89,10 @@ export class WegmansDao {
         jar,
         url: "https://www.wegmans.com/j_security_check",
         headers:
-          {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Cache-Control": "no-cache",
-          },
+        {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Cache-Control": "no-cache",
+        },
       });
     } catch (err) {
       // We get a redirect response, which `request` considers an error.  whotevs
@@ -205,14 +205,22 @@ export class WegmansDao {
       const skus = orderedProducts.map(orderedProduct => orderedProduct.sku);
       const productsBySku = await ProductSearch.getProductBySku(skus.map(sku => `SKU_${sku}`), storeId);
 
-      orderedProducts.forEach(orderedProduct => {
-        orderedProduct.product = productsBySku[orderedProduct.sku][0];
-      });
+      for (let index = orderedProducts.length - 1; index >= 0; index--) {
+        const orderedProduct = orderedProducts[index];
+        // The product may no longer exist, in which case its SKU won't be in productsBySku;
+        // In that case, remove it from order history
+        if (productsBySku[orderedProduct.sku]) {
+          orderedProduct.product = productsBySku[orderedProduct.sku][0];
+        }
+        else {
+          orderedProducts.splice(index, 1);
+        }
+      }
 
       // do cache write in the background
       logger.debug('writing order history to cache');
       updateCachePromise = orderHistoryDao.put(userId, orderedProducts)
-        .then(() => {logger.debug('order history cache written');});
+        .then(() => { logger.debug('order history cache written'); });
     }
     else {
       logger.debug('order history cache hit');

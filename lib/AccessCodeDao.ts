@@ -128,10 +128,12 @@ class AccessCodeDao extends DynamoDao {
   }
 
   async deleteAccessCode(access_code: string): Promise<void> {
-    return this.docClient.delete({
+    const result = await this.docClient.delete({
       TableName: TABLENAME_TOKENSBYCODE,
       Key: { access_code },
-    }).promise().then(() => {});
+    }).promise();
+
+    return;
   }
 }
 
