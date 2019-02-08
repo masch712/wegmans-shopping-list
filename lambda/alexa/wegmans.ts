@@ -58,6 +58,7 @@ export const addToShoppingList: RequestHandler = {
   async handle(handlerInput: HandlerInput): Promise<Response> {
     const startMs = new Date().valueOf();
 
+    // Get skill access token from request and match it up with wegmans auth tokens from dynamo
     let accessToken = handlerInput.requestEnvelope.session.user.accessToken;
     const tokensPromise = accessCodeDao.getTokensByAccess(accessToken);
 
@@ -66,17 +67,19 @@ export const addToShoppingList: RequestHandler = {
     const request = handlerInput.requestEnvelope.request as IntentRequest;
     const intent = request.intent;
 
-
     if (!accessToken) {
       logger.info(new AccessTokenNotFoundLoggedEvent().toString());
       const tokens = await wegmansDao.login(config.get("wegmans.email"), config.get("wegmans.password"));
       accessToken = tokens.access;
     } 
 
+    // What did the user ask for?  Pull it out of the intent slot.
     const productQuery = intent.slots[PRODUCT_SLOT].value;
 
+    // Given the user's tokens, look up their storeId
     const storeId = WegmansDao.getStoreIdFromTokens(await tokensPromise);
     
+    // Find a product
     const product = await ProductSearch.searchForProductPreferHistory(wegmansDao.getOrderHistory(accessToken, storeId), productQuery, storeId);
     logger.debug(new LoggedEvent('foundProduct').addProperty('name', product.name).addProperty('ms',  (new Date().valueOf() - startMs)).toString());
 
