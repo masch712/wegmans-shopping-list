@@ -6,6 +6,12 @@ import { AccessToken } from "../models/AccessToken";
 import { ProductSearch } from "../lib/ProductSearch";
 jest.setTimeout(10000);
 
+/***************************************************************
+ * NOTE: IF YOU'RE SEEING TIMEOUTS, MAKE SURE YOU HAVE ALOCAL
+ * DYNAMODB RUNNING
+ * *************************************************************
+ */
+
 //Skip these normally; dont wanna spam wegmans
 describe('wegmans dao', () => {
   const wegmans = new WegmansDao(config.get('wegmans.apikey'));
@@ -35,10 +41,6 @@ describe('wegmans dao', () => {
     const orderedProducts = await orderHistoryDao.get(config.get('wegmans.email'));
     expect(orderedProducts.length).toBeGreaterThan(0);
     expect(history.length).toBeGreaterThan(0);
-  });
-  test('search products prefer history', async () => {
-    const product = await ProductSearch.searchForProductPreferHistory(wegmans.getOrderHistory(tokens.access, storeId), 'Eggs', storeId);
-    expect(product).toBeDefined();
   });
   //TODO: write a test that mocks fuse to return no products.  make sure product comes from actual wegmans search
   //TODO: write unit tests that mock wegmans

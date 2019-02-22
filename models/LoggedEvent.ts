@@ -1,5 +1,5 @@
 export class LoggedEvent {
-  private logObj;
+  private logObj: any;
   constructor(public type: string) {
     this.logObj = {};
     this.addProperty('type', type);

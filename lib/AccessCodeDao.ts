@@ -61,7 +61,7 @@ const params_TokensByAccessToken: AWS.DynamoDB.CreateTableInput = {
 
 class AccessCodeDao extends DynamoDao {
   
-  static getInstance(endpoint?: string): AccessCodeDao {
+  static getInstance(endpoint: string): AccessCodeDao {
     if (!AccessCodeDao._instance) {
       AccessCodeDao._instance = new AccessCodeDao(endpoint);
     }
@@ -74,8 +74,6 @@ class AccessCodeDao extends DynamoDao {
                 params_TokensByRefresh,
                 params_TokensByAccessToken
               ];
-  apiKey: string;
-
 
   async getTokensByCode(code: string): Promise<AccessToken> {
     const dbTokens = await this.docClient.get({
@@ -135,10 +133,6 @@ class AccessCodeDao extends DynamoDao {
 
     return;
   }
-}
-
-function sleep(time) {
-  return new Promise((resolve) => setTimeout(() => resolve(true), time));
 }
 
 export const accessCodeDao = AccessCodeDao.getInstance(config.get("aws.dynamodb.endpoint"));

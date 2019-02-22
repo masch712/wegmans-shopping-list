@@ -20,7 +20,7 @@ interface OrderHistoryResponseItem {
 export class WegmansDao {
 
   private apiKey: string;
-  private shoppingListId: number;
+  private shoppingListId: number | undefined;
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
@@ -32,12 +32,13 @@ export class WegmansDao {
       logger.warn('no user token yet; using 59');
       return 59;
     }
-    const userToken = jwt.decode(token.user);
-    return userToken['wfm_profile_store'];
+    const userToken = jwt.decode(token.user) as { [key: string]: number }; // TODO: make a real JWT type?
+    const storeId = userToken!['wfa_profile_store'];
+    return storeId;
   }
 
   async login(email: string, password: string): Promise<AccessToken> {
-    let tokens: AccessToken;
+    let tokens: AccessToken | null = null;
     try {
       await request({
         method: "POST",
@@ -59,12 +60,16 @@ export class WegmansDao {
       const access = WegmansDao.getCookie(err.response, "wegmans_access");
       const refresh = WegmansDao.getCookie(err.response, "wegmans_refresh");
       const user = WegmansDao.getCookie(err.response, "wegmans_user");
-      if (!access || !refresh) {
+      if (!access || !refresh || !user) {
         logger.debug(JSON.stringify(err, null, 2));
         throw new Error("No access tokens in response; bad login credentials?");
       }
       tokens = { access, refresh, user };
       logger.debug("Logged in and got access token of length " + access.length);
+    }
+
+    if (!tokens) {
+      throw new Error("Expected tokens by now; where they at?");
     }
 
     return tokens;
@@ -79,8 +84,8 @@ export class WegmansDao {
 
     try {
       const jar = request.jar();
-      const refreshCookie = request.cookie(`wegmans_refresh=${refreshToken}`);
-      const userCookie = request.cookie(`wegmans_user=${userToken}`);
+      const refreshCookie = request.cookie(`wegmans_refresh=${refreshToken}`)!;
+      const userCookie = request.cookie(`wegmans_user=${userToken}`)!;
       jar.setCookie(refreshCookie, "https://www.wegmans.com");
       jar.setCookie(userCookie, "https://www.wegmans.com");
 
@@ -99,7 +104,7 @@ export class WegmansDao {
       const access = WegmansDao.getCookie(err.response, "wegmans_access");
       const refresh = WegmansDao.getCookie(err.response, "wegmans_refresh");
       const user = WegmansDao.getCookie(err.response, "wegmans_user");
-      if (!access || !refresh) {
+      if (!access || !refresh || !user) {
         logger.debug(JSON.stringify(err, null, 2));
         throw new Error("No access tokens in response; bad login credentials?");
       }
@@ -120,7 +125,7 @@ export class WegmansDao {
     return value;
   }
 
-  async getShoppingListId(accessToken): Promise<number> {
+  async getShoppingListId(accessToken: string): Promise<number> {
 
     if (this.shoppingListId) {
       return this.shoppingListId;
@@ -167,7 +172,7 @@ export class WegmansDao {
     return;
   }
 
-  async getOrderHistory(accessToken: string, storeId): Promise<OrderedProduct[]> {
+  async getOrderHistory(accessToken: string, storeId: number): Promise<OrderedProduct[]> {
     const userId = (jwt.decode(accessToken) as { sub: string }).sub;
     let orderedProducts = await orderHistoryDao.get(userId);
     let updateCachePromise = Promise.resolve();

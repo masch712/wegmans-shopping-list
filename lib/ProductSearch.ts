@@ -6,7 +6,7 @@ import { Response } from "request";
 import { OrderedProduct } from "../models/OrderedProduct";
 import { DateTime } from "luxon";
 import * as jwt from "jsonwebtoken";
-import Fuse = require("fuse.js");
+import * as Fuse from "fuse.js";
 
 interface ProductSearchResultItem {
   name: string;
@@ -18,7 +18,7 @@ interface ProductSearchResultItem {
 
 export class ProductSearch {
 
-  static async searchForProduct(query: string, storeId: number): Promise<Product> {
+  static async searchForProduct(query: string, storeId: number): Promise<Product | null> {
 
     const response = await request.get("https://sp1004f27d.guided.ss-omtrdc.net", {
       qs: {
@@ -82,7 +82,7 @@ export class ProductSearch {
     return _.groupBy(products, 'sku');
   }
 
-  static async searchSkus(skus: number[], query: string, storeId: number): Promise<Product> {
+  static async searchSkus(skus: number[], query: string, storeId: number): Promise<Product | null> {
     const skuStrings = skus.map(sku => `SKU_${sku}`).join('|');
     const responsePromise = request({
       method: 'POST',
@@ -101,7 +101,7 @@ export class ProductSearch {
         }
     });
 
-    const skuHash = {};
+    const skuHash: { [sku: number]: number } = {};
     let skuIndex = 0;
     skus.forEach(sku => { skuHash[sku] = skuIndex++; });
 
@@ -140,7 +140,7 @@ export class ProductSearch {
         "product.name",
         "product.category",
         "product.subcategory"
-      ]
+      ] as unknown as Array<keyof OrderedProduct> // coerce type to keyof OrderedProducts because typescript doesn't like nested object keys
     });
 
     const searchResults = fuse.search(query) as Array<{ item: OrderedProduct, score: number }>;
@@ -151,7 +151,7 @@ export class ProductSearch {
     return bestProduct && bestProduct.item.product;
   }
 
-  static async searchForProductPreferHistory(orderedProductsPromise: Promise<OrderedProduct[]>, query: string, storeId: number): Promise<Product> {
+  static async searchForProductPreferHistory(orderedProductsPromise: Promise<OrderedProduct[]>, query: string, storeId: number): Promise<Product | null> {
     // Fire off both requests
     const productPromise = ProductSearch.searchForProduct(query, storeId);
     

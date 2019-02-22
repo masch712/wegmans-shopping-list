@@ -21,7 +21,7 @@ export abstract class DynamoDao {
   }
 
   // @traceMethod
-  async tableExists(tableName, timeout = 30000): Promise<boolean> {
+  async tableExists(tableName: string, timeout = 30000): Promise<boolean> {
     let tableStatus;
     const startTime = new Date().getTime();
     let duration = 0;
@@ -84,6 +84,6 @@ export abstract class DynamoDao {
 
 }
 
-export function sleep(time) {
+export function sleep(time: number) {
   return new Promise((resolve) => setTimeout(() => resolve(true), time));
 }

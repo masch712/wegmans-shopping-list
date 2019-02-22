@@ -1,14 +1,16 @@
 {
   "compilerOptions": {
     "allowJs": true,
-    "target": "es5",
-    // "moduleResolution": "node",
+    "target": "es2017",
+    "module": "commonjs",
     "outDir": "build/Debug",
     "experimentalDecorators": true,
     "sourceMap": true,
-    "lib": [
-      "es2017"
-    ]
+    // "lib": [
+    //   "es2017"
+    // ]
+    "strict": true,
+    "types": ["node", "jest"]
   },
   "exclude": [
     "node_modules",

@@ -9,7 +9,7 @@ if (config.get("encrypted")) {
   // Decrypt code should run once and variables stored outside of the function
   // handler so that these are decrypted once per container
   const encryptedKeys = ["wegmans.apikey", "wegmans.email", "wegmans.password", "alexa.skill.secret"];
-  const decryptionPromises = [];
+  const decryptionPromises: Array<Promise<void>> = [];
   encryptedKeys.forEach((key) => {
     if (config.get(key)) {
       decryptionPromises.push(decryptKMS(key));
@@ -19,7 +19,7 @@ if (config.get("encrypted")) {
   decryptionPromise = Promise.all(decryptionPromises).then(() => {});
 }
 
-async function decryptKMS(key): Promise<void> {
+async function decryptKMS(key: string): Promise<void> {
   return new Promise<void>((resolve, reject) => {
     logger.silly(`decrypting ${key}`);
 
@@ -32,7 +32,7 @@ async function decryptKMS(key): Promise<void> {
         resolve();
       } else {
         logger.silly(`decrypted ${key}`);
-        config.set(key, data.Plaintext.toString());
+        config.set(key, data.Plaintext!.toString());
         resolve();
       }
     });

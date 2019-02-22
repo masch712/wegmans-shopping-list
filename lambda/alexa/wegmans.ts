@@ -11,6 +11,7 @@ import { ProductSearch } from "../../lib/ProductSearch";
 import { accessCodeDao } from "../../lib/AccessCodeDao";
 import { AccessTokenNotFoundLoggedEvent } from "../../models/logged-events/AccessTokenNotFound";
 import { LoggedEvent } from "../../models/LoggedEvent";
+import { AccessToken } from "../../models/AccessToken";
 
 const APP_ID = "amzn1.ask.skill.ee768e33-44df-48f8-8fcd-1a187d502b75";
 //TODO: support adding quantities: "add 5 goat cheeses"
@@ -58,30 +59,42 @@ export const addToShoppingList: RequestHandler = {
   async handle(handlerInput: HandlerInput): Promise<Response> {
     const startMs = new Date().valueOf();
 
-    // Get skill access token from request and match it up with wegmans auth tokens from dynamo
-    let accessToken = handlerInput.requestEnvelope.session.user.accessToken;
-    const tokensPromise = accessCodeDao.getTokensByAccess(accessToken);
-
-    const wegmansDao = await wegmansDaoPromise;
-
     const request = handlerInput.requestEnvelope.request as IntentRequest;
     const intent = request.intent;
-
-    if (!accessToken) {
+    
+    const wegmansDao = await wegmansDaoPromise;
+    
+    // Get skill access token from request and match it up with wegmans auth tokens from dynamo
+    let accessToken;
+    let tokensPromise: Promise<AccessToken>;
+    if (handlerInput.requestEnvelope.session && handlerInput.requestEnvelope.session.user.accessToken) {
+      accessToken = handlerInput.requestEnvelope.session.user.accessToken;
+      tokensPromise = accessCodeDao.getTokensByAccess(accessToken);
+    } else {
+      //TODO: do both these approaches work?
       logger.info(new AccessTokenNotFoundLoggedEvent().toString());
-      const tokens = await wegmansDao.login(config.get("wegmans.email"), config.get("wegmans.password"));
-      accessToken = tokens.access;
-    } 
+      tokensPromise = wegmansDao.login(config.get("wegmans.email"), config.get("wegmans.password"));
+    }
 
     // What did the user ask for?  Pull it out of the intent slot.
-    const productQuery = intent.slots[PRODUCT_SLOT].value;
+    const productQuery = intent.slots![PRODUCT_SLOT].value;
 
     // Given the user's tokens, look up their storeId
-    const storeId = WegmansDao.getStoreIdFromTokens(await tokensPromise);
-    
+    const tokens = await tokensPromise;
+    accessToken = accessToken || tokens.access;
+    const storeId = WegmansDao.getStoreIdFromTokens(tokens);
+
     // Find a product
     const product = await ProductSearch.searchForProductPreferHistory(wegmansDao.getOrderHistory(accessToken, storeId), productQuery, storeId);
-    logger.debug(new LoggedEvent('foundProduct').addProperty('name', product.name).addProperty('ms',  (new Date().valueOf() - startMs)).toString());
+    if (product) {
+      logger.debug(new LoggedEvent('foundProduct')
+        .addProperty('name', product.name)
+        .addProperty('ms', (new Date().valueOf() - startMs)).toString());
+    }
+    else {
+      logger.debug(new LoggedEvent('noProductFound')
+        .addProperty('ms', (new Date().valueOf() - startMs)).toString());
+    }
 
     if (!product) {
       const msg = `Sorry, Wegmans doesn't sell ${productQuery}.`;

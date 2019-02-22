@@ -23,6 +23,9 @@ const wegmansDaoPromise = decryptionPromise.then(() => new WegmansDao(config.get
 export const generateAuthCode: APIGatewayProxyHandler =
 async (event, context, callback): Promise<APIGatewayProxyResult> => {
   logger.debug("Event received: " + JSON.stringify(event, null, 2));
+  if (!event.body) {
+    throw new Error("gotta have a body");
+  }
   if (event.httpMethod === "OPTIONS") {
     return {
       body: "",
