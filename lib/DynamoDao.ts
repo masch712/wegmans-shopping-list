@@ -1,7 +1,6 @@
 import * as AWS from "aws-sdk";
-import { AttributeMap, CreateTableInput, DescribeTableOutput } from "aws-sdk/clients/dynamodb";
-import { logger, traceMethod } from "../lib/Logger";
-import { config } from "./config";
+import { CreateTableInput, DescribeTableOutput } from "aws-sdk/clients/dynamodb";
+import { logger } from "../lib/Logger";
 
 AWS.config.update({
   region: "us-east-1",
@@ -14,7 +13,7 @@ export abstract class DynamoDao {
   protected docClient: AWS.DynamoDB.DocumentClient;
   abstract tableParams: CreateTableInput[];
 
-  constructor(private endpoint: string) {
+  constructor(endpoint: string) {
     const options = endpoint ? { endpoint } : undefined;
     this.dynamodb = new AWS.DynamoDB(options);
     this.docClient = new AWS.DynamoDB.DocumentClient(options);

@@ -35,7 +35,7 @@ class OrderHistoryItem {
 }
 
 class OrderHistoryDao extends DynamoDao {
-  static getInstance(endpoint?: string): OrderHistoryDao {
+  static getInstance(endpoint: string): OrderHistoryDao {
     if (!OrderHistoryDao._instance) {
       OrderHistoryDao._instance = new OrderHistoryDao(endpoint);
     }
@@ -46,7 +46,6 @@ class OrderHistoryDao extends DynamoDao {
   tableParams: AWS.DynamoDB.CreateTableInput[] = [
     params_OrderHistoryByUser,
   ];
-  apiKey: string;
 
 
   async get(userId: string): Promise<OrderedProduct[]> {

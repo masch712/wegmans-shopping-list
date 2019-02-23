@@ -18,26 +18,26 @@ export const logger = new winston.Logger({
  * @param propertyKey 
  * @param propertyDescriptor 
  */
-export function traceMethod(async: boolean) {
-  return (target, propertyKey: string, propertyDescriptor: PropertyDescriptor) => {
-    const constructorName = target.constructor && target.constructor.name;
-    const traceLocation = `${(constructorName + '.' || '')}${propertyKey}`;
+// export function traceMethod(async: boolean) {
+//   return (target, propertyKey: string, propertyDescriptor: PropertyDescriptor) => {
+//     const constructorName = target.constructor && target.constructor.name;
+//     const traceLocation = `${(constructorName + '.' || '')}${propertyKey}`;
 
-    if (propertyDescriptor === undefined) {
-      propertyDescriptor = Object.getOwnPropertyDescriptor(target, propertyKey);
-    }
-    const originalMethodDefinition = propertyDescriptor.value;
+//     if (propertyDescriptor === undefined) {
+//       propertyDescriptor = Object.getOwnPropertyDescriptor(target, propertyKey);
+//     }
+//     const originalMethodDefinition = propertyDescriptor.value;
 
-    const wrappedCall = 
-    propertyDescriptor.value = function () {
-      const startTime = new Date().valueOf();
-      const returnValue = originalMethodDefinition.apply(this, arguments);
-      const endTime = new Date().valueOf();
-      logger.debug(new LoggedEvent('trace').addProperty('call', traceLocation).addProperty('duration', endTime - startTime).toString());
-      return returnValue;
-    };
-  };
-}
+//     const wrappedCall = 
+//     propertyDescriptor.value = function () {
+//       const startTime = new Date().valueOf();
+//       const returnValue = originalMethodDefinition.apply(this, arguments);
+//       const endTime = new Date().valueOf();
+//       logger.debug(new LoggedEvent('trace').addProperty('call', traceLocation).addProperty('duration', endTime - startTime).toString());
+//       return returnValue;
+//     };
+//   };
+// }
 // winston3 style:
 // export const logger = winston.createLogger({
 //   transports: [

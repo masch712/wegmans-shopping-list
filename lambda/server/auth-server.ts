@@ -91,10 +91,12 @@ async (event, context, callback): Promise<APIGatewayProxyResult> => {
   if (!authHeader) {
     throw new Error("No Authorization header found");
   }
-
+  if (!event.body) {
+    throw new Error("gotta have a body");
+  }
   await decryptionPromise;
 
-  const parsedAuth = basic.parse(authHeader);
+  const parsedAuth = basic.parse(authHeader)!;
   if (parsedAuth.name !== config.get("alexa.skill.name")
     || parsedAuth.pass !== config.get("alexa.skill.secret")) {
     throw new Error("Alexa credentials invalid");
@@ -105,7 +107,7 @@ async (event, context, callback): Promise<APIGatewayProxyResult> => {
   const body = querystring.parse(event.body);
   logger.debug("request body: " + JSON.stringify(body, null, 2));
   logger.debug("getting tokens");
-  let tokens: AccessToken;
+  let tokens: AccessToken | null = null;
   let deletePromise;
   if (body.code) {
     logger.debug("getting token by code");
@@ -124,7 +126,7 @@ async (event, context, callback): Promise<APIGatewayProxyResult> => {
     await accessCodeDao.put(tokens);
   }
 
-  if (!tokens.access) {
+  if (!tokens || !tokens.access) {
     throw new Error("No access token found for given code");
   }
 
