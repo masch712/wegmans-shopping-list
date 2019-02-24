@@ -45,7 +45,7 @@
     "typescript": "^3.3.3"
   },
   "scripts": {
-    "test": "jest",
+    "test": "jest --runInBand",
     "build": "powershell .\\build\\build.ps1",
     "deploy": "powershell .\\build\\deploy.ps1"
   },

@@ -1,10 +1,15 @@
 import { Product } from "./Product";
 
-export class OrderedProduct {
-  constructor(
-    public purchaseMsSinceEpoch: number,
-    public quantity: number,
-    public sku: number,
-    public product?:Product
-  ) {}
+export interface OrderedProduct {
+  purchaseMsSinceEpoch: number;
+  quantity: number;
+  sku: number;
+  product?: Product;
+}
+
+export interface OrderedProductForDynamo {
+  purchaseMsSinceEpoch: number;
+  quantity: number;
+  sku: number;
+  product?: Partial<Product>;
 }

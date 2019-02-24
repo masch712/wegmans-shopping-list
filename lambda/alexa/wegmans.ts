@@ -85,7 +85,8 @@ export const addToShoppingList: RequestHandler = {
     const storeId = WegmansDao.getStoreIdFromTokens(tokens);
 
     // Find a product
-    const product = await ProductSearch.searchForProductPreferHistory(wegmansDao.getOrderHistory(accessToken, storeId), productQuery, storeId);
+    const {orderedProducts, cacheUpdatePromise} = await wegmansDao.getOrderHistory(accessToken, storeId);
+    const product = await ProductSearch.searchForProductPreferHistory(orderedProducts, productQuery, storeId);
     if (product) {
       logger.debug(new LoggedEvent('foundProduct')
         .addProperty('name', product.name)
@@ -96,6 +97,10 @@ export const addToShoppingList: RequestHandler = {
         .addProperty('ms', (new Date().valueOf() - startMs)).toString());
     }
 
+    if (cacheUpdatePromise) {
+      cacheUpdatePromise.then(() => logger.info('updated cache')); // TODO: do this in the background AFTER alexa has responded
+    }
+    
     if (!product) {
       const msg = `Sorry, Wegmans doesn't sell ${productQuery}.`;
       logger.info(new LoggedEvent('response').addProperty('msg', msg).toString());

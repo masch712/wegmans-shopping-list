@@ -172,12 +172,14 @@ export class WegmansDao {
     return;
   }
 
-  async getOrderHistory(accessToken: string, storeId: number): Promise<OrderedProduct[]> {
+  async getOrderHistory(accessToken: string, storeId: number) {
     const userId = (jwt.decode(accessToken) as { sub: string }).sub;
-    let orderedProducts = await orderHistoryDao.get(userId);
-    let updateCachePromise = Promise.resolve();
+    const orderHistory = await orderHistoryDao.get(userId);
+    let orderedProducts: OrderedProduct[] = [];
+    let updateCachePromise = undefined;
 
-    if (!orderedProducts) {
+    // Update cache if oldre than 24 hours
+    if (!orderHistory || !orderHistory.orderedProducts || !orderHistory.orderedProducts.length || orderHistory.lastCachedMillisSinceEpoch < new Date().valueOf() - 24*3600*1000) {
       logger.debug('order history cache miss');
       const response = await request({
         method: 'GET',
@@ -203,7 +205,12 @@ export class WegmansDao {
       orderedProducts = body.map(item => {
         const epochStr = item.LastPurchaseDate.substring(6, 19);
         const epoch = Number.parseInt(epochStr);
-        return new OrderedProduct(epoch, item.Quantity, item.Sku);
+        const orderedProduct: OrderedProduct = {
+          sku: item.Sku,
+          purchaseMsSinceEpoch: epoch,
+          quantity: item.Quantity,
+        };
+        return orderedProduct;
       });
 
       // Get the actual products.  These are useful later for in-memory fuzzy search
@@ -222,17 +229,20 @@ export class WegmansDao {
         }
       }
 
-      // do cache write in the background
       logger.debug('writing order history to cache');
       updateCachePromise = orderHistoryDao.put(userId, orderedProducts)
         .then(() => { logger.debug('order history cache written'); });
     }
     else {
       logger.debug('order history cache hit');
+      orderedProducts = orderHistory.orderedProducts;
     }
 
     const sortedOrderedProducts = _.sortBy(orderedProducts, (op: OrderedProduct) => op.sku);
 
-    return sortedOrderedProducts;
+    return {
+      orderedProducts: sortedOrderedProducts,
+      cacheUpdatePromise: updateCachePromise,
+    };
   }
 }

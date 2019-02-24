@@ -14,6 +14,9 @@ interface ProductSearchResultItem {
   subcategory: string;
   department: string;
   sku: string;
+  brand: string;
+  details: string;
+  productLine: string;
 }
 
 export class ProductSearch {
@@ -33,14 +36,11 @@ export class ProductSearch {
       return null;
     }
 
-    const firstResult = body.results[0];
-    const product = new Product(
-      firstResult.name,
-      firstResult.category,
-      firstResult.subcategory,
-      firstResult.department,
-      Number.parseInt(firstResult.sku),
-    );
+    const firstResult = body.results[0] as ProductSearchResultItem;
+    const product: Product = {
+      ...firstResult,
+      sku: Number.parseInt(firstResult.sku),
+    };
     logger.debug("Retrieved product: " + JSON.stringify(product));
 
     return product;
@@ -70,13 +70,10 @@ export class ProductSearch {
     const body = JSON.parse(response);
 
     const products = (body.results as ProductSearchResultItem[]).map(result => {
-      return new Product(
-        result.name,
-        result.category,
-        result.subcategory,
-        result.department,
-        Number.parseInt(result.sku)
-      );
+      return {
+        ...result,
+        sku: Number.parseInt(result.sku),
+      };
     });
 
     return _.groupBy(products, 'sku');
@@ -116,30 +113,31 @@ export class ProductSearch {
       return null;
     }
 
-    const product = new Product(
-      bestResult.name,
-      bestResult.category,
-      bestResult.subcategory,
-      bestResult.department,
-      Number.parseInt(bestResult.sku),
-    );
+    const product: Product = {
+      ...bestResult,
+      sku: Number.parseInt(bestResult.sku),
+    };
 
     return product;
   }
 
-  static searchProducts(products: OrderedProduct[], query: string) {
+  static searchOrderedProducts(products: OrderedProduct[], query: string) {
     const fuse = new Fuse(products, {
       shouldSort: true,
       includeScore: true,
-      threshold: 0.15,
+      tokenize: true,
       location: 0,
+      threshold: 0.15,
       distance: 100,
       maxPatternLength: 32,
       minMatchCharLength: 1,
       keys: [
         "product.name",
         "product.category",
-        "product.subcategory"
+        "product.subcategory",
+        // TODO: add brand and details to dynamo schema?
+        // "product.brand",
+        // "product.details",
       ] as unknown as Array<keyof OrderedProduct> // coerce type to keyof OrderedProducts because typescript doesn't like nested object keys
     });
 
@@ -148,16 +146,49 @@ export class ProductSearch {
     else { logger.debug('fuse found nothing for query: ' + query + '; ' + products.length + ' products searhed');}
 
     const bestProduct = searchResults[0] && _.maxBy(searchResults, result => result.item.purchaseMsSinceEpoch);
-    return bestProduct && bestProduct.item.product;
+    return bestProduct ? bestProduct.item.product : null;
   }
 
-  static async searchForProductPreferHistory(orderedProductsPromise: Promise<OrderedProduct[]>, query: string, storeId: number): Promise<Product | null> {
-    // Fire off both requests
-    const productPromise = ProductSearch.searchForProduct(query, storeId);
-    
-    const previouslyOrderedProduct = ProductSearch.searchProducts(await orderedProductsPromise, query);
+  static searchProducts(products: Product[], query: string) {
+    const fuse = new Fuse(products, {
+      shouldSort: true,
+      includeScore: true,
+      tokenize: true,
+      location: 0,
+      threshold: 0.15,
+      distance: 100,
+      maxPatternLength: 32,
+      minMatchCharLength: 1,
+      keys: [
+        "name",
+        "category",
+        "subcategory",
+        "brand",
+        "details",
+      ],
+    });
 
-    // If we found a previously-bought product, return that.  otherwise, wait for the search to resolve.
-    return previouslyOrderedProduct || await productPromise;
+    const searchResults = fuse.search(query);
+
+    const bestProduct = searchResults[0] && searchResults[0].item;
+    return bestProduct ? bestProduct : null;
+  }
+
+  static async searchForProductPreferHistory(orderedProducts: OrderedProduct[], query: string, storeId: number): Promise<Product | null> {
+    // Get the candidates in order of preference
+    const candidates = await Promise.all([
+      // Best: 
+      ProductSearch.searchSkus(orderedProducts.map(op => op.sku), query, storeId),
+      ProductSearch.searchOrderedProducts(orderedProducts, query),
+      ProductSearch.searchForProduct(query, storeId),
+    ]);
+
+    logger.info("search query: " + query);
+    logger.info(JSON.stringify({ orderedProducts }));
+    logger.info("Wegmans purchase history search result: " + JSON.stringify(candidates[0]));
+    logger.info("Fuse purchase history search result: " + JSON.stringify(candidates[1]));
+    logger.info("Wegmans search result: " + JSON.stringify(candidates[1]));
+
+    return _.find(candidates, (c): c is Product => !!c) || null;
   }
 }
