@@ -190,7 +190,6 @@ export class ProductSearch {
     ]);
 
     logger.info("search query: " + query);
-    logger.info(JSON.stringify({ orderedProducts }));
     logger.info("Wegmans purchase history search result: " + JSON.stringify(candidates[0]));
     logger.info("Fuse purchase history search result: " + JSON.stringify(candidates[1]));
     logger.info("Wegmans search result: " + JSON.stringify(candidates[1]));
