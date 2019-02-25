@@ -28,3 +28,8 @@ test('search products get raisin bran', async () => {
   expect(product).toBeDefined();
   expect(product!.productLine).toMatch(/raisin bran/i);
 });
+test('search products get ice cream', async () => {
+  const product = await ProductSearch.searchForProductPreferHistory(orderHistory.orderedProducts, 'ice cream', storeId);
+  expect(product).toBeDefined();
+  expect(product!.category).toMatch(/ice cream/i);
+});

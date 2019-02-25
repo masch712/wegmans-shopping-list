@@ -136,7 +136,7 @@ export class ProductSearch {
         "product.category",
         "product.subcategory",
         // TODO: add brand and details to dynamo schema?
-        // "product.brand",
+        "product.brand",
         // "product.details",
       ] as unknown as Array<keyof OrderedProduct> // coerce type to keyof OrderedProducts because typescript doesn't like nested object keys
     });
@@ -149,7 +149,7 @@ export class ProductSearch {
     return bestProduct ? bestProduct.item.product : null;
   }
 
-  static searchProducts(products: Product[], query: string) {
+  static searchProductsSecondPass(products: Product[], query: string) {
     const fuse = new Fuse(products, {
       shouldSort: true,
       includeScore: true,
@@ -169,9 +169,15 @@ export class ProductSearch {
     });
 
     const searchResults = fuse.search(query);
-
-    const bestProduct = searchResults[0] && searchResults[0].item;
-    return bestProduct ? bestProduct : null;
+    // If a product other than the 0-indexed product is the best match,
+    // it better have a score that's 0.5 better than the next one
+    const bestScore = (searchResults[0]).score!;
+    if (searchResults.length > 1 && bestScore < _.last(searchResults)!.score! - 0.5) {
+      return searchResults[0].item;
+    }
+    else {
+      return products[0];
+    }
   }
 
   static async searchForProductPreferHistory(orderedProducts: OrderedProduct[], query: string, storeId: number): Promise<Product | null> {
@@ -189,6 +195,8 @@ export class ProductSearch {
     logger.info("Fuse purchase history search result: " + JSON.stringify(candidates[1]));
     logger.info("Wegmans search result: " + JSON.stringify(candidates[1]));
 
-    return _.find(candidates, (c): c is Product => !!c) || null;
+    const nonNullCandidates = _.filter(candidates, (c): c is Product => !!c);
+    const secondPass = ProductSearch.searchProductsSecondPass(nonNullCandidates, query);
+    return secondPass;
   }
 }
