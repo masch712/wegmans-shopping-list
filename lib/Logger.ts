@@ -2,6 +2,8 @@ import * as winston from "winston";
 import { config } from "./config";
 import { LoggedEvent } from "../models/LoggedEvent";
 
+import * as uuid from 'uuid/v4';
+
 // TODO: winston v3 @types
 
 export const logger = new winston.Logger({
@@ -50,3 +52,14 @@ export const logger = new winston.Logger({
 //     winston.format.printf((info) => `${info.timestamp} ${info.level}: ${info.message}`),
 //   ),
 // });
+
+
+export async function logDuration<T>(eventName: string, promise: Promise<T>): Promise<T> {
+  const id = uuid();
+  logger.debug(new LoggedEvent('starting').addProperty('eventName', eventName).toString());
+  const startTime = new Date().getTime();
+  const result = await promise;
+  const endTime = new Date().getTime();
+  logger.debug(new LoggedEvent('finished').addProperty('eventName', eventName).addProperty('durationMillis', endTime - startTime).toString());
+  return result;
+}

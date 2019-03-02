@@ -1,7 +1,7 @@
 import * as _ from "lodash";
 import * as request from "request-promise-native";
 import { Product } from "../models/Product";
-import { logger } from "./Logger";
+import { logger, logDuration } from "./Logger";
 import { Response } from "request";
 import { OrderedProduct } from "../models/OrderedProduct";
 import { DateTime } from "luxon";
@@ -41,7 +41,6 @@ export class ProductSearch {
       ...firstResult,
       sku: Number.parseInt(firstResult.sku),
     };
-    logger.debug("Retrieved product: " + JSON.stringify(product));
 
     return product;
   }
@@ -51,17 +50,17 @@ export class ProductSearch {
       method: 'POST',
       url: 'https://sp1004f27d.guided.ss-omtrdc.net/',
       form:
-        {
-          do: 'prod-search',
-          i: '1',
-          page: '1',
-          // q: query,
-          sp_c: skus.length,
-          sp_n: '1',
-          sp_x_20: 'id',
-          storeNumber: storeId, //TODO: get storeNumber from JWT?
-          sp_q_exact_20: skus.join('|'),
-        }
+      {
+        do: 'prod-search',
+        i: '1',
+        page: '1',
+        // q: query,
+        sp_c: skus.length,
+        sp_n: '1',
+        sp_x_20: 'id',
+        storeNumber: storeId, //TODO: get storeNumber from JWT?
+        sp_q_exact_20: skus.join('|'),
+      }
     });
     logger.debug('getting products for skus');
     const response = await responsePromise;
@@ -85,17 +84,17 @@ export class ProductSearch {
       method: 'POST',
       url: 'https://sp1004f27d.guided.ss-omtrdc.net/',
       form:
-        {
-          do: 'prod-search',
-          i: '1',
-          page: '1',
-          q: query,
-          sp_c: skus.length,
-          sp_n: '1',
-          sp_x_20: 'id',
-          storeNumber: storeId, //TODO: get storeNumber from JWT?
-          sp_q_exact_20: skuStrings,
-        }
+      {
+        do: 'prod-search',
+        i: '1',
+        page: '1',
+        q: query,
+        sp_c: skus.length,
+        sp_n: '1',
+        sp_x_20: 'id',
+        storeNumber: storeId, //TODO: get storeNumber from JWT?
+        sp_q_exact_20: skuStrings,
+      }
     });
 
     const skuHash: { [sku: number]: number } = {};
@@ -142,8 +141,6 @@ export class ProductSearch {
     });
 
     const searchResults = fuse.search(query) as Array<{ item: OrderedProduct, score: number }>;
-    if (searchResults.length) { logger.debug('fuse found ' + searchResults.length + ' matching products'); }
-    else { logger.debug('fuse found nothing for query: ' + query + '; ' + products.length + ' products searhed');}
 
     const bestProduct = searchResults[0] && _.maxBy(searchResults, result => result.item.purchaseMsSinceEpoch);
     return bestProduct ? bestProduct.item.product : null;
@@ -182,11 +179,12 @@ export class ProductSearch {
 
   static async searchForProductPreferHistory(orderedProducts: OrderedProduct[], query: string, storeId: number): Promise<Product | null> {
     // Get the candidates in order of preference
+
     const candidates = await Promise.all([
       // Best: 
-      ProductSearch.searchSkus(orderedProducts.map(op => op.sku), query, storeId),
-      ProductSearch.searchOrderedProducts(orderedProducts, query),
-      ProductSearch.searchForProduct(query, storeId),
+      logDuration('wegmansHistorySearch', ProductSearch.searchSkus(orderedProducts.map(op => op.sku), query, storeId)),
+      logDuration('fuseHistorySearch', (async () => ProductSearch.searchOrderedProducts(orderedProducts, query))()),
+      logDuration('wegmansProductSearch', ProductSearch.searchForProduct(query, storeId)),
     ]);
 
     logger.info("search query: " + query);

@@ -2,7 +2,7 @@ import * as _ from "lodash";
 import * as request from "request-promise-native";
 import { AccessToken } from "../models/AccessToken";
 import { Product } from "../models/Product";
-import { logger } from "./Logger";
+import { logger, logDuration } from "./Logger";
 import { Response } from "request";
 import { OrderedProduct } from "../models/OrderedProduct";
 import { DateTime } from "luxon";
@@ -174,7 +174,7 @@ export class WegmansDao {
 
   async getOrderHistory(accessToken: string, storeId: number) {
     const userId = (jwt.decode(accessToken) as { sub: string }).sub;
-    const orderHistory = await orderHistoryDao.get(userId);
+    const orderHistory = await logDuration('orderHistoryDao.get(userId)', orderHistoryDao.get(userId));
     let orderedProducts: OrderedProduct[] = [];
     let updateCachePromise = undefined;
 
