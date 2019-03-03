@@ -125,7 +125,7 @@ async put(username: string, item: OrderedProduct[], freshAsOfEpochMs = DateTime.
     };
     const cleanOorderedProduct = {
       ...rawOp,
-      product: _.omitBy(product, _.isEmpty),
+      product: _.omitBy(product, (val) => !val),
     };
     return cleanOorderedProduct;
   });

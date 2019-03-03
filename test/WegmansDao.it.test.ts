@@ -23,7 +23,7 @@ describe('wegmans dao', () => {
     expect(tokens).toBeDefined();
   });
   test('gets goat cheese', async () => {
-    const goat = await ProductSearch.searchForProduct('goat cheese', storeId);
+    const goat = await ProductSearch.wegmansSearchForProduct('goat cheese', storeId);
     expect(goat).not.toBeNull();
     expect(goat!.subcategory).toEqual('Goat Cheese');
   });
@@ -32,7 +32,7 @@ describe('wegmans dao', () => {
     expect(shoppingListId).toBeGreaterThan(0);
   });
   test('adds goat cheese to list', async () => {
-    const goat = await ProductSearch.searchForProduct('goat cheese', storeId);
+    const goat = await ProductSearch.wegmansSearchForProduct('goat cheese', storeId);
     await wegmans.addProductToShoppingList(tokens.access, goat!);
   });
   test('gets purchase history', async () => {

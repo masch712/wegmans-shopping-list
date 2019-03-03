@@ -4,6 +4,7 @@ import { AccessToken } from "../models/AccessToken";
 import { config } from "../lib/config";
 import { OrderedProduct } from "../models/OrderedProduct";
 
+jest.setTimeout(30000);
 const wegmans = new WegmansDao(config.get('wegmans.apikey'));
 let tokens: AccessToken;
 let storeId: number;
@@ -32,4 +33,9 @@ test('search products get ice cream', async () => {
   const product = await ProductSearch.searchForProductPreferHistory(orderHistory.orderedProducts, 'ice cream', storeId);
   expect(product).toBeDefined();
   expect(product!.category).toMatch(/ice cream/i);
+});
+test('search products get organic whole wheat flour', async () => {
+  const product = await ProductSearch.searchForProductPreferHistory(orderHistory.orderedProducts, 'organic whole wheat flour', storeId);
+  expect(product).toBeDefined();
+  expect(product!.name).toMatch(/flour, whole wheat/i);
 });

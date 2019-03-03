@@ -7,6 +7,7 @@ import { OrderedProduct } from "../models/OrderedProduct";
 import { DateTime } from "luxon";
 import * as jwt from "jsonwebtoken";
 import * as Fuse from "fuse.js";
+import { LoggedEvent } from "../models/LoggedEvent";
 
 interface ProductSearchResultItem {
   name: string;
@@ -21,7 +22,7 @@ interface ProductSearchResultItem {
 
 export class ProductSearch {
 
-  static async searchForProduct(query: string, storeId: number): Promise<Product | null> {
+  static async wegmansSearchForProduct(query: string, storeId: number): Promise<Product | null> {
 
     const response = await request.get("https://sp1004f27d.guided.ss-omtrdc.net", {
       qs: {
@@ -78,30 +79,31 @@ export class ProductSearch {
     return _.groupBy(products, 'sku');
   }
 
-  static async searchSkus(skus: number[], query: string, storeId: number): Promise<Product | null> {
+  static async wegmansSearchSkus(skus: number[], query: string, storeId: number): Promise<Product | null> {
     const skuStrings = skus.map(sku => `SKU_${sku}`).join('|');
+    const postForm = {
+      do: 'prod-search',
+      i: '1',
+      page: '1',
+      q: query,
+      sp_c: skus.length,
+      sp_n: '1',
+      sp_x_20: 'id',
+      storeNumber: storeId, //TODO: get storeNumber from JWT?
+      sp_q_exact_20: skuStrings,
+    };
+    logger.silly(new LoggedEvent('wegmansSearchSkus').addProperty('form', postForm).toString());
     const responsePromise = request({
       method: 'POST',
       url: 'https://sp1004f27d.guided.ss-omtrdc.net/',
-      form:
-      {
-        do: 'prod-search',
-        i: '1',
-        page: '1',
-        q: query,
-        sp_c: skus.length,
-        sp_n: '1',
-        sp_x_20: 'id',
-        storeNumber: storeId, //TODO: get storeNumber from JWT?
-        sp_q_exact_20: skuStrings,
-      }
-    });
+      form: postForm,
+    }).then(_.identity());
 
     const skuHash: { [sku: number]: number } = {};
     let skuIndex = 0;
     skus.forEach(sku => { skuHash[sku] = skuIndex++; });
 
-    const response = await responsePromise;
+    const response = await logDuration('wegmansSearchSkusRequest', responsePromise);
 
     const body = JSON.parse(response);
 
@@ -120,7 +122,7 @@ export class ProductSearch {
     return product;
   }
 
-  static searchOrderedProducts(products: OrderedProduct[], query: string) {
+  static fuseSearchOrderedProducts(products: OrderedProduct[], query: string) {
     const fuse = new Fuse(products, {
       shouldSort: true,
       includeScore: true,
@@ -134,7 +136,6 @@ export class ProductSearch {
         "product.name",
         "product.category",
         "product.subcategory",
-        // TODO: add brand and details to dynamo schema?
         "product.brand",
         // "product.details",
       ] as unknown as Array<keyof OrderedProduct> // coerce type to keyof OrderedProducts because typescript doesn't like nested object keys
@@ -167,9 +168,9 @@ export class ProductSearch {
 
     const searchResults = fuse.search(query);
     // If a product other than the 0-indexed product is the best match,
-    // it better have a score that's 0.5 better than the next one
+    // it better have a score that's 0.15 better than the next one
     const bestScore = (searchResults[0]).score!;
-    if (searchResults.length > 1 && bestScore < _.last(searchResults)!.score! - 0.5) {
+    if (searchResults.length > 1 && bestScore < _.last(searchResults)!.score! - 0.15) {
       return searchResults[0].item;
     }
     else {
@@ -182,17 +183,17 @@ export class ProductSearch {
 
     const candidates = await Promise.all([
       // Best: 
-      logDuration('wegmansHistorySearch', ProductSearch.searchSkus(orderedProducts.map(op => op.sku), query, storeId)),
-      logDuration('fuseHistorySearch', (async () => ProductSearch.searchOrderedProducts(orderedProducts, query))()),
-      logDuration('wegmansProductSearch', ProductSearch.searchForProduct(query, storeId)),
+      logDuration('wegmansHistorySearch', ProductSearch.wegmansSearchSkus(orderedProducts.map(op => op.sku), query, storeId)),
+      logDuration('fuseHistorySearch', (async () => ProductSearch.fuseSearchOrderedProducts(orderedProducts, query))()),
+      logDuration('wegmansProductSearch', ProductSearch.wegmansSearchForProduct(query, storeId)),
     ]);
 
     logger.info("search query: " + query);
     logger.info("Wegmans purchase history search result: " + JSON.stringify(candidates[0]));
     logger.info("Fuse purchase history search result: " + JSON.stringify(candidates[1]));
-    logger.info("Wegmans search result: " + JSON.stringify(candidates[1]));
+    logger.info("Wegmans search result: " + JSON.stringify(candidates[2]));
 
-    const nonNullCandidates = _.filter(candidates, (c): c is Product => !!c);
+    const nonNullCandidates = _.filter(candidates, (c): c is Product => !!c && !!c.sku);
     const secondPass = ProductSearch.searchProductsSecondPass(nonNullCandidates, query);
     return secondPass;
   }
