@@ -10,6 +10,7 @@ import { orderHistoryDao } from "./OrderHistoryDao";
 import * as jwt from "jsonwebtoken";
 import Fuse = require("fuse.js");
 import { ProductSearch } from "./ProductSearch";
+import { config } from "../lib/config";
 
 interface OrderHistoryResponseItem {
   LastPurchaseDate: string;
@@ -180,11 +181,13 @@ export class WegmansDao {
 
     // Update cache if oldre than 24 hours
     if (
-      !orderHistory 
-      || !orderHistory.orderedProducts 
-      || !orderHistory.orderedProducts.length 
-      || orderHistory.lastCachedMillisSinceEpoch < new Date().valueOf() - 24*3600*1000 
-      || orderHistory.lastCachedMillisSinceEpoch < 1551646031169) { // Before 3/3/2019, when I fixed a bug that requires me to re-cache order history
+      !orderHistory
+      || !orderHistory.orderedProducts
+      || !orderHistory.orderedProducts.length
+      || orderHistory.lastCachedMillisSinceEpoch < new Date().valueOf() - 24 * 3600 * 1000
+      || orderHistory.lastCachedMillisSinceEpoch < 1551646031169 // Before 3/3/2019, when I fixed a bug that requires me to re-cache order history
+      || !config.get("cache.orderHistory.enabled")
+    ) {
       logger.debug('order history cache miss');
       const response = await request({
         method: 'GET',
@@ -221,7 +224,7 @@ export class WegmansDao {
       // Get the actual products.  These are useful later for in-memory fuzzy search
       const skus = orderedProducts.map(orderedProduct => orderedProduct.sku);
       //TODO: this seems....slow
-      const productsBySku = await ProductSearch.getProductBySku(skus.map(sku => `SKU_${sku}`), storeId);
+      const productsBySku = await logDuration('map_getProductBySku', ProductSearch.getProductBySku(skus.map(sku => `SKU_${sku}`), storeId));
 
       for (let index = orderedProducts.length - 1; index >= 0; index--) {
         const orderedProduct = orderedProducts[index];

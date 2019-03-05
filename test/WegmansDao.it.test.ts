@@ -35,17 +35,26 @@ describe('wegmans dao', () => {
     const goat = await ProductSearch.wegmansSearchForProduct('goat cheese', storeId);
     await wegmans.addProductToShoppingList(tokens.access, goat!);
   });
-  test('gets purchase history', async () => {
-    await orderHistoryDao.delete(config.get('wegmans.email'));
-    const history = await wegmans.getOrderHistory(tokens.access, storeId);
-    // cache should have good stuff
-    if(history.cacheUpdatePromise) {
-      await history.cacheUpdatePromise;
-    }
-    const orderedProducts = await orderHistoryDao.get(config.get('wegmans.email'));
-    expect(orderedProducts).not.toBeNull();
-    expect(orderedProducts!.orderedProducts.length).toBeGreaterThan(0);
-    expect(history.orderedProducts.length).toBeGreaterThan(0);
+  describe("purchase history", () => {
+    const oldCacheEnabled = config.get("cache.orderHistory.enabled");
+    beforeEach(() => {
+      config.set("cache.orderHistory.enabled", false);
+    });
+    afterEach(() => {
+      config.set("cache.orderHistory.enabled", oldCacheEnabled);
+    });
+    test('gets purchase history', async () => {
+      await orderHistoryDao.delete(config.get('wegmans.email'));
+      const history = await wegmans.getOrderHistory(tokens.access, storeId);
+      // cache should have good stuff
+      if(history.cacheUpdatePromise) {
+        await history.cacheUpdatePromise;
+      }
+      const orderedProducts = await orderHistoryDao.get(config.get('wegmans.email'));
+      expect(orderedProducts).not.toBeNull();
+      expect(orderedProducts!.orderedProducts.length).toBeGreaterThan(0);
+      expect(history.orderedProducts.length).toBeGreaterThan(0);
+    });
   });
   //TODO: write a test that mocks fuse to return no products.  make sure product comes from actual wegmans search
   //TODO: write unit tests that mock wegmans

@@ -39,3 +39,8 @@ test('search products get organic whole wheat flour', async () => {
   expect(product).toBeDefined();
   expect(product!.name).toMatch(/flour, whole wheat/i);
 });
+test.skip('search products get parmesano reggiano', async () => {
+  const product = await ProductSearch.searchForProductPreferHistory(orderHistory.orderedProducts, 'parmesano reggiano', storeId);
+  expect(product).toBeDefined();
+  expect(product!.name).toMatch(/flour, whole wheat/i);
+});

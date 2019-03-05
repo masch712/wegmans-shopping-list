@@ -169,8 +169,8 @@ export class ProductSearch {
     const searchResults = fuse.search(query);
     // If a product other than the 0-indexed product is the best match,
     // it better have a score that's 0.15 better than the next one
-    const bestScore = (searchResults[0]).score!;
-    if (searchResults.length > 1 && bestScore < _.last(searchResults)!.score! - 0.15) {
+    const bestScore: number | undefined = searchResults && searchResults[0] && (searchResults[0]).score!;
+    if (searchResults.length > 0) {//1 && bestScore < _.last(searchResults)!.score! - 0.15) {
       return searchResults[0].item;
     }
     else {
@@ -193,6 +193,9 @@ export class ProductSearch {
     logger.info("Fuse purchase history search result: " + JSON.stringify(candidates[1]));
     logger.info("Wegmans search result: " + JSON.stringify(candidates[2]));
 
+    if (candidates[0]) {
+      return candidates[0];
+    }
     const nonNullCandidates = _.filter(candidates, (c): c is Product => !!c && !!c.sku);
     const secondPass = ProductSearch.searchProductsSecondPass(nonNullCandidates, query);
     return secondPass;
