@@ -189,7 +189,7 @@ export class WegmansDao {
       || !config.get("cache.orderHistory.enabled")
     ) {
       logger.debug('order history cache miss');
-      const response = await request({
+      const response = await logDuration('wegmansRequestOrderHistory', request({
         method: 'GET',
         url: `https://wegapi.azure-api.net/purchases/history/summary/${storeId}`,
         qs: {
@@ -207,7 +207,7 @@ export class WegmansDao {
           Authorization: accessToken,
           Accept: 'application/json',
         }
-      });
+      }).then(_.identity())); //TODO: wtf is up with ts and this _.identity business?  return type undefined?
 
       const body = JSON.parse(response) as OrderHistoryResponseItem[];
       orderedProducts = body.map(item => {
