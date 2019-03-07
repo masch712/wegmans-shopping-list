@@ -120,10 +120,14 @@ async (event, context, callback): Promise<APIGatewayProxyResult> => {
   if (body.refresh_token) {
     logger.debug(`getting token by refresh token: ${body.refresh_token}`);
     const wegmansDao = await wegmansDaoPromise;
-    tokens = await accessCodeDao.getTokensByRefresh(body.refresh_token as string);
-    tokens = await wegmansDao.refreshTokens(body.refresh_token as string, tokens.user);
+    const oldTokens = await accessCodeDao.getTokensByRefresh(body.refresh_token as string);
+    tokens = await wegmansDao.refreshTokens(body.refresh_token as string, oldTokens.user);
     logger.debug(`saving refresh token`);
     await accessCodeDao.put(tokens);
+    logger.debug(`deleting old refresh token`);
+    await accessCodeDao.deleteRefreshCode(tokens.refresh);
+    logger.debug(`deleting old access`);
+    await accessCodeDao.deleteAccess(tokens.access);
   }
 
   if (!tokens || !tokens.access) {

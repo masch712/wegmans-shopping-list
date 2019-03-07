@@ -1,6 +1,29 @@
 import { config } from "../lib/config";
 import { accessCodeDao, TABLENAME_TOKENSBYCODE } from "../lib/AccessCodeDao";
+import { AccessToken } from "../models/AccessToken";
 jest.setTimeout(30000);
+
+describe('getAllCurrentAccessTokens', () => {
+  test('gets all current access tokens', async () => {
+    // Add some tokens to the db first
+    const tokens: AccessToken[] = [
+      {
+        access: 'niner',
+        refresh: 'fiver',
+        user: 'johnson',
+      },
+      {
+        access: 'niner2',
+        refresh: 'fiver2',
+        user: 'johnson2',
+      },
+    ];
+    await Promise.all(tokens.map(token => accessCodeDao.put(token)));
+    const actualResult = await accessCodeDao.getAllAccessTokens();
+    expect(actualResult).toContainEqual(tokens[0]);
+    expect(actualResult).toContainEqual(tokens[1]);
+  });
+});
 
 describe('login', () => {
   beforeEach(async () => {
