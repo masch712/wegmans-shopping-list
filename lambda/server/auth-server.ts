@@ -109,6 +109,10 @@ async (event, context, callback): Promise<APIGatewayProxyResult> => {
   logger.debug("getting tokens");
   let tokens: AccessToken | null = null;
   let deletePromise;
+  
+  // If Alexa is sending us an access_code and waants tokens, we're finishing up account linking.
+  // Get the tokens and delete the access code; don't need it again.
+  // https://developer.amazon.com/docs/account-linking/configure-authorization-code-grant.html
   if (body.code) {
     logger.debug("getting token by code");
     tokens = await accessCodeDao.getTokensByCode(body.code as string);
@@ -117,6 +121,7 @@ async (event, context, callback): Promise<APIGatewayProxyResult> => {
     deletePromise = accessCodeDao.deleteAccessCode(body.code as string)
     .then(() => logger.debug("access code delete complete."));
   }
+  
   if (body.refresh_token) {
     logger.debug(`getting token by refresh token: ${body.refresh_token}`);
     const wegmansDao = await wegmansDaoPromise;

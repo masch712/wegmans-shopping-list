@@ -27,6 +27,12 @@ export class WegmansDao {
     this.apiKey = apiKey;
   }
 
+  static isAccessTokenExpired(token: AccessToken): boolean {
+    const accessToken = jwt.decode(token.access) as { [key: string]: number }; // TODO: make a real JWT type?
+    const exp = accessToken.exp;
+    return exp*1000 < new Date().valueOf();
+  }
+  
   static getStoreIdFromTokens(token: AccessToken): number {
     // Temporary hack: return 59
     if (!token) {
