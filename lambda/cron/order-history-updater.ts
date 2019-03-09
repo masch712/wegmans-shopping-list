@@ -24,7 +24,7 @@ export async function handler() {
     const storeId = WegmansDao.getStoreIdFromTokens(token);
 
     // Refresh if necessary.  Don't worry, Alexa will still be able to refresh the old token again.
-    if (WegmansDao.isAccessTokenExpired(token)) {
+    if (WegmansDao.isAccessTokenExpired(token) || process.env.FORCE_REFRESH) {
       logger.info("Refreshing token");
       const newToken = await wegmansDao.refreshTokens(token.refresh, token.user);
       token.access = newToken.access;

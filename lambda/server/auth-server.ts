@@ -22,7 +22,8 @@ const wegmansDaoPromise = decryptionPromise.then(() => new WegmansDao(config.get
  */
 export const generateAuthCode: APIGatewayProxyHandler =
 async (event, context, callback): Promise<APIGatewayProxyResult> => {
-  logger.debug("Event received: " + JSON.stringify(event, null, 2));
+  // DO NOT LOG THE EVENT; it contains the password
+  // logger.debug("Event received: " + JSON.stringify(event, null, 2));
   if (!event.body) {
     throw new Error("gotta have a body");
   }
@@ -123,16 +124,16 @@ async (event, context, callback): Promise<APIGatewayProxyResult> => {
   }
   
   if (body.refresh_token) {
-    logger.debug(`getting token by refresh token: ${body.refresh_token}`);
     const wegmansDao = await wegmansDaoPromise;
+    logger.debug(`getting token by refresh token: ${body.refresh_token}`);
     const oldTokens = await accessCodeDao.getTokensByRefresh(body.refresh_token as string);
     tokens = await wegmansDao.refreshTokens(body.refresh_token as string, oldTokens.user);
     logger.debug(`saving refresh token`);
     await accessCodeDao.put(tokens);
     logger.debug(`deleting old refresh token`);
-    await accessCodeDao.deleteRefreshCode(tokens.refresh);
+    await accessCodeDao.deleteRefreshCode(oldTokens.refresh);
     logger.debug(`deleting old access`);
-    await accessCodeDao.deleteAccess(tokens.access);
+    await accessCodeDao.deleteAccess(oldTokens.access);
   }
 
   if (!tokens || !tokens.access) {

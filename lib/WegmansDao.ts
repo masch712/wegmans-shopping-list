@@ -32,7 +32,7 @@ export class WegmansDao {
     const exp = accessToken.exp;
     return exp*1000 < new Date().valueOf();
   }
-  
+
   static getStoreIdFromTokens(token: AccessToken): number {
     // Temporary hack: return 59
     if (!token) {
@@ -68,7 +68,8 @@ export class WegmansDao {
       const refresh = WegmansDao.getCookie(err.response, "wegmans_refresh");
       const user = WegmansDao.getCookie(err.response, "wegmans_user");
       if (!access || !refresh || !user) {
-        logger.debug(JSON.stringify(err, null, 2));
+        // BEWARE: might contain  password; do not log
+        // logger.debug(JSON.stringify(err, null, 2));
         throw new Error("No access tokens in response; bad login credentials?");
       }
       tokens = { access, refresh, user };
