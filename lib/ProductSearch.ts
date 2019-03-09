@@ -1,12 +1,13 @@
 import * as _ from "lodash";
 import * as request from "request-promise-native";
 import { Product } from "../models/Product";
-import { logger } from "./Logger";
+import { logger, logDuration } from "./Logger";
 import { Response } from "request";
 import { OrderedProduct } from "../models/OrderedProduct";
 import { DateTime } from "luxon";
 import * as jwt from "jsonwebtoken";
 import * as Fuse from "fuse.js";
+import { LoggedEvent } from "../models/LoggedEvent";
 
 interface ProductSearchResultItem {
   name: string;
@@ -14,11 +15,14 @@ interface ProductSearchResultItem {
   subcategory: string;
   department: string;
   sku: string;
+  brand: string;
+  details: string;
+  productLine: string;
 }
 
 export class ProductSearch {
 
-  static async searchForProduct(query: string, storeId: number): Promise<Product | null> {
+  static async wegmansSearchForProduct(query: string, storeId: number): Promise<Product | null> {
 
     const response = await request.get("https://sp1004f27d.guided.ss-omtrdc.net", {
       qs: {
@@ -33,15 +37,11 @@ export class ProductSearch {
       return null;
     }
 
-    const firstResult = body.results[0];
-    const product = new Product(
-      firstResult.name,
-      firstResult.category,
-      firstResult.subcategory,
-      firstResult.department,
-      Number.parseInt(firstResult.sku),
-    );
-    logger.debug("Retrieved product: " + JSON.stringify(product));
+    const firstResult = body.results[0] as ProductSearchResultItem;
+    const product: Product = {
+      ...firstResult,
+      sku: Number.parseInt(firstResult.sku),
+    };
 
     return product;
   }
@@ -51,17 +51,17 @@ export class ProductSearch {
       method: 'POST',
       url: 'https://sp1004f27d.guided.ss-omtrdc.net/',
       form:
-        {
-          do: 'prod-search',
-          i: '1',
-          page: '1',
-          // q: query,
-          sp_c: skus.length,
-          sp_n: '1',
-          sp_x_20: 'id',
-          storeNumber: storeId, //TODO: get storeNumber from JWT?
-          sp_q_exact_20: skus.join('|'),
-        }
+      {
+        do: 'prod-search',
+        i: '1',
+        page: '1',
+        // q: query,
+        sp_c: skus.length,
+        sp_n: '1',
+        sp_x_20: 'id',
+        storeNumber: storeId, //TODO: get storeNumber from JWT?
+        sp_q_exact_20: skus.join('|'),
+      }
     });
     logger.debug('getting products for skus');
     const response = await responsePromise;
@@ -70,42 +70,40 @@ export class ProductSearch {
     const body = JSON.parse(response);
 
     const products = (body.results as ProductSearchResultItem[]).map(result => {
-      return new Product(
-        result.name,
-        result.category,
-        result.subcategory,
-        result.department,
-        Number.parseInt(result.sku)
-      );
+      return {
+        ...result,
+        sku: Number.parseInt(result.sku),
+      };
     });
 
     return _.groupBy(products, 'sku');
   }
 
-  static async searchSkus(skus: number[], query: string, storeId: number): Promise<Product | null> {
+  static async wegmansSearchSkus(skus: number[], query: string, storeId: number): Promise<Product | null> {
     const skuStrings = skus.map(sku => `SKU_${sku}`).join('|');
+    const postForm = {
+      do: 'prod-search',
+      i: '1',
+      page: '1',
+      q: query,
+      sp_c: skus.length,
+      sp_n: '1',
+      sp_x_20: 'id',
+      storeNumber: storeId, //TODO: get storeNumber from JWT?
+      sp_q_exact_20: skuStrings,
+    };
+    logger.silly(new LoggedEvent('wegmansSearchSkus').addProperty('form', postForm).toString());
     const responsePromise = request({
       method: 'POST',
       url: 'https://sp1004f27d.guided.ss-omtrdc.net/',
-      form:
-        {
-          do: 'prod-search',
-          i: '1',
-          page: '1',
-          q: query,
-          sp_c: skus.length,
-          sp_n: '1',
-          sp_x_20: 'id',
-          storeNumber: storeId, //TODO: get storeNumber from JWT?
-          sp_q_exact_20: skuStrings,
-        }
-    });
+      form: postForm,
+    }).then(_.identity());
 
     const skuHash: { [sku: number]: number } = {};
     let skuIndex = 0;
     skus.forEach(sku => { skuHash[sku] = skuIndex++; });
 
-    const response = await responsePromise;
+    const response = await logDuration('wegmansSearchSkusRequest', responsePromise);
 
     const body = JSON.parse(response);
 
@@ -116,48 +114,90 @@ export class ProductSearch {
       return null;
     }
 
-    const product = new Product(
-      bestResult.name,
-      bestResult.category,
-      bestResult.subcategory,
-      bestResult.department,
-      Number.parseInt(bestResult.sku),
-    );
+    const product: Product = {
+      ...bestResult,
+      sku: Number.parseInt(bestResult.sku),
+    };
 
     return product;
   }
 
-  static searchProducts(products: OrderedProduct[], query: string) {
+  static fuseSearchOrderedProducts(products: OrderedProduct[], query: string) {
     const fuse = new Fuse(products, {
       shouldSort: true,
       includeScore: true,
-      threshold: 0.15,
+      tokenize: true,
       location: 0,
+      threshold: 0.15,
       distance: 100,
       maxPatternLength: 32,
       minMatchCharLength: 1,
       keys: [
         "product.name",
         "product.category",
-        "product.subcategory"
+        "product.subcategory",
+        "product.brand",
+        // "product.details",
       ] as unknown as Array<keyof OrderedProduct> // coerce type to keyof OrderedProducts because typescript doesn't like nested object keys
     });
 
     const searchResults = fuse.search(query) as Array<{ item: OrderedProduct, score: number }>;
-    if (searchResults.length) { logger.debug('fuse found ' + searchResults.length + ' matching products'); }
-    else { logger.debug('fuse found nothing for query: ' + query + '; ' + products.length + ' products searhed');}
 
     const bestProduct = searchResults[0] && _.maxBy(searchResults, result => result.item.purchaseMsSinceEpoch);
-    return bestProduct && bestProduct.item.product;
+    return bestProduct ? bestProduct.item.product : null;
   }
 
-  static async searchForProductPreferHistory(orderedProductsPromise: Promise<OrderedProduct[]>, query: string, storeId: number): Promise<Product | null> {
-    // Fire off both requests
-    const productPromise = ProductSearch.searchForProduct(query, storeId);
-    
-    const previouslyOrderedProduct = ProductSearch.searchProducts(await orderedProductsPromise, query);
+  static searchProductsSecondPass(products: Product[], query: string) {
+    const fuse = new Fuse(products, {
+      shouldSort: true,
+      includeScore: true,
+      tokenize: true,
+      location: 0,
+      threshold: 0.15,
+      distance: 100,
+      maxPatternLength: 32,
+      minMatchCharLength: 1,
+      keys: [
+        "name",
+        "category",
+        "subcategory",
+        "brand",
+        "details",
+      ],
+    });
 
-    // If we found a previously-bought product, return that.  otherwise, wait for the search to resolve.
-    return previouslyOrderedProduct || await productPromise;
+    const searchResults = fuse.search(query);
+    // If a product other than the 0-indexed product is the best match,
+    // it better have a score that's 0.15 better than the next one
+    const bestScore: number | undefined = searchResults && searchResults[0] && (searchResults[0]).score!;
+    if (searchResults.length > 0) {//1 && bestScore < _.last(searchResults)!.score! - 0.15) {
+      return searchResults[0].item;
+    }
+    else {
+      return products[0];
+    }
+  }
+
+  static async searchForProductPreferHistory(orderedProducts: OrderedProduct[], query: string, storeId: number): Promise<Product | null> {
+    // Get the candidates in order of preference
+
+    const candidates = await Promise.all([
+      // Best: 
+      logDuration('wegmansHistorySearch', ProductSearch.wegmansSearchSkus(orderedProducts.map(op => op.sku), query, storeId)),
+      logDuration('fuseHistorySearch', (async () => ProductSearch.fuseSearchOrderedProducts(orderedProducts, query))()),
+      logDuration('wegmansProductSearch', ProductSearch.wegmansSearchForProduct(query, storeId)),
+    ]);
+
+    logger.info("search query: " + query);
+    logger.info("Wegmans purchase history search result: " + JSON.stringify(candidates[0]));
+    logger.info("Fuse purchase history search result: " + JSON.stringify(candidates[1]));
+    logger.info("Wegmans search result: " + JSON.stringify(candidates[2]));
+
+    if (candidates[0]) {
+      return candidates[0];
+    }
+    const nonNullCandidates = _.filter(candidates, (c): c is Product => !!c && !!c.sku);
+    const secondPass = ProductSearch.searchProductsSecondPass(nonNullCandidates, query);
+    return secondPass;
   }
 }

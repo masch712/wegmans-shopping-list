@@ -1,0 +1,24 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: An AWS Serverless Specification template describing your function.
+Resources:
+  wegmansshoppinglist:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: lambda/alexa/index.handler
+      Runtime: nodejs8.10
+      Code:
+        S3Bucket:
+        S3Key:
+      MemorySize: 128
+      Timeout: 60
+      Role: 'arn:aws:iam::412272193202:role/LambdaDynamoRW'
+      Environment:
+        Variables:
+          AWS_ENCRYPTED: 'true'
+          LOGGING_LEVEL: debug
+          LOGICAL_ENV: development-aws
+          WEGMANS_APIKEY: >-
+            AQICAHhEbkp592DXQD2+erIwWGqDeHoUQnAaX1Sw+4YW0087HwH8RXX/AbEVLZkJKaecLtodAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMiKCMxebwomihAFKIAgEQgDuufhAPULVlpHYsEhxt0lMSrTLLWkQ9Oo1aPWEp16Orm4kvVkGYjgiBn/LAGxpu3MELznE3cqPFDletuA==
+          WEGMANS_EMAIL: ''
+          WEGMANS_PASSWORD: ''

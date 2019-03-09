@@ -97,6 +97,16 @@ export const config = convict({
       },
     },
   },
+  cache: {
+    orderHistory: {
+      enabled: {
+        doc: "Whether to use the order history cache.  Set to false to retrieve order history every time.",
+        default: true,
+        format: Boolean,
+        env: 'CACHE_ORDERHISTORY_ENABLED',
+      },
+    },
+  },
 });
 
 // Load environment dependent configuration

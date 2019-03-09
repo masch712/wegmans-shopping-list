@@ -7,4 +7,8 @@ aws lambda update-function-configuration --function-name wegmans-auth_get-access
 
 aws lambda update-function-code --function-name wegmans-auth_get-access-tokens --s3-bucket wegmans-lambda-builds --s3-key build.zip --profile wegmans;
 aws lambda update-function-configuration --function-name wegmans-auth_get-access-tokens --handler 'lambda/server/auth-server.getTokens' --profile wegmans;
+
+aws lambda update-function-code --function-name wegmans-update_order_history_cache --s3-bucket wegmans-lambda-builds --s3-key build.zip --profile wegmans;
+aws lambda update-function-configuration --function-name wegmans-update_order_history_cache --handler 'lambda/cron/order-history-updater.handler' --profile wegmans;
+
 # TODO: set env vars and IAM user in this script

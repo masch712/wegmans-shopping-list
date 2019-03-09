@@ -60,7 +60,27 @@ const params_TokensByAccessToken: AWS.DynamoDB.CreateTableInput = {
 };
 
 class AccessCodeDao extends DynamoDao {
-  
+  async getAllAccessTokens(): Promise<AccessToken[]> {
+    const dbTokens = await this.docClient.scan({
+      TableName: TABLENAME_TOKENSBYACCESS,
+    }).promise();
+    return dbTokens.Items as AccessToken[];
+  }
+
+  async deleteRefreshCode(refresh: string): Promise<void> {
+    await this.docClient.delete({
+      TableName: TABLENAME_TOKENSBYREFRESH,
+      Key: { refresh },
+    }).promise();
+  }
+
+  async deleteAccess(access: string): Promise<void> {
+    await this.docClient.delete({
+      TableName: TABLENAME_TOKENSBYACCESS,
+      Key: { access },
+    }).promise();
+  }
+
   static getInstance(endpoint: string): AccessCodeDao {
     if (!AccessCodeDao._instance) {
       AccessCodeDao._instance = new AccessCodeDao(endpoint);
@@ -68,12 +88,12 @@ class AccessCodeDao extends DynamoDao {
     return AccessCodeDao._instance;
   }
   private static _instance: AccessCodeDao;
-  
-              tableParams: AWS.DynamoDB.CreateTableInput[] = [
-                params_TokensByCode,
-                params_TokensByRefresh,
-                params_TokensByAccessToken
-              ];
+
+  tableParams: AWS.DynamoDB.CreateTableInput[] = [
+    params_TokensByCode,
+    params_TokensByRefresh,
+    params_TokensByAccessToken
+  ];
 
   async getTokensByCode(code: string): Promise<AccessToken> {
     const dbTokens = await this.docClient.get({
@@ -110,7 +130,7 @@ class AccessCodeDao extends DynamoDao {
     const tokensByCodePromise = item.access_code ? this.docClient.put({
       Item: item,
       TableName: TABLENAME_TOKENSBYCODE,
-    }).promise().then(() => {}) : Promise.resolve();
+    }).promise().then(() => { }) : Promise.resolve();
 
     const tokensByRefreshTokenPromise = this.docClient.put({
       Item: item,

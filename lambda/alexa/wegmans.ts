@@ -5,7 +5,7 @@ import { KMS } from "aws-sdk";
 import * as _ from "lodash";
 import { config } from "../../lib/config";
 import { decryptionPromise } from "../../lib/decrypt-config";
-import { logger } from "../../lib/Logger";
+import { logger, logDuration } from "../../lib/Logger";
 import { WegmansDao } from "../../lib/WegmansDao";
 import { ProductSearch } from "../../lib/ProductSearch";
 import { accessCodeDao } from "../../lib/AccessCodeDao";
@@ -75,17 +75,17 @@ export const addToShoppingList: RequestHandler = {
       logger.info(new AccessTokenNotFoundLoggedEvent().toString());
       tokensPromise = wegmansDao.login(config.get("wegmans.email"), config.get("wegmans.password"));
     }
-
+    
     // What did the user ask for?  Pull it out of the intent slot.
     const productQuery = intent.slots![PRODUCT_SLOT].value;
-
+    
     // Given the user's tokens, look up their storeId
-    const tokens = await tokensPromise;
+    const tokens = await logDuration('getTokens', tokensPromise);
     accessToken = accessToken || tokens.access;
     const storeId = WegmansDao.getStoreIdFromTokens(tokens);
-
     // Find a product
-    const product = await ProductSearch.searchForProductPreferHistory(wegmansDao.getOrderHistory(accessToken, storeId), productQuery, storeId);
+    const {orderedProducts, cacheUpdatePromise} = await logDuration('wegmansDao.getOrderHistory', wegmansDao.getOrderHistory(accessToken, storeId));
+    const product = await ProductSearch.searchForProductPreferHistory(orderedProducts, productQuery, storeId);
     if (product) {
       logger.debug(new LoggedEvent('foundProduct')
         .addProperty('name', product.name)
@@ -94,6 +94,10 @@ export const addToShoppingList: RequestHandler = {
     else {
       logger.debug(new LoggedEvent('noProductFound')
         .addProperty('ms', (new Date().valueOf() - startMs)).toString());
+    }
+
+    if (cacheUpdatePromise) {
+      cacheUpdatePromise.then(() => logger.info('updated cache')); // TODO: do this in the background AFTER alexa has responded
     }
 
     if (!product) {
@@ -107,7 +111,7 @@ export const addToShoppingList: RequestHandler = {
     }
 
     // Add to shopping list asynchronously; don't hold up the response.
-    const addToShoppingListPromise = wegmansDao.addProductToShoppingList(accessToken, product);
+    await wegmansDao.addProductToShoppingList(accessToken, product);
 
     const alexaFriendlyProductName = product.name.replace(/\&/g, 'and');
 

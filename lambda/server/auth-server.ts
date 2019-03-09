@@ -1,5 +1,4 @@
-import { APIGatewayProxyHandler, APIGatewayProxyResult, Handler } from "aws-lambda";
-import { KMS } from "aws-sdk";
+import { APIGatewayProxyHandler, APIGatewayProxyResult } from "aws-lambda";
 import * as basic from "basic-auth";
 import { decode } from "jsonwebtoken";
 import * as querystring from "querystring";
@@ -21,8 +20,9 @@ const wegmansDaoPromise = decryptionPromise.then(() => new WegmansDao(config.get
  * Respond with the code.
  */
 export const generateAuthCode: APIGatewayProxyHandler =
-async (event, context, callback): Promise<APIGatewayProxyResult> => {
-  logger.debug("Event received: " + JSON.stringify(event, null, 2));
+async (event): Promise<APIGatewayProxyResult> => {
+  // DO NOT LOG THE EVENT; it contains the password
+  // logger.debug("Event received: " + JSON.stringify(event, null, 2));
   if (!event.body) {
     throw new Error("gotta have a body");
   }
@@ -78,7 +78,7 @@ async (event, context, callback): Promise<APIGatewayProxyResult> => {
 };
 
 export const getTokens: APIGatewayProxyHandler =
-async (event, context, callback): Promise<APIGatewayProxyResult> => {
+async (event): Promise<APIGatewayProxyResult> => {
   if (event.httpMethod === "OPTIONS") {
     return {
       body: "",
@@ -91,10 +91,12 @@ async (event, context, callback): Promise<APIGatewayProxyResult> => {
   if (!authHeader) {
     throw new Error("No Authorization header found");
   }
-
+  if (!event.body) {
+    throw new Error("gotta have a body");
+  }
   await decryptionPromise;
 
-  const parsedAuth = basic.parse(authHeader);
+  const parsedAuth = basic.parse(authHeader)!;
   if (parsedAuth.name !== config.get("alexa.skill.name")
     || parsedAuth.pass !== config.get("alexa.skill.secret")) {
     throw new Error("Alexa credentials invalid");
@@ -105,8 +107,12 @@ async (event, context, callback): Promise<APIGatewayProxyResult> => {
   const body = querystring.parse(event.body);
   logger.debug("request body: " + JSON.stringify(body, null, 2));
   logger.debug("getting tokens");
-  let tokens: AccessToken;
+  let tokens: AccessToken | null = null;
   let deletePromise;
+  
+  // If Alexa is sending us an access_code and waants tokens, we're finishing up account linking.
+  // Get the tokens and delete the access code; don't need it again.
+  // https://developer.amazon.com/docs/account-linking/configure-authorization-code-grant.html
   if (body.code) {
     logger.debug("getting token by code");
     tokens = await accessCodeDao.getTokensByCode(body.code as string);
@@ -115,16 +121,21 @@ async (event, context, callback): Promise<APIGatewayProxyResult> => {
     deletePromise = accessCodeDao.deleteAccessCode(body.code as string)
     .then(() => logger.debug("access code delete complete."));
   }
+  
   if (body.refresh_token) {
-    logger.debug(`getting token by refresh token: ${body.refresh_token}`);
     const wegmansDao = await wegmansDaoPromise;
-    tokens = await accessCodeDao.getTokensByRefresh(body.refresh_token as string);
-    tokens = await wegmansDao.refreshTokens(body.refresh_token as string, tokens.user);
+    logger.debug(`getting token by refresh token: ${body.refresh_token}`);
+    const oldTokens = await accessCodeDao.getTokensByRefresh(body.refresh_token as string);
+    tokens = await wegmansDao.refreshTokens(body.refresh_token as string, oldTokens.user);
     logger.debug(`saving refresh token`);
     await accessCodeDao.put(tokens);
+    logger.debug(`deleting old refresh token`);
+    await accessCodeDao.deleteRefreshCode(oldTokens.refresh);
+    logger.debug(`deleting old access`);
+    await accessCodeDao.deleteAccess(oldTokens.access);
   }
 
-  if (!tokens.access) {
+  if (!tokens || !tokens.access) {
     throw new Error("No access token found for given code");
   }
 

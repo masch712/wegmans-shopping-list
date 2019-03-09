@@ -2,6 +2,8 @@ import * as winston from "winston";
 import { config } from "./config";
 import { LoggedEvent } from "../models/LoggedEvent";
 
+import * as uuid from 'uuid/v4';
+
 // TODO: winston v3 @types
 
 export const logger = new winston.Logger({
@@ -18,26 +20,26 @@ export const logger = new winston.Logger({
  * @param propertyKey 
  * @param propertyDescriptor 
  */
-export function traceMethod(async: boolean) {
-  return (target, propertyKey: string, propertyDescriptor: PropertyDescriptor) => {
-    const constructorName = target.constructor && target.constructor.name;
-    const traceLocation = `${(constructorName + '.' || '')}${propertyKey}`;
+// export function traceMethod(async: boolean) {
+//   return (target, propertyKey: string, propertyDescriptor: PropertyDescriptor) => {
+//     const constructorName = target.constructor && target.constructor.name;
+//     const traceLocation = `${(constructorName + '.' || '')}${propertyKey}`;
 
-    if (propertyDescriptor === undefined) {
-      propertyDescriptor = Object.getOwnPropertyDescriptor(target, propertyKey);
-    }
-    const originalMethodDefinition = propertyDescriptor.value;
+//     if (propertyDescriptor === undefined) {
+//       propertyDescriptor = Object.getOwnPropertyDescriptor(target, propertyKey);
+//     }
+//     const originalMethodDefinition = propertyDescriptor.value;
 
-    const wrappedCall = 
-    propertyDescriptor.value = function () {
-      const startTime = new Date().valueOf();
-      const returnValue = originalMethodDefinition.apply(this, arguments);
-      const endTime = new Date().valueOf();
-      logger.debug(new LoggedEvent('trace').addProperty('call', traceLocation).addProperty('duration', endTime - startTime).toString());
-      return returnValue;
-    };
-  };
-}
+//     const wrappedCall = 
+//     propertyDescriptor.value = function () {
+//       const startTime = new Date().valueOf();
+//       const returnValue = originalMethodDefinition.apply(this, arguments);
+//       const endTime = new Date().valueOf();
+//       logger.debug(new LoggedEvent('trace').addProperty('call', traceLocation).addProperty('duration', endTime - startTime).toString());
+//       return returnValue;
+//     };
+//   };
+// }
 // winston3 style:
 // export const logger = winston.createLogger({
 //   transports: [
@@ -50,3 +52,14 @@ export function traceMethod(async: boolean) {
 //     winston.format.printf((info) => `${info.timestamp} ${info.level}: ${info.message}`),
 //   ),
 // });
+
+
+export async function logDuration<T>(eventName: string, promise: Promise<T>): Promise<T> {
+  const id = uuid();
+  logger.debug(new LoggedEvent('starting').addProperty('eventName', eventName).toString());
+  const startTime = new Date().getTime();
+  const result = await promise;
+  const endTime = new Date().getTime();
+  logger.debug(new LoggedEvent('finished').addProperty('eventName', eventName).addProperty('durationMillis', endTime - startTime).toString());
+  return result;
+}

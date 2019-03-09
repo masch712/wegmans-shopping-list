@@ -6,10 +6,14 @@
     {
       "label": "TypeScript compile",
       "type": "shell",
-      "command": "tsc",
+      "command": "npx tsc",
       "problemMatcher": [
-          "$tsc"
-      ]
-  }
+        "$tsc"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
   ]
 }

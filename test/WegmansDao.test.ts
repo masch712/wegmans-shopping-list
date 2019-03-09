@@ -12,5 +12,5 @@ import { ProductSearch } from "../lib/ProductSearch";
 // });
 
 test('searchProducts with empty history', ()=> {
-  ProductSearch.searchProducts([], 'whatevs');
+  ProductSearch.fuseSearchOrderedProducts([], 'whatevs');
 });

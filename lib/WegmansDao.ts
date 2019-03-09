@@ -2,7 +2,7 @@ import * as _ from "lodash";
 import * as request from "request-promise-native";
 import { AccessToken } from "../models/AccessToken";
 import { Product } from "../models/Product";
-import { logger } from "./Logger";
+import { logger, logDuration } from "./Logger";
 import { Response } from "request";
 import { OrderedProduct } from "../models/OrderedProduct";
 import { DateTime } from "luxon";
@@ -10,6 +10,7 @@ import { orderHistoryDao } from "./OrderHistoryDao";
 import * as jwt from "jsonwebtoken";
 import Fuse = require("fuse.js");
 import { ProductSearch } from "./ProductSearch";
+import { config } from "../lib/config";
 
 interface OrderHistoryResponseItem {
   LastPurchaseDate: string;
@@ -24,6 +25,12 @@ export class WegmansDao {
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
+  }
+
+  static isAccessTokenExpired(token: AccessToken): boolean {
+    const accessToken = jwt.decode(token.access) as { [key: string]: number }; // TODO: make a real JWT type?
+    const exp = accessToken.exp;
+    return exp*1000 < new Date().valueOf();
   }
 
   static getStoreIdFromTokens(token: AccessToken): number {
@@ -61,7 +68,8 @@ export class WegmansDao {
       const refresh = WegmansDao.getCookie(err.response, "wegmans_refresh");
       const user = WegmansDao.getCookie(err.response, "wegmans_user");
       if (!access || !refresh || !user) {
-        logger.debug(JSON.stringify(err, null, 2));
+        // BEWARE: might contain  password; do not log
+        // logger.debug(JSON.stringify(err, null, 2));
         throw new Error("No access tokens in response; bad login credentials?");
       }
       tokens = { access, refresh, user };
@@ -172,14 +180,23 @@ export class WegmansDao {
     return;
   }
 
-  async getOrderHistory(accessToken: string, storeId: number): Promise<OrderedProduct[]> {
+  async getOrderHistory(accessToken: string, storeId: number) {
     const userId = (jwt.decode(accessToken) as { sub: string }).sub;
-    let orderedProducts = await orderHistoryDao.get(userId);
-    let updateCachePromise = Promise.resolve();
+    const orderHistory = await logDuration('orderHistoryDao.get(userId)', orderHistoryDao.get(userId));
+    let orderedProducts: OrderedProduct[] = [];
+    let updateCachePromise = undefined;
 
-    if (!orderedProducts) {
+    // Update cache if oldre than 24 hours
+    if (
+      !orderHistory
+      || !orderHistory.orderedProducts
+      || !orderHistory.orderedProducts.length
+      || orderHistory.lastCachedMillisSinceEpoch < new Date().valueOf() - 24 * 3600 * 1000
+      || orderHistory.lastCachedMillisSinceEpoch < 1551646031169 // Before 3/3/2019, when I fixed a bug that requires me to re-cache order history
+      || !config.get("cache.orderHistory.enabled")
+    ) {
       logger.debug('order history cache miss');
-      const response = await request({
+      const response = await logDuration('wegmansRequestOrderHistory', request({
         method: 'GET',
         url: `https://wegapi.azure-api.net/purchases/history/summary/${storeId}`,
         qs: {
@@ -197,18 +214,24 @@ export class WegmansDao {
           Authorization: accessToken,
           Accept: 'application/json',
         }
-      });
+      }).then(_.identity())); //TODO: wtf is up with ts and this _.identity business?  return type undefined?
 
       const body = JSON.parse(response) as OrderHistoryResponseItem[];
       orderedProducts = body.map(item => {
         const epochStr = item.LastPurchaseDate.substring(6, 19);
         const epoch = Number.parseInt(epochStr);
-        return new OrderedProduct(epoch, item.Quantity, item.Sku);
+        const orderedProduct: OrderedProduct = {
+          sku: item.Sku,
+          purchaseMsSinceEpoch: epoch,
+          quantity: item.Quantity,
+        };
+        return orderedProduct;
       });
 
       // Get the actual products.  These are useful later for in-memory fuzzy search
       const skus = orderedProducts.map(orderedProduct => orderedProduct.sku);
-      const productsBySku = await ProductSearch.getProductBySku(skus.map(sku => `SKU_${sku}`), storeId);
+      //TODO: this seems....slow
+      const productsBySku = await logDuration('map_getProductBySku', ProductSearch.getProductBySku(skus.map(sku => `SKU_${sku}`), storeId));
 
       for (let index = orderedProducts.length - 1; index >= 0; index--) {
         const orderedProduct = orderedProducts[index];
@@ -222,17 +245,20 @@ export class WegmansDao {
         }
       }
 
-      // do cache write in the background
       logger.debug('writing order history to cache');
       updateCachePromise = orderHistoryDao.put(userId, orderedProducts)
         .then(() => { logger.debug('order history cache written'); });
     }
     else {
       logger.debug('order history cache hit');
+      orderedProducts = orderHistory.orderedProducts;
     }
 
     const sortedOrderedProducts = _.sortBy(orderedProducts, (op: OrderedProduct) => op.sku);
 
-    return sortedOrderedProducts;
+    return {
+      orderedProducts: sortedOrderedProducts,
+      cacheUpdatePromise: updateCachePromise,
+    };
   }
 }
