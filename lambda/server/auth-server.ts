@@ -1,5 +1,4 @@
-import { APIGatewayProxyHandler, APIGatewayProxyResult, Handler } from "aws-lambda";
-import { KMS } from "aws-sdk";
+import { APIGatewayProxyHandler, APIGatewayProxyResult } from "aws-lambda";
 import * as basic from "basic-auth";
 import { decode } from "jsonwebtoken";
 import * as querystring from "querystring";
@@ -21,7 +20,7 @@ const wegmansDaoPromise = decryptionPromise.then(() => new WegmansDao(config.get
  * Respond with the code.
  */
 export const generateAuthCode: APIGatewayProxyHandler =
-async (event, context, callback): Promise<APIGatewayProxyResult> => {
+async (event): Promise<APIGatewayProxyResult> => {
   // DO NOT LOG THE EVENT; it contains the password
   // logger.debug("Event received: " + JSON.stringify(event, null, 2));
   if (!event.body) {
@@ -79,7 +78,7 @@ async (event, context, callback): Promise<APIGatewayProxyResult> => {
 };
 
 export const getTokens: APIGatewayProxyHandler =
-async (event, context, callback): Promise<APIGatewayProxyResult> => {
+async (event): Promise<APIGatewayProxyResult> => {
   if (event.httpMethod === "OPTIONS") {
     return {
       body: "",

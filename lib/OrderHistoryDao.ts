@@ -1,9 +1,6 @@
 import * as AWS from "aws-sdk";
-import { logger } from "../lib/Logger";
 export const TABLENAME_ORDERHISTORYBYUSER = "OrderHistoryByUser";
 import { DateTime } from 'luxon';
-import { AttributeMap, DescribeTableOutput } from "aws-sdk/clients/dynamodb";
-import { AccessToken } from "../models/AccessToken";
 import { config } from "./config";
 import { DynamoDao } from "./DynamoDao";
 import { OrderedProduct, OrderedProductForDynamo } from "../models/OrderedProduct";

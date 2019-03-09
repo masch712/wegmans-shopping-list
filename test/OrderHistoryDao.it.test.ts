@@ -1,8 +1,4 @@
-import * as request from "request-promise-native";
-import { config } from "../lib/config";
 import { orderHistoryDao } from "../lib/OrderHistoryDao";
-import { AccessToken } from "../models/AccessToken";
-import { ProductSearch } from "../lib/ProductSearch";
 import * as _ from "lodash";
 jest.setTimeout(3000000);
 
