@@ -1,5 +1,5 @@
 import * as AWS from "aws-sdk";
-export const TABLENAME_ORDERHISTORYBYUSER = "OrderHistoryByUser";
+export const TABLENAME_ORDERHISTORYBYUSER = "WegmansOrderHistoryByUser";
 import { DateTime } from 'luxon';
 import { config } from "./config";
 import { DynamoDao } from "./DynamoDao";

@@ -1,12 +1,7 @@
 import * as AWS from "aws-sdk";
-import { logger } from "../lib/Logger";
-export const TABLENAME_TOKENSBYCODE = "WegmansAccessByCode";
-export const TABLENAME_TOKENSBYACCESS = "WegmansAccessByAccess";
-export const TABLENAME_TOKENSBYREFRESH = "WegmansAccessByRefresh";
-const BATCH_GET_SIZE = 100;
-const BATCH_PUT_SIZE = 25;
-const { DateTime } = require("luxon");
-import { AttributeMap, DescribeTableOutput } from "aws-sdk/clients/dynamodb";
+export const TABLENAME_TOKENSBYCODE = "WegmansTokensByAccessCode";
+export const TABLENAME_TOKENSBYACCESS = "WegmansTokensByAccessToken";
+export const TABLENAME_TOKENSBYREFRESH = "WegmansTokensByRefreshToken";
 import { AccessToken } from "../models/AccessToken";
 import { config } from "./config";
 import { DynamoDao } from "./DynamoDao";
@@ -146,10 +141,6 @@ class AccessCodeDao extends DynamoDao {
   }
 
   async deleteAccessCode(access_code: string): Promise<void> {
-    const result = await this.docClient.delete({
-      TableName: TABLENAME_TOKENSBYCODE,
-      Key: { access_code },
-    }).promise();
 
     return;
   }

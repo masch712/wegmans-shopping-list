@@ -19,7 +19,7 @@ const wegmansDaoPromise = decryptionPromise.then(() => new WegmansDao(config.get
  * Overwrite any code that's already in the db for the given user.
  * Respond with the code.
  */
-export const generateAuthCode: APIGatewayProxyHandler =
+export const generateAccessCode: APIGatewayProxyHandler =
 async (event): Promise<APIGatewayProxyResult> => {
   // DO NOT LOG THE EVENT; it contains the password
   // logger.debug("Event received: " + JSON.stringify(event, null, 2));

@@ -1,24 +1,502 @@
-AWSTemplateFormatVersion: '2010-09-09'
-Transform: 'AWS::Serverless-2016-10-31'
-Description: An AWS Serverless Specification template describing your function.
+C:\Users\aaron\CloudStation\wegmans-shopping-list\node_modules\ts-node\dist\bin.js
 Resources:
-  wegmansshoppinglist:
-    Type: 'AWS::Lambda::Function'
+  WegmansLambdaCode3DD25914:
+    Type: AWS::S3::Bucket
     Properties:
-      Handler: lambda/alexa/index.handler
-      Runtime: nodejs8.10
+      BucketName: wegmans-lambda-builds
+    DeletionPolicy: Retain
+    Metadata:
+      aws:cdk:path: WegmansSkill/WegmansLambdaCode/Resource
+  AlexaLambdaWegmansShoppingListServiceRoleD2E15341:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+    Metadata:
+      aws:cdk:path: WegmansSkill/AlexaLambdaWegmansShoppingList/ServiceRole/Resource
+  AlexaLambdaWegmansShoppingListServiceRoleDefaultPolicy8B59961C:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - dynamodb:Batch*
+              - dynamodb:Get*
+              - dynamodb:DeleteItem
+              - dynamodb:List*
+              - dynamodb:PutItem
+              - dynamodb:Query
+              - dynamodb:Scan
+              - dynamodb:UpdateItem
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - WegmansDynamoOrderHistoryByUser69309081
+                  - Arn
+              - Fn::GetAtt:
+                  - WegmansDynamoTokensByAccessTokenF03A8F68
+                  - Arn
+              - Fn::GetAtt:
+                  - WegmansDynamoTokensByAccessCode3B53D126
+                  - Arn
+              - Fn::GetAtt:
+                  - WegmansDynamoTokensByRefreshTokenC0B877F1
+                  - Arn
+        Version: "2012-10-17"
+      PolicyName: AlexaLambdaWegmansShoppingListServiceRoleDefaultPolicy8B59961C
+      Roles:
+        - Ref: AlexaLambdaWegmansShoppingListServiceRoleD2E15341
+    Metadata:
+      aws:cdk:path: WegmansSkill/AlexaLambdaWegmansShoppingList/ServiceRole/DefaultPolicy/Resource
+  AlexaLambdaWegmansShoppingList24F35771:
+    Type: AWS::Lambda::Function
+    Properties:
       Code:
         S3Bucket:
-        S3Key:
-      MemorySize: 128
-      Timeout: 60
-      Role: 'arn:aws:iam::412272193202:role/LambdaDynamoRW'
-      Environment:
-        Variables:
-          AWS_ENCRYPTED: 'true'
-          LOGGING_LEVEL: debug
-          LOGICAL_ENV: development-aws
-          WEGMANS_APIKEY: >-
-            AQICAHhEbkp592DXQD2+erIwWGqDeHoUQnAaX1Sw+4YW0087HwH8RXX/AbEVLZkJKaecLtodAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMiKCMxebwomihAFKIAgEQgDuufhAPULVlpHYsEhxt0lMSrTLLWkQ9Oo1aPWEp16Orm4kvVkGYjgiBn/LAGxpu3MELznE3cqPFDletuA==
-          WEGMANS_EMAIL: ''
-          WEGMANS_PASSWORD: ''
+          Ref: WegmansLambdaCode3DD25914
+        S3Key: build.zip
+      Handler: lambda/alexa/index.handler
+      Role:
+        Fn::GetAtt:
+          - AlexaLambdaWegmansShoppingListServiceRoleD2E15341
+          - Arn
+      Runtime: nodejs8.10
+      FunctionName: cdk-wegmans-shopping-list
+    DependsOn:
+      - AlexaLambdaWegmansShoppingListServiceRoleDefaultPolicy8B59961C
+      - AlexaLambdaWegmansShoppingListServiceRoleD2E15341
+    Metadata:
+      aws:cdk:path: WegmansSkill/AlexaLambdaWegmansShoppingList/Resource
+  LambdaWegmansAuthServerGenerateAccessCodeServiceRoleA91E4BE2:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+    Metadata:
+      aws:cdk:path: WegmansSkill/LambdaWegmansAuthServerGenerateAccessCode/ServiceRole/Resource
+  LambdaWegmansAuthServerGenerateAccessCodeServiceRoleDefaultPolicy47789D53:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - dynamodb:Batch*
+              - dynamodb:Get*
+              - dynamodb:DeleteItem
+              - dynamodb:List*
+              - dynamodb:PutItem
+              - dynamodb:Query
+              - dynamodb:Scan
+              - dynamodb:UpdateItem
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - WegmansDynamoOrderHistoryByUser69309081
+                  - Arn
+              - Fn::GetAtt:
+                  - WegmansDynamoTokensByAccessTokenF03A8F68
+                  - Arn
+              - Fn::GetAtt:
+                  - WegmansDynamoTokensByAccessCode3B53D126
+                  - Arn
+              - Fn::GetAtt:
+                  - WegmansDynamoTokensByRefreshTokenC0B877F1
+                  - Arn
+        Version: "2012-10-17"
+      PolicyName: LambdaWegmansAuthServerGenerateAccessCodeServiceRoleDefaultPolicy47789D53
+      Roles:
+        - Ref: LambdaWegmansAuthServerGenerateAccessCodeServiceRoleA91E4BE2
+    Metadata:
+      aws:cdk:path: WegmansSkill/LambdaWegmansAuthServerGenerateAccessCode/ServiceRole/DefaultPolicy/Resource
+  LambdaWegmansAuthServerGenerateAccessCodeFDC2918F:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket:
+          Ref: WegmansLambdaCode3DD25914
+        S3Key: build.zip
+      Handler: lambda/server/auth-server.generateAccessCode
+      Role:
+        Fn::GetAtt:
+          - LambdaWegmansAuthServerGenerateAccessCodeServiceRoleA91E4BE2
+          - Arn
+      Runtime: nodejs8.10
+      FunctionName: cdk-wegmans-generate-access-code
+    DependsOn:
+      - LambdaWegmansAuthServerGenerateAccessCodeServiceRoleDefaultPolicy47789D53
+      - LambdaWegmansAuthServerGenerateAccessCodeServiceRoleA91E4BE2
+    Metadata:
+      aws:cdk:path: WegmansSkill/LambdaWegmansAuthServerGenerateAccessCode/Resource
+  LambdaWegmansAuthServerGenerateAccessCodeApiPermissionPOSTwegmansauthaccesscode7AEAB4B7:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: LambdaWegmansAuthServerGenerateAccessCodeFDC2918F
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+          - ""
+          - - "arn:"
+            - Ref: AWS::Partition
+            - ":execute-api:us-east-1:412272193202:"
+            - Ref: WegmansAuthServerAPICBAD976B
+            - /
+            - Ref: WegmansAuthServerAPIDeploymentStageprod9177FA76
+            - /POST/wegmans-auth/access-code
+    Metadata:
+      aws:cdk:path: WegmansSkill/LambdaWegmansAuthServerGenerateAccessCode/ApiPermission.POST..wegmans-auth.access-code
+  LambdaWegmansAuthServerGenerateAccessCodeApiPermissionTestPOSTwegmansauthaccesscode36A0521C:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: LambdaWegmansAuthServerGenerateAccessCodeFDC2918F
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+          - ""
+          - - "arn:"
+            - Ref: AWS::Partition
+            - ":execute-api:us-east-1:412272193202:"
+            - Ref: WegmansAuthServerAPICBAD976B
+            - /test-invoke-stage/POST/wegmans-auth/access-code
+    Metadata:
+      aws:cdk:path: WegmansSkill/LambdaWegmansAuthServerGenerateAccessCode/ApiPermission.Test.POST..wegmans-auth.access-code
+  LambdaWegmansAuthServerGetTokensServiceRoleDD01B79A:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+    Metadata:
+      aws:cdk:path: WegmansSkill/LambdaWegmansAuthServerGetTokens/ServiceRole/Resource
+  LambdaWegmansAuthServerGetTokensServiceRoleDefaultPolicy2A0FD40A:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - dynamodb:Batch*
+              - dynamodb:Get*
+              - dynamodb:DeleteItem
+              - dynamodb:List*
+              - dynamodb:PutItem
+              - dynamodb:Query
+              - dynamodb:Scan
+              - dynamodb:UpdateItem
+            Effect: Allow
+            Resource:
+              - Fn::GetAtt:
+                  - WegmansDynamoOrderHistoryByUser69309081
+                  - Arn
+              - Fn::GetAtt:
+                  - WegmansDynamoTokensByAccessTokenF03A8F68
+                  - Arn
+              - Fn::GetAtt:
+                  - WegmansDynamoTokensByAccessCode3B53D126
+                  - Arn
+              - Fn::GetAtt:
+                  - WegmansDynamoTokensByRefreshTokenC0B877F1
+                  - Arn
+        Version: "2012-10-17"
+      PolicyName: LambdaWegmansAuthServerGetTokensServiceRoleDefaultPolicy2A0FD40A
+      Roles:
+        - Ref: LambdaWegmansAuthServerGetTokensServiceRoleDD01B79A
+    Metadata:
+      aws:cdk:path: WegmansSkill/LambdaWegmansAuthServerGetTokens/ServiceRole/DefaultPolicy/Resource
+  LambdaWegmansAuthServerGetTokens018B4D4D:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket:
+          Ref: WegmansLambdaCode3DD25914
+        S3Key: build.zip
+      Handler: lambda/server/auth-server.getTokens
+      Role:
+        Fn::GetAtt:
+          - LambdaWegmansAuthServerGetTokensServiceRoleDD01B79A
+          - Arn
+      Runtime: nodejs8.10
+      FunctionName: cdk-wegmans-get-tokens
+    DependsOn:
+      - LambdaWegmansAuthServerGetTokensServiceRoleDefaultPolicy2A0FD40A
+      - LambdaWegmansAuthServerGetTokensServiceRoleDD01B79A
+    Metadata:
+      aws:cdk:path: WegmansSkill/LambdaWegmansAuthServerGetTokens/Resource
+  LambdaWegmansAuthServerGetTokensApiPermissionGETwegmansauthaccesstoken9CE4C641:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: LambdaWegmansAuthServerGetTokens018B4D4D
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+          - ""
+          - - "arn:"
+            - Ref: AWS::Partition
+            - ":execute-api:us-east-1:412272193202:"
+            - Ref: WegmansAuthServerAPICBAD976B
+            - /
+            - Ref: WegmansAuthServerAPIDeploymentStageprod9177FA76
+            - /GET/wegmans-auth/access-token
+    Metadata:
+      aws:cdk:path: WegmansSkill/LambdaWegmansAuthServerGetTokens/ApiPermission.GET..wegmans-auth.access-token
+  LambdaWegmansAuthServerGetTokensApiPermissionTestGETwegmansauthaccesstoken33B483FC:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: LambdaWegmansAuthServerGetTokens018B4D4D
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+          - ""
+          - - "arn:"
+            - Ref: AWS::Partition
+            - ":execute-api:us-east-1:412272193202:"
+            - Ref: WegmansAuthServerAPICBAD976B
+            - /test-invoke-stage/GET/wegmans-auth/access-token
+    Metadata:
+      aws:cdk:path: WegmansSkill/LambdaWegmansAuthServerGetTokens/ApiPermission.Test.GET..wegmans-auth.access-token
+  WegmansAuthServerAPICBAD976B:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: WegmansAuthServerAPI
+    Metadata:
+      aws:cdk:path: WegmansSkill/WegmansAuthServerAPI/Resource
+  WegmansAuthServerAPIDeployment1E9F0A0B28313a65b6a4cb21b4a7942f94d643da:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId:
+        Ref: WegmansAuthServerAPICBAD976B
+      Description: Automatically created by the RestApi construct
+    DependsOn:
+      - WegmansAuthServerAPIwegmansauthaccesscodePOST478882E0
+      - WegmansAuthServerAPIwegmansauthaccesscodeC998946C
+      - WegmansAuthServerAPIwegmansauthaccesstokenGETBF43314C
+      - WegmansAuthServerAPIwegmansauthaccesstokenA75B4C47
+      - WegmansAuthServerAPIwegmansauth4642F738
+    Metadata:
+      aws:cdk:path: WegmansSkill/WegmansAuthServerAPI/Deployment/Resource
+  WegmansAuthServerAPIDeploymentStageprod9177FA76:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      RestApiId:
+        Ref: WegmansAuthServerAPICBAD976B
+      DeploymentId:
+        Ref: WegmansAuthServerAPIDeployment1E9F0A0B28313a65b6a4cb21b4a7942f94d643da
+      StageName: prod
+    Metadata:
+      aws:cdk:path: WegmansSkill/WegmansAuthServerAPI/DeploymentStage.prod/Resource
+  WegmansAuthServerAPICloudWatchRole5C8980A4:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: apigateway.amazonaws.com
+        Version: "2012-10-17"
+      ManagedPolicyArns:
+        - Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
+    Metadata:
+      aws:cdk:path: WegmansSkill/WegmansAuthServerAPI/CloudWatchRole/Resource
+  WegmansAuthServerAPIAccountC5C4CFC9:
+    Type: AWS::ApiGateway::Account
+    Properties:
+      CloudWatchRoleArn:
+        Fn::GetAtt:
+          - WegmansAuthServerAPICloudWatchRole5C8980A4
+          - Arn
+    DependsOn:
+      - WegmansAuthServerAPICBAD976B
+    Metadata:
+      aws:cdk:path: WegmansSkill/WegmansAuthServerAPI/Account
+  WegmansAuthServerAPIwegmansauth4642F738:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId:
+        Fn::GetAtt:
+          - WegmansAuthServerAPICBAD976B
+          - RootResourceId
+      PathPart: wegmans-auth
+      RestApiId:
+        Ref: WegmansAuthServerAPICBAD976B
+    Metadata:
+      aws:cdk:path: WegmansSkill/WegmansAuthServerAPI/Default/wegmans-auth/Resource
+  WegmansAuthServerAPIwegmansauthaccesscodeC998946C:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId:
+        Ref: WegmansAuthServerAPIwegmansauth4642F738
+      PathPart: access-code
+      RestApiId:
+        Ref: WegmansAuthServerAPICBAD976B
+    Metadata:
+      aws:cdk:path: WegmansSkill/WegmansAuthServerAPI/Default/wegmans-auth/access-code/Resource
+  WegmansAuthServerAPIwegmansauthaccesscodePOST478882E0:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: POST
+      ResourceId:
+        Ref: WegmansAuthServerAPIwegmansauthaccesscodeC998946C
+      RestApiId:
+        Ref: WegmansAuthServerAPICBAD976B
+      AuthorizationType: NONE
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri:
+          Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :apigateway:us-east-1:lambda:path/2015-03-31/functions/
+              - Fn::GetAtt:
+                  - LambdaWegmansAuthServerGenerateAccessCodeFDC2918F
+                  - Arn
+              - /invocations
+    Metadata:
+      aws:cdk:path: WegmansSkill/WegmansAuthServerAPI/Default/wegmans-auth/access-code/POST/Resource
+  WegmansAuthServerAPIwegmansauthaccesstokenA75B4C47:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId:
+        Ref: WegmansAuthServerAPIwegmansauth4642F738
+      PathPart: access-token
+      RestApiId:
+        Ref: WegmansAuthServerAPICBAD976B
+    Metadata:
+      aws:cdk:path: WegmansSkill/WegmansAuthServerAPI/Default/wegmans-auth/access-token/Resource
+  WegmansAuthServerAPIwegmansauthaccesstokenGETBF43314C:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: GET
+      ResourceId:
+        Ref: WegmansAuthServerAPIwegmansauthaccesstokenA75B4C47
+      RestApiId:
+        Ref: WegmansAuthServerAPICBAD976B
+      AuthorizationType: NONE
+      Integration:
+        IntegrationHttpMethod: POST
+        Type: AWS_PROXY
+        Uri:
+          Fn::Join:
+            - ""
+            - - "arn:"
+              - Ref: AWS::Partition
+              - :apigateway:us-east-1:lambda:path/2015-03-31/functions/
+              - Fn::GetAtt:
+                  - LambdaWegmansAuthServerGetTokens018B4D4D
+                  - Arn
+              - /invocations
+    Metadata:
+      aws:cdk:path: WegmansSkill/WegmansAuthServerAPI/Default/wegmans-auth/access-token/GET/Resource
+  WegmansDynamoOrderHistoryByUser69309081:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      TableName: WegmansOrderHistoryByUser
+    Metadata:
+      aws:cdk:path: WegmansSkill/WegmansDynamoOrderHistoryByUser/Resource
+  WegmansDynamoTokensByAccessTokenF03A8F68:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      KeySchema:
+        - AttributeName: access
+          KeyType: HASH
+      AttributeDefinitions:
+        - AttributeName: access
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      TableName: WegmansTokensByAccessToken
+    Metadata:
+      aws:cdk:path: WegmansSkill/WegmansDynamoTokensByAccessToken/Resource
+  WegmansDynamoTokensByRefreshTokenC0B877F1:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      KeySchema:
+        - AttributeName: refresh
+          KeyType: HASH
+      AttributeDefinitions:
+        - AttributeName: refresh
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      TableName: WegmansTokensByRefreshToken
+    Metadata:
+      aws:cdk:path: WegmansSkill/WegmansDynamoTokensByRefreshToken/Resource
+  WegmansDynamoTokensByAccessCode3B53D126:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      KeySchema:
+        - AttributeName: access_code
+          KeyType: HASH
+      AttributeDefinitions:
+        - AttributeName: access_code
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      TableName: WegmansTokensByAccessCode
+    Metadata:
+      aws:cdk:path: WegmansSkill/WegmansDynamoTokensByAccessCode/Resource
+  CDKMetadata:
+    Type: AWS::CDK::Metadata
+    Properties:
+      Modules: aws-cdk=0.25.2,@aws-cdk/assets=0.25.2,@aws-cdk/aws-apigateway=0.25.2,@aws-cdk/aws-applicationautoscaling=0.25.2,@aws-cdk/aws-autoscaling-common=0.25.2,@aws-cdk/aws-cloudwatch=0.25.2,@aws-cdk/aws-codepipeline-api=0.25.2,@aws-cdk/aws-dynamodb=0.25.2,@aws-cdk/aws-ec2=0.25.2,@aws-cdk/aws-events=0.25.2,@aws-cdk/aws-iam=0.25.2,@aws-cdk/aws-kms=0.25.2,@aws-cdk/aws-lambda=0.25.2,@aws-cdk/aws-s3=0.25.2,@aws-cdk/aws-s3-notifications=0.25.2,@aws-cdk/aws-sqs=0.25.2,@aws-cdk/cdk=0.25.2,@aws-cdk/cx-api=0.25.2,jsii-runtime=node.js/v8.11.1
+Outputs:
+  WegmansAuthServerAPIEndpoint6A146F2B:
+    Value:
+      Fn::Join:
+        - ""
+        - - https://
+          - Ref: WegmansAuthServerAPICBAD976B
+          - .execute-api.us-east-1.
+          - Ref: AWS::URLSuffix
+          - /
+          - Ref: WegmansAuthServerAPIDeploymentStageprod9177FA76
+          - /
+

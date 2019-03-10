@@ -32,9 +32,8 @@ bower_components
 # node-waf configuration
 .lock-wscript
 
-# Compiled binary addons (http://nodejs.org/api/addons.html)
-build/Debug
-build/Release
+# Lambda deployment package
+build/build.zip
 
 # Dependency directories
 node_modules/

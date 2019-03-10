@@ -3,7 +3,7 @@
     "allowJs": true,
     "target": "es2017",
     "module": "commonjs",
-    "outDir": "build/Debug",
+    "outDir": "dist",
     "experimentalDecorators": true,
     "sourceMap": true,
     // "lib": [
