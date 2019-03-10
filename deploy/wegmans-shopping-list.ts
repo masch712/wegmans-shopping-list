@@ -10,15 +10,11 @@ export class WegmansCdkStack extends cdk.Stack {
   constructor(scope: cdk.App, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // const lambdaCodeBucket = new s3.Bucket(this, 'WegmansLambdaCode' ,{
-    //   bucketName: 'wegmans-lambda-builds-cdk',
-    // });
-
     const skillLambda = new WegmansLambda(this, 'AlexaLambdaWegmansShoppingList', {
-      handler: 'lambda/alexa/index.handler',
+      handler: 'dist/lambda/alexa/index.handler',
       functionName: 'cdk-wegmans-shopping-list',
       environment: {
-        AWS_ENCRYPTED: true,
+        AWS_ENCRYPTED: 'true',
         LOGGING_LEVEL: 'debug',
         LOGICAL_ENV: 'development-aws',
         WEGMANS_APIKEY: 'AQICAHhEbkp592DXQD2+erIwWGqDeHoUQnAaX1Sw+4YW0087HwH8RXX/AbEVLZkJKaecLtodAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMiKCMxebwomihAFKIAgEQgDuufhAPULVlpHYsEhxt0lMSrTLLWkQ9Oo1aPWEp16Orm4kvVkGYjgiBn/LAGxpu3MELznE3cqPFDletuA==',
@@ -26,12 +22,12 @@ export class WegmansCdkStack extends cdk.Stack {
     });
 
     const authServerLambdaGenerateAccessCode = new WegmansLambda(this, 'LambdaWegmansAuthServerGenerateAccessCode', {
-      handler: 'lambda/server/auth-server.generateAccessCode',
+      handler: 'dist/lambda/server/auth-server.generateAccessCode',
       functionName: 'cdk-wegmans-generate-access-code',
     });
 
     const authServerLambdaGetTokens = new WegmansLambda(this, 'LambdaWegmansAuthServerGetTokens', {
-      handler: 'lambda/server/auth-server.getTokens',
+      handler: 'dist/lambda/server/auth-server.getTokens',
       functionName: 'cdk-wegmans-get-tokens',
     });
 
@@ -77,6 +73,7 @@ export class WegmansCdkStack extends cdk.Stack {
       .addActions(
         'dynamodb:Batch*',
         'dynamodb:Get*',
+        'dynamodb:Describe*',
         'dynamodb:DeleteItem',
         'dynamodb:List*',
         'dynamodb:PutItem',
@@ -100,7 +97,7 @@ class WegmansLambda extends lambda.Function {
   constructor(scope: cdk.Stack, id: string, props: {
     handler: string,
     functionName: string,
-    environment?:  { [key: string]: any }
+    environment?:  { [key: string]: string } // NOTE: FunctionProps.environment can supposedly have 'any' values, but cdk deploy fails if you give non-string values
   }) {
     super(scope, id, {
       runtime: lambda.Runtime.NodeJS810,
@@ -108,6 +105,7 @@ class WegmansLambda extends lambda.Function {
       code: lambda.Code.asset('./build/build.zip'),
       functionName: props.functionName,
       environment: props.environment || {},
+      timeout: 30,
     });
   }
 }

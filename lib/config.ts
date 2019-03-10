@@ -43,6 +43,11 @@ export const config = convict({
         format: String,
         default: "",
       },
+      initTables: {
+        doc: "Whether to create tables",
+        format: Boolean,
+        default: false,
+      },
     },
     accessKeyId: {
       doc: "AWS Access Key Id",

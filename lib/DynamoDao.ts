@@ -1,6 +1,7 @@
 import * as AWS from "aws-sdk";
 import { CreateTableInput, DescribeTableOutput } from "aws-sdk/clients/dynamodb";
 import { logger } from "../lib/Logger";
+import { config } from "../lib/config";
 
 AWS.config.update({
   region: "us-east-1",
@@ -57,7 +58,7 @@ export abstract class DynamoDao {
   }
 
   async initTables() {
-    if (this.isInitted) {
+    if (this.isInitted || !config.get("aws").dynamodb.initTables) {
       return Promise.resolve();
     }
     const tableParam = this.tableParams;
