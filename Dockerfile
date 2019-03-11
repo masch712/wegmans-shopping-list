@@ -22,4 +22,4 @@ RUN \
   && npm install --production \
   && \find ./ -type f -exec chmod 644 {} \; \
   && find ./ -type d -exec chmod 755 {} \; \
-  && zip -r build.zip ./node_modules ./config ./dist
+  && zip -q -r build.zip ./node_modules ./config ./dist

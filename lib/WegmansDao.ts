@@ -12,7 +12,7 @@ import Fuse = require("fuse.js");
 import { ProductSearch } from "./ProductSearch";
 import { config } from "../lib/config";
 import { BasicAsyncQueueClient, WorkType } from "./BasicAsyncQueue";
-import { AddToListWork } from "../lambda/workers/AddToListWork";
+import { AddToShoppingListWork } from "../lambda/workers/AddToShoppingList";
 
 interface OrderHistoryResponseItem {
   LastPurchaseDate: string;
@@ -25,7 +25,7 @@ export class WegmansDao {
   private apiKey: string;
   private shoppingListId: number | undefined;
 
-  private workQueue: BasicAsyncQueueClient<AddToListWork>;
+  private workQueue: BasicAsyncQueueClient<AddToShoppingListWork>;
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;

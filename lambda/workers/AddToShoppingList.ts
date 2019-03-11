@@ -9,7 +9,7 @@ import { logger } from "../../lib/Logger";
 import { decode } from "jsonwebtoken";
 import { QueuedWork, WorkType } from "../../lib/BasicAsyncQueue";
 
-export interface AddToListWork extends QueuedWork {
+export interface AddToShoppingListWork extends QueuedWork {
   payload: {
     product: Product;
     quantity: number;
@@ -29,7 +29,7 @@ export async function handler(event: SQSEvent) {
   const messageBodies = event.Records.map((r: { body: string}) => r.body);
 
   for(const body of messageBodies) {
-    const message = JSON.parse(body) as AddToListWork;
+    const message = JSON.parse(body) as AddToShoppingListWork;
     const username = decode(message.payload.accessToken)!.sub;
     logger.debug('adding ' + message.payload.product.sku + ' for ' + username);
     await wegmansDao.addProductToShoppingList(message.payload.accessToken, message.payload.product, message.payload.quantity);

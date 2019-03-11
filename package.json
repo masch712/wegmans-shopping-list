@@ -24,6 +24,7 @@
   "devDependencies": {
     "@aws-cdk/aws-apigateway": "^0.25.2",
     "@aws-cdk/aws-dynamodb": "^0.25.2",
+    "@aws-cdk/aws-iam": "^0.25.2",
     "@aws-cdk/aws-kms": "^0.25.2",
     "@aws-cdk/aws-lambda": "^0.25.2",
     "@aws-cdk/aws-lambda-event-sources": "^0.25.2",
