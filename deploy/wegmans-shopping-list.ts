@@ -2,10 +2,14 @@ import cdk = require('@aws-cdk/cdk');
 import * as lambda from "@aws-cdk/aws-lambda";
 import * as apigw from '@aws-cdk/aws-apigateway';
 import * as dynamo from '@aws-cdk/aws-dynamodb';
+import * as sqs from '@aws-cdk/aws-sqs';
+import { SqsEventSource } from "@aws-cdk/aws-lambda-event-sources";
 import { TABLENAME_TOKENSBYACCESS, TABLENAME_TOKENSBYCODE, TABLENAME_TOKENSBYREFRESH } from '../lib/AccessCodeDao';
 import { PolicyStatement, PolicyStatementEffect } from '@aws-cdk/aws-iam';
 import { TABLENAME_ORDERHISTORYBYUSER } from '../lib/OrderHistoryDao';
+import { WorkType } from '../lib/BasicAsyncQueue';
 
+const buildAsset = lambda.Code.asset('./build/build.zip');
 export class WegmansCdkStack extends cdk.Stack {
   constructor(scope: cdk.App, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -90,6 +94,12 @@ export class WegmansCdkStack extends cdk.Stack {
     skillLambda.addToRolePolicy(dynamoAccessPolicy);
     authServerLambdaGenerateAccessCode.addToRolePolicy(dynamoAccessPolicy);
     authServerLambdaGetTokens.addToRolePolicy(dynamoAccessPolicy);
+
+    for (const workType of Object.keys(WorkType)) {
+      new QueueAndWorker(this, {
+        workType: (WorkType as any)[workType]
+      });
+    }
   }
 }
 
@@ -102,7 +112,7 @@ class WegmansLambda extends lambda.Function {
     super(scope, id, {
       runtime: lambda.Runtime.NodeJS810,
       handler: props.handler,
-      code: lambda.Code.asset('./build/build.zip'),
+      code: buildAsset,
       functionName: props.functionName,
       environment: props.environment || {},
       timeout: 30,
@@ -110,6 +120,27 @@ class WegmansLambda extends lambda.Function {
   }
 }
 
-// export function ship() {
-//   new WegmansCdkStack(cdk.App., 
-// }
+class QueueAndWorker {
+  
+  private _queue : sqs.Queue;
+  get queue() : sqs.Queue {
+    return this._queue;
+  }
+  
+  constructor(scope: cdk.Stack, props: {
+    workType: WorkType
+  }) {
+    this._queue = new sqs.Queue(scope, `WegmansWorkerQueue${props.workType}`, {
+      queueName: `wegmans-worker-${props.workType}`,
+    });
+    
+    new lambda.Function(scope, `WegmansWorkerLambda${props.workType}`, {
+      runtime: lambda.Runtime.NodeJS810,
+      code: buildAsset,
+      functionName: `cdk-wegmans-worker-${props.workType}`,
+      handler: `dist/lambda/workers/${props.workType}.handler`,
+      timeout: 30,
+    }).addEventSource(new SqsEventSource(this._queue));
+
+  }
+}

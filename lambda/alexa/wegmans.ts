@@ -112,6 +112,12 @@ export const addToShoppingList: RequestHandler = {
 
     // Add to shopping list asynchronously; don't hold up the response.
     await wegmansDao.addProductToShoppingList(accessToken, product);
+    // New shit!
+    try {
+      await wegmansDao.enqueue_addProductToShoppingList(accessToken, product);
+    } catch(err) {
+      logger.error(err);
+    }
 
     const alexaFriendlyProductName = product.name.replace(/\&/g, 'and');
 

@@ -11,6 +11,8 @@ import * as jwt from "jsonwebtoken";
 import Fuse = require("fuse.js");
 import { ProductSearch } from "./ProductSearch";
 import { config } from "../lib/config";
+import { BasicAsyncQueueClient, WorkType } from "./BasicAsyncQueue";
+import { AddToListWork } from "../lambda/workers/AddToListWork";
 
 interface OrderHistoryResponseItem {
   LastPurchaseDate: string;
@@ -23,8 +25,11 @@ export class WegmansDao {
   private apiKey: string;
   private shoppingListId: number | undefined;
 
+  private workQueue: BasicAsyncQueueClient<AddToListWork>;
+
   constructor(apiKey: string) {
     this.apiKey = apiKey;
+    this.workQueue = new BasicAsyncQueueClient();
   }
 
   static isAccessTokenExpired(token: AccessToken): boolean {
@@ -154,6 +159,17 @@ export class WegmansDao {
     return shoppingListId;
   }
 
+  async enqueue_addProductToShoppingList(accessToken: string, product: Product, quantity = 1): Promise<void> {
+    await logDuration('enqueue_addProductToShoppingList', this.workQueue.enqueue({
+      payload: {
+        accessToken,
+        product,
+        quantity
+      },
+      workType: WorkType.AddToShoppingList
+    }));  
+  }
+  
   async addProductToShoppingList(accessToken: string, product: Product, quantity = 1): Promise<void> {
     const shoppingListId = await this.getShoppingListId(accessToken);
     const response = await request("https://wegapi.azure-api.net/shoppinglists/shoppinglistitem/my/?api-version=1.1",

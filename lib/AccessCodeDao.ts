@@ -55,6 +55,7 @@ const params_TokensByAccessToken: AWS.DynamoDB.CreateTableInput = {
 };
 
 class AccessCodeDao extends DynamoDao {
+
   async getAllAccessTokens(): Promise<AccessToken[]> {
     const dbTokens = await this.docClient.scan({
       TableName: TABLENAME_TOKENSBYACCESS,
@@ -145,7 +146,7 @@ class AccessCodeDao extends DynamoDao {
       TableName: TABLENAME_TOKENSBYCODE,
       Key: { access_code },
     }).promise();
-    
+
     return;
   }
 }
