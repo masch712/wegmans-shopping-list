@@ -1,13 +1,9 @@
-console.log('fdsafds');
 import { accessCodeDao } from "../../lib/AccessCodeDao";
 import { decryptionPromise } from "../../lib/decrypt-config";
 import { WegmansDao } from "../../lib/WegmansDao";
 import { config } from "../../lib/config";
-import { decode } from "jsonwebtoken";
 import { logger } from "../../lib/Logger";
 
-console.log('uhh');
-logger.debug('wtf');
 const initTablesPromise = accessCodeDao.initTables();
 const wegmansDaoPromise = Promise.all([decryptionPromise, initTablesPromise])
   .then(() => new WegmansDao(config.get("wegmans.apikey")));

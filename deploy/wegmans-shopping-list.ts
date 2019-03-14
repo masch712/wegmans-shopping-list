@@ -5,6 +5,7 @@ import * as dynamo from '@aws-cdk/aws-dynamodb';
 import * as sqs from '@aws-cdk/aws-sqs';
 import * as kms from '@aws-cdk/aws-kms';
 import * as iam from '@aws-cdk/aws-iam';
+import * as events from '@aws-cdk/aws-events';
 import { SqsEventSource } from "@aws-cdk/aws-lambda-event-sources";
 import { TABLENAME_TOKENSBYACCESS, TABLENAME_TOKENSBYCODE, TABLENAME_TOKENSBYREFRESH } from '../lib/AccessCodeDao';
 import { PolicyStatement, PolicyStatementEffect, ArnPrincipal } from '@aws-cdk/aws-iam';
@@ -34,17 +35,33 @@ export class WegmansCdkStack extends cdk.Stack {
     const authServerLambdaGenerateAccessCode = new WegmansLambda(this, 'LambdaWegmansAuthServerGenerateAccessCode', {
       handler: 'dist/lambda/server/auth-server.generateAccessCode',
       functionName: 'cdk-wegmans-generate-access-code',
+      environment: {
+        AWS_ENCRYPTED: 'true',
+        WEGMANS_APIKEY: 'AQICAHhEbkp592DXQD2+erIwWGqDeHoUQnAaX1Sw+4YW0087HwH8RXX/AbEVLZkJKaecLtodAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMiKCMxebwomihAFKIAgEQgDuufhAPULVlpHYsEhxt0lMSrTLLWkQ9Oo1aPWEp16Orm4kvVkGYjgiBn/LAGxpu3MELznE3cqPFDletuA==',
+        LOGICAL_ENV: 'development-aws',
+      }
     });
 
     const authServerLambdaGetTokens = new WegmansLambda(this, 'LambdaWegmansAuthServerGetTokens', {
       handler: 'dist/lambda/server/auth-server.getTokens',
       functionName: 'cdk-wegmans-get-tokens',
+      environment: {
+        AWS_ENCRYPTED: 'true',
+        ALEXA_SKILL_NAME: 'wegmans-shopping-list-skill',
+        ALEXA_SKILL_SECRET: 'AQICAHhEbkp592DXQD2+erIwWGqDeHoUQnAaX1Sw+4YW0087HwG84ADCcq8UtZillRJxGQy/AAAAgzCBgAYJKoZIhvcNAQcGoHMwcQIBADBsBgkqhkiG9w0BBwEwHgYJYIZIAWUDBAEuMBEEDMQkr3BBTIYosqvMWgIBEIA/AxXMgH+f0+t2/Kimbo4AG6ktlSchWSsszqH36SHjbA3NblA14q5ApbDG3BhByME3C2sTcvnpJqi34WJz25+B',
+        LOGICAL_ENV: 'development-aws',
+        //TODO: put all these env vars in config files?
+      }
     });
 
     const authServerApi = new apigw.RestApi(this, 'WegmansAuthServerAPI');
     const wegmansAuthResource = authServerApi.root.addResource('wegmans-auth');
-    wegmansAuthResource.addResource('access-code').addMethod('POST', new apigw.LambdaIntegration(authServerLambdaGenerateAccessCode));
-    wegmansAuthResource.addResource('access-token').addMethod('GET', new apigw.LambdaIntegration(authServerLambdaGetTokens));
+    const accessCodeRsource = wegmansAuthResource.addResource('access-code');
+    accessCodeRsource.addMethod('POST', new apigw.LambdaIntegration(authServerLambdaGenerateAccessCode));
+    addCorsOptions(accessCodeRsource);
+    const accessTokenResource =  wegmansAuthResource.addResource('access-token');
+    accessTokenResource.addMethod('GET', new apigw.LambdaIntegration(authServerLambdaGetTokens));
+    addCorsOptions(accessTokenResource);
 
     const dynamoOrderHistoryByUser = new dynamo.Table(this, 'WegmansDynamoOrderHistoryByUser', {
       partitionKey: {
@@ -102,11 +119,9 @@ export class WegmansCdkStack extends cdk.Stack {
         .addResource('arn:aws:kms:us-east-1:412272193202:key/1df4d245-9e29-492e-9ee4-93969cad1309');
 
     // Update lambda policies
-      WegmansLambda.wegmansLambdas.forEach(wl => {
-        wl.addToRolePolicy(kmsPolicy);
-        wl.addToRolePolicy(dynamoAccessPolicy);
-      });
-      // TODO: better way to manage these lambda policies all in one place?
+    WegmansLambda.addToAllRolePolicies(kmsPolicy);
+    WegmansLambda.addToAllRolePolicies(dynamoAccessPolicy);
+    // TODO: better way to manage these lambda policies all in one place? Is that even a good idea (principle of least privilege)?
 
 
     for (const workType of Object.keys(WorkType)) {
@@ -116,22 +131,40 @@ export class WegmansCdkStack extends cdk.Stack {
       });
 
       const enqueuerPolicy = new PolicyStatement(PolicyStatementEffect.Allow)
-      .addAction('sqs:SendMessage')
-      .addResource(queueAndWorker.queue.queueArn);
+        .addAction('sqs:SendMessage')
+        .addResource(queueAndWorker.queue.queueArn);
 
       WegmansLambda.wegmansLambdas.forEach(wl => wl.addToRolePolicy(enqueuerPolicy));
       queueAndWorker.worker.addToRolePolicy(kmsPolicy);
     }
+
+    // Crons
+    //TODO: some cron framework that reads all the cron files?
+    const lambdaOrderHistoryUpdater = new WegmansLambda(this, 'LambdaWegmansOrderHistoryUpdater', {
+      environment,
+      functionName: 'cdk-wegmans-cron-order-history-updater',
+      handler: 'dist/lambda/cron/order-history-updater.handler',
+      timeout: 180, //TODO: alerting for these lambdas (response / error spikes?)
+    });
+
+    new events.EventRule(this, 'EventWegmansOrderHistoryUpdater', {
+      description: 'Cron trigger for order history updater',
+      ruleName: 'cdk-wegmans-cron-order-history-updater',
+      scheduleExpression: 'rate(1 day)',
+      targets: [lambdaOrderHistoryUpdater]
+    });
   }
 }
 
 class WegmansLambda extends lambda.Function {
   static readonly wegmansLambdas: WegmansLambda[] = [];
+  static rolePolicyStatements: iam.PolicyStatement[] = [];
 
   constructor(scope: cdk.Stack, id: string, props: {
     handler: string,
     functionName: string,
-    environment?: { [key: string]: string } // NOTE: FunctionProps.environment can supposedly have 'any' values, but cdk deploy fails if you give non-string values
+    environment?: { [key: string]: string }, // NOTE: FunctionProps.environment can supposedly have 'any' values, but cdk deploy fails if you give non-string values
+    timeout?: number
   }) {
     super(scope, id, {
       runtime: lambda.Runtime.NodeJS810,
@@ -139,9 +172,25 @@ class WegmansLambda extends lambda.Function {
       code: buildAsset,
       functionName: props.functionName,
       environment: props.environment || {},
-      timeout: 30,
+      timeout: props.timeout || 30,
+    });
+    WegmansLambda.rolePolicyStatements.forEach(statement => {
+      this.addToRolePolicy(statement);
     });
     WegmansLambda.wegmansLambdas.push(this);
+  }
+  
+  /**
+   * Calls addToRolePolicy for every existing WegmansLambda, AND saves the statement to call it for every future WegmansLambda.
+   * @param statement 
+   */
+  static addToAllRolePolicies(statement: iam.PolicyStatement) {
+    // TODO: validate that it's not already in there
+    WegmansLambda.rolePolicyStatements.push(statement);
+
+    WegmansLambda.wegmansLambdas.forEach(element => {
+      element.addToRolePolicy(statement);
+    });
   }
 }
 
@@ -151,9 +200,9 @@ class QueueAndWorker {
   get queue(): sqs.Queue {
     return this._queue;
   }
-  
-  private _worker : lambda.Function;
-  get worker() : lambda.Function {
+
+  private _worker: lambda.Function;
+  get worker(): lambda.Function {
     return this._worker;
   }
 
@@ -176,4 +225,34 @@ class QueueAndWorker {
     this._worker.addEventSource(new SqsEventSource(this._queue));
 
   }
+}
+
+function addCorsOptions(apiResource: apigw.IRestApiResource) {
+  // From https://github.com/awslabs/aws-cdk/issues/906
+  const options = apiResource.addMethod('OPTIONS', new apigw.MockIntegration({
+    integrationResponses: [{
+      statusCode: '200',
+      responseParameters: {
+        'method.response.header.Access-Control-Allow-Headers': "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+        'method.response.header.Access-Control-Allow-Origin': "'*'",
+        'method.response.header.Access-Control-Allow-Methods': "'OPTIONS,GET,POST'",
+      },
+    }],
+    passthroughBehavior: apigw.PassthroughBehavior.Never,
+    requestTemplates: {
+      "application/json": "{\"statusCode\": 200}"
+    },
+  }));
+  const methodResource = (options as cdk.Construct).node.findChild("Resource") as apigw.CfnMethod;
+  methodResource.propertyOverrides.methodResponses = [{
+    statusCode: '200',
+    responseModels: {
+      'application/json': 'Empty'
+    },
+    responseParameters: {
+      'method.response.header.Access-Control-Allow-Headers': true,
+      'method.response.header.Access-Control-Allow-Methods': true,
+      'method.response.header.Access-Control-Allow-Origin': true,
+    },
+  }];
 }

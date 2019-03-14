@@ -166,6 +166,6 @@ async (event): Promise<APIGatewayProxyResult> => {
 
 const corsHeaders = Object.freeze({
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+  "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent",
   "Access-Control-Allow-Methods": "OPTIONS,GET,POST",
 });
