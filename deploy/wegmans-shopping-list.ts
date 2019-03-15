@@ -54,13 +54,18 @@ export class WegmansCdkStack extends cdk.Stack {
       }
     });
 
-    const authServerApi = new apigw.RestApi(this, 'WegmansAuthServerAPI');
+    const authServerApi = new apigw.RestApi(this, 'WegmansAuthServerAPI', {
+      deployOptions: {
+        dataTraceEnabled: true,
+        loggingLevel: apigw.MethodLoggingLevel.Info,
+      }
+    });
     const wegmansAuthResource = authServerApi.root.addResource('wegmans-auth');
     const accessCodeRsource = wegmansAuthResource.addResource('access-code');
     accessCodeRsource.addMethod('POST', new apigw.LambdaIntegration(authServerLambdaGenerateAccessCode));
     addCorsOptions(accessCodeRsource);
     const accessTokenResource =  wegmansAuthResource.addResource('access-token');
-    accessTokenResource.addMethod('GET', new apigw.LambdaIntegration(authServerLambdaGetTokens));
+    accessTokenResource.addMethod('POST', new apigw.LambdaIntegration(authServerLambdaGetTokens));
     addCorsOptions(accessTokenResource);
 
     const dynamoOrderHistoryByUser = new dynamo.Table(this, 'WegmansDynamoOrderHistoryByUser', {
