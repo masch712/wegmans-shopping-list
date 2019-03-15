@@ -32,23 +32,6 @@ export class WegmansDao {
     this.workQueue = new BasicAsyncQueueClient();
   }
 
-  static isAccessTokenExpired(token: AccessToken): boolean {
-    const accessToken = jwt.decode(token.access) as { [key: string]: number }; // TODO: make a real JWT type?
-    const exp = accessToken.exp;
-    return exp*1000 < new Date().valueOf();
-  }
-
-  static getStoreIdFromTokens(token: AccessToken): number {
-    // Temporary hack: return 59
-    if (!token) {
-      logger.warn('no user token yet; using 59');
-      return 59;
-    }
-    const userToken = jwt.decode(token.user) as { [key: string]: number }; // TODO: make a real JWT type?
-    const storeId = userToken!['wfa_profile_store'];
-    return storeId;
-  }
-
   async login(email: string, password: string): Promise<AccessToken> {
     let tokens: AccessToken | null = null;
     try {

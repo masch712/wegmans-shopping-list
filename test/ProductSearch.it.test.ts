@@ -1,6 +1,6 @@
 import { ProductSearch } from "../lib/ProductSearch";
 import { WegmansDao } from "../lib/WegmansDao";
-import { AccessToken } from "../models/AccessToken";
+import { AccessToken, getStoreIdFromTokens } from "../models/AccessToken";
 import { config } from "../lib/config";
 import { OrderedProduct } from "../models/OrderedProduct";
 
@@ -14,7 +14,7 @@ let orderHistory: {
 };
 beforeAll(async () => {
   tokens = await wegmans.login(config.get('wegmans.email'), config.get('wegmans.password'));
-  storeId = WegmansDao.getStoreIdFromTokens(tokens);
+  storeId = getStoreIdFromTokens(tokens);
   expect(tokens).toBeDefined();
   orderHistory = await wegmans.getOrderHistory(tokens.access, storeId);
 });

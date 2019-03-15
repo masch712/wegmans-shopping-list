@@ -1,6 +1,6 @@
 import { ProductSearch } from "../lib/ProductSearch";
 import { WegmansDao } from "../lib/WegmansDao";
-import { AccessToken } from "../models/AccessToken";
+import { AccessToken, getStoreIdFromTokens } from "../models/AccessToken";
 import { config } from "../lib/config";
 import { OrderedProduct } from "../models/OrderedProduct";
 import * as _ from "lodash";
@@ -16,11 +16,11 @@ let orderHistory: {
 };
 beforeAll(async () => {
   tokens = await wegmans.login(config.get('wegmans.email'), config.get('wegmans.password'));
-  storeId = WegmansDao.getStoreIdFromTokens(tokens);
+  storeId = getStoreIdFromTokens(tokens);
   expect(tokens).toBeDefined();
 });
 
-describe('10 searches', async () => {
+describe.skip('10 searches', async () => {
   const queries = ['grapefruit', 'ice cream', 'olive oil', 'cheerios', 'milk', 'yogurt', 'ground cinnamon', 'all-purpose flour', 'san pellegrino', 'scotch whiskey'];
   beforeAll(async () => {
     orderHistory = await wegmans.getOrderHistory(tokens.access, storeId);

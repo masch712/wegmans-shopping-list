@@ -2,7 +2,7 @@ import * as request from "request-promise-native";
 import { config } from "../lib/config";
 import {WegmansDao} from "../lib/WegmansDao";
 import { orderHistoryDao } from "../lib/OrderHistoryDao";
-import { AccessToken } from "../models/AccessToken";
+import { AccessToken, getStoreIdFromTokens } from "../models/AccessToken";
 import { ProductSearch } from "../lib/ProductSearch";
 jest.setTimeout(3000000);
 
@@ -19,7 +19,7 @@ describe('wegmans dao', () => {
   let storeId: number;
   beforeAll(async () => {
     tokens = await wegmans.login(config.get('wegmans.email'), config.get('wegmans.password'));
-    storeId = WegmansDao.getStoreIdFromTokens(tokens);
+    storeId = getStoreIdFromTokens(tokens);
     expect(tokens).toBeDefined();
   });
   test('gets goat cheese', async () => {
