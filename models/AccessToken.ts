@@ -22,12 +22,11 @@ export function isAccessTokenExpired(token: AccessToken): boolean {
   return exp*1000 < new Date().valueOf();
 }
 
+export function getUsernameFromToken(token: AccessToken) {
+  return (jwt.decode(token.access) as any).jwt;
+}
+
 export function getStoreIdFromTokens(token: AccessToken): number {
-  // Temporary hack: return 59
-  if (!token) {
-    logger.warn('no user token yet; using 59');
-    return 59;
-  }
   const userToken = jwt.decode(token.user) as { [key: string]: number }; // TODO: make a real JWT type?
   const storeId = userToken!['wfa_profile_store'];
   return storeId;

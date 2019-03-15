@@ -35,6 +35,8 @@ bower_components
 # Lambda deployment package
 build/build.zip
 
+dist
+
 # Dependency directories
 node_modules/
 jspm_packages/

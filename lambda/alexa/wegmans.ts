@@ -11,7 +11,7 @@ import { ProductSearch } from "../../lib/ProductSearch";
 import { accessCodeDao } from "../../lib/AccessCodeDao";
 import { AccessTokenNotFoundLoggedEvent } from "../../models/logged-events/AccessTokenNotFound";
 import { LoggedEvent } from "../../models/LoggedEvent";
-import { AccessToken } from "../../models/AccessToken";
+import { AccessToken, getStoreIdFromTokens } from "../../models/AccessToken";
 
 const APP_ID = "amzn1.ask.skill.ee768e33-44df-48f8-8fcd-1a187d502b75";
 //TODO: support adding quantities: "add 5 goat cheeses"
@@ -81,8 +81,19 @@ export const addToShoppingList: RequestHandler = {
     
     // Given the user's tokens, look up their storeId
     const tokens = await logDuration('getTokens', tokensPromise);
+
+    // Bail if we couldn't get tokens
+    if (!tokens) {
+      logger.error("Couldn't get tokens!");
+      return Promise.resolve(
+        handlerInput.responseBuilder
+          .speak("Sorry, Wedgies is having trouble logging in to Wegmans.  Please try again later.")
+          .getResponse(),
+      );
+    }
     accessToken = accessToken || tokens.access;
-    const storeId = WegmansDao.getStoreIdFromTokens(tokens);
+    
+    const storeId = getStoreIdFromTokens(tokens);
     // Find a product
     const {orderedProducts, cacheUpdatePromise} = await logDuration('wegmansDao.getOrderHistory', wegmansDao.getOrderHistory(accessToken, storeId));
     const product = await ProductSearch.searchForProductPreferHistory(orderedProducts, productQuery, storeId);

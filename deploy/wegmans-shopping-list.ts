@@ -56,8 +56,8 @@ export class WegmansCdkStack extends cdk.Stack {
 
     const authServerApi = new apigw.RestApi(this, 'WegmansAuthServerAPI', {
       deployOptions: {
-        dataTraceEnabled: true,
-        loggingLevel: apigw.MethodLoggingLevel.Info,
+        dataTraceEnabled: false,
+        // loggingLevel: apigw.MethodLoggingLevel.Info,
       }
     });
     const wegmansAuthResource = authServerApi.root.addResource('wegmans-auth');
