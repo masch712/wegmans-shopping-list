@@ -36,16 +36,9 @@ describe('wegmans dao', () => {
     await wegmans.addProductToShoppingList(tokens.access, goat!);
   });
   describe("purchase history", () => {
-    const oldCacheEnabled = config.get("cache.orderHistory.enabled");
-    beforeEach(() => {
-      config.set("cache.orderHistory.enabled", false);
-    });
-    afterEach(() => {
-      config.set("cache.orderHistory.enabled", oldCacheEnabled);
-    });
     test('gets purchase history', async () => {
       await orderHistoryDao.delete(config.get('wegmans.email'));
-      const history = await wegmans.getOrderHistory(tokens.access, storeId);
+      const history = await wegmans.getOrderHistory(tokens.access, storeId, true);
       // cache should have good stuff
       if(history.cacheUpdatePromise) {
         await history.cacheUpdatePromise;

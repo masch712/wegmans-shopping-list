@@ -10,7 +10,7 @@
       "request": "launch",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest",
       "args": [
-        "${relativeFile}"
+        "${fileBasename}"
       ],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",

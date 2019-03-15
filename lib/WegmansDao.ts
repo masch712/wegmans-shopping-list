@@ -196,7 +196,7 @@ export class WegmansDao {
     return;
   }
 
-  async getOrderHistory(accessToken: string, storeId: number) {
+  async getOrderHistory(accessToken: string, storeId: number, forceCacheUpdate?: boolean) {
     const userId = (jwt.decode(accessToken) as { sub: string }).sub;
     const orderHistory = await logDuration('orderHistoryDao.get(userId)', orderHistoryDao.get(userId));
     let orderedProducts: OrderedProduct[] = [];
@@ -209,7 +209,7 @@ export class WegmansDao {
       || !orderHistory.orderedProducts.length
       || orderHistory.lastCachedMillisSinceEpoch < new Date().valueOf() - 24 * 3600 * 1000
       || orderHistory.lastCachedMillisSinceEpoch < 1551646031169 // Before 3/3/2019, when I fixed a bug that requires me to re-cache order history
-      || !config.get("cache.orderHistory.enabled")
+      || forceCacheUpdate
     ) {
       logger.debug('order history cache miss');
       const response = await logDuration('wegmansRequestOrderHistory', request({
