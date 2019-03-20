@@ -7,7 +7,7 @@ import * as kms from '@aws-cdk/aws-kms';
 import * as iam from '@aws-cdk/aws-iam';
 import * as events from '@aws-cdk/aws-events';
 import { SqsEventSource } from "@aws-cdk/aws-lambda-event-sources";
-import { TABLENAME_TOKENSBYACCESS, TABLENAME_TOKENSBYCODE, TABLENAME_TOKENSBYREFRESH } from '../lib/AccessCodeDao';
+import { TABLENAME_TOKENSBYACCESS, TABLENAME_TOKENSBYCODE, TABLENAME_TOKENSBYREFRESH, TABLENAME_PREREFRESHEDTOKENSBYREFRESH } from '../lib/AccessCodeDao';
 import { PolicyStatement, PolicyStatementEffect, ArnPrincipal } from '@aws-cdk/aws-iam';
 import { TABLENAME_ORDERHISTORYBYUSER } from '../lib/OrderHistoryDao';
 import { WorkType } from '../lib/BasicAsyncQueue';
@@ -100,6 +100,15 @@ export class WegmansCdkStack extends cdk.Stack {
       billingMode: dynamo.BillingMode.PayPerRequest,
       tableName: TABLENAME_TOKENSBYCODE,
     }); //TODO: delete the dynamo autoscaling alarms in cloudwatch, they cost like $3.20 a month
+    const dynamoPreRefreshedTokens = new dynamo.Table(this, 'WegmansDynamoPreRefreshedTokens', {
+      partitionKey: {
+        name: 'refreshed_by',
+        type: dynamo.AttributeType.String,
+      },
+      billingMode: dynamo.BillingMode.PayPerRequest,
+      tableName: TABLENAME_PREREFRESHEDTOKENSBYREFRESH,
+    });
+
 
     const dynamoAccessPolicy = new PolicyStatement(PolicyStatementEffect.Allow)
       .addActions(
@@ -117,6 +126,7 @@ export class WegmansCdkStack extends cdk.Stack {
         dynamoTokensByAccess.tableArn,
         dynamoTokensByCode.tableArn,
         dynamoTokensByRefresh.tableArn,
+        dynamoPreRefreshedTokens.tableArn
       );
 
     const kmsPolicy = new PolicyStatement(PolicyStatementEffect.Allow)

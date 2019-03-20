@@ -15,8 +15,6 @@ import { AccessToken, getStoreIdFromTokens } from "../../models/AccessToken";
 
 const APP_ID = "amzn1.ask.skill.ee768e33-44df-48f8-8fcd-1a187d502b75";
 //TODO: support adding quantities: "add 5 goat cheeses"
-const SPEECH_NOT_IMPLEMENTED = "Aaron says: This feature is not yet implemented.";
-const STOP_MESSAGE = "Bye";
 
 const PRODUCT_SLOT = "product";
 

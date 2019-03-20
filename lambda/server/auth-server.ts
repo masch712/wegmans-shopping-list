@@ -6,7 +6,7 @@ import * as uuid from "uuid/v4";
 import { accessCodeDao } from "../../lib/AccessCodeDao";
 import { config } from "../../lib/config";
 import { decryptionPromise } from "../../lib/decrypt-config";
-import { logger } from "../../lib/Logger";
+import { logger, logDuration } from "../../lib/Logger";
 import { WegmansDao } from "../../lib/WegmansDao";
 import { AccessToken } from "../../models/AccessToken";
 
@@ -124,15 +124,16 @@ async (event): Promise<APIGatewayProxyResult> => {
   
   if (body.refresh_token) {
     const wegmansDao = await wegmansDaoPromise;
+    //TODO: first try gettting tokens from the pre-refreshed tokens table
     logger.debug(`getting token by refresh token: ${body.refresh_token}`);
     const oldTokens = await accessCodeDao.getTokensByRefresh(body.refresh_token as string);
     tokens = await wegmansDao.refreshTokens(body.refresh_token as string, oldTokens.user);
-    logger.debug(`saving refresh token`);
-    await accessCodeDao.put(tokens);
-    logger.debug(`deleting old refresh token`);
-    await accessCodeDao.deleteRefreshCode(oldTokens.refresh);
-    logger.debug(`deleting old access`);
-    await accessCodeDao.deleteAccess(oldTokens.access);
+    
+    await logDuration('saveAndCleanupTokens', Promise.all([
+      accessCodeDao.put(tokens),
+      accessCodeDao.deleteRefreshCode(oldTokens.refresh),
+      accessCodeDao.deleteAccess(oldTokens.access),
+    ]));
   }
 
   if (!tokens || !tokens.access) {
