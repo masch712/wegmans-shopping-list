@@ -104,7 +104,8 @@ class AccessCodeDao extends DynamoDao {
   tableParams: AWS.DynamoDB.CreateTableInput[] = [
     params_TokensByCode,
     params_TokensByRefresh,
-    params_TokensByAccessToken
+    params_TokensByAccessToken,
+    params_PreRefreshedTokensByRefresh
   ];
 
   async getTokensByCode(code: string): Promise<AccessToken> {
@@ -138,6 +139,17 @@ class AccessCodeDao extends DynamoDao {
     return Promise.resolve(dbTokens.Item as AccessToken);
   }
 
+  async getPreRefreshedToken(refreshedByRefreshToken: string) {
+    const dbTokens = await this.docClient.get({
+      Key: {
+        refreshed_by: refreshedByRefreshToken,
+      },
+      TableName: TABLENAME_PREREFRESHEDTOKENSBYREFRESH,
+    }).promise();
+//TODO: what if no token?  what do we get back from dynamo? what do we return?
+    return Promise.resolve(dbTokens.Item as PreRefreshedAccessToken);
+  }
+
   async putPreRefreshedTokens(item: PreRefreshedAccessToken) {
     await this.docClient.put({
       Item: item,
@@ -168,6 +180,15 @@ class AccessCodeDao extends DynamoDao {
     const result = await this.docClient.delete({
       TableName: TABLENAME_TOKENSBYCODE,
       Key: { access_code },
+    }).promise();
+
+    return;
+  }
+
+  async deletePreRefreshedTokens(refreshed_by: string): Promise<void> {
+    await this.docClient.delete({
+      TableName: TABLENAME_PREREFRESHEDTOKENSBYREFRESH,
+      Key: { refreshed_by },
     }).promise();
 
     return;

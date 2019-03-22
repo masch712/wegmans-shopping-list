@@ -125,15 +125,27 @@ async (event): Promise<APIGatewayProxyResult> => {
   if (body.refresh_token) {
     const wegmansDao = await wegmansDaoPromise;
     //TODO: first try gettting tokens from the pre-refreshed tokens table
-    logger.debug(`getting token by refresh token: ${body.refresh_token}`);
-    const oldTokens = await accessCodeDao.getTokensByRefresh(body.refresh_token as string);
-    tokens = await wegmansDao.refreshTokens(body.refresh_token as string, oldTokens.user);
+    const preRefreshedTokens = await logDuration('getPreRefreshedToken', accessCodeDao.getPreRefreshedToken(body.refresh_token as string));
+    if (preRefreshedTokens) {
+      tokens = {
+        access: preRefreshedTokens.access,
+        refresh: preRefreshedTokens.refresh,
+        user: preRefreshedTokens.user,
+      };
+      await logDuration('cleanupOldTokens', accessCodeDao.deletePreRefreshedTokens(body.refresh_token as string));
+      //TODO: queue up tokens for deletion?  or just delete it?
+    }
+    else {
+      logger.debug(`getting token by refresh token: ${body.refresh_token}`);
+      const oldTokens = await logDuration('getTokensByRefresh', accessCodeDao.getTokensByRefresh(body.refresh_token as string));
+      tokens = await logDuration('refreshTokens', wegmansDao.refreshTokens(body.refresh_token as string, oldTokens.user));
+      await logDuration('saveAndCleanupTokens', Promise.all([
+        accessCodeDao.put(tokens),
+        accessCodeDao.deleteRefreshCode(oldTokens.refresh),
+        accessCodeDao.deleteAccess(oldTokens.access),
+      ]));
+    }
     
-    await logDuration('saveAndCleanupTokens', Promise.all([
-      accessCodeDao.put(tokens),
-      accessCodeDao.deleteRefreshCode(oldTokens.refresh),
-      accessCodeDao.deleteAccess(oldTokens.access),
-    ]));
   }
 
   if (!tokens || !tokens.access) {
