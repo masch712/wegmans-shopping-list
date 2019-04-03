@@ -163,10 +163,24 @@ export class WegmansCdkStack extends cdk.Stack {
     });
 
     new events.EventRule(this, 'EventWegmansOrderHistoryUpdater', {
-      description: 'Cron trigger for order history updater',
+      description: 'Cron trigger for wegmans order history updater',
       ruleName: 'cdk-wegmans-cron-order-history-updater',
-      scheduleExpression: 'rate(1 day)',
+      scheduleExpression: 'cron(0 4 * * ? *)',
       targets: [lambdaOrderHistoryUpdater]
+    });
+
+    const lambdaTokenRefresher = new WegmansLambda(this, 'LambdaWegmansTokenRefresher', {
+      environment,
+      functionName: 'cdk-wegmans-cron-access-token-refresher',
+      handler: 'dist/lambda/cron/access-token-refresher.handler',
+      timeout: 180, //TODO: alerting for these lambdas (response / error spikes?)
+    });
+
+    new events.EventRule(this, 'EventWegmansTokenRefresher', {
+      description: 'Cron trigger for wegmans token refresher',
+      ruleName: 'cdk-wegmans-cron-access-token-refresher',
+      scheduleExpression: 'cron(30 4 * * ? *)',
+      targets: [lambdaTokenRefresher]
     });
   }
 }

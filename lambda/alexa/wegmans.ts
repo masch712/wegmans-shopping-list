@@ -11,7 +11,7 @@ import { ProductSearch } from "../../lib/ProductSearch";
 import { accessCodeDao } from "../../lib/AccessCodeDao";
 import { AccessTokenNotFoundLoggedEvent } from "../../models/logged-events/AccessTokenNotFound";
 import { LoggedEvent } from "../../models/LoggedEvent";
-import { AccessToken, getStoreIdFromTokens } from "../../models/AccessToken";
+import { AccessToken, getStoreIdFromTokens, isAccessTokenExpired } from "../../models/AccessToken";
 
 const APP_ID = "amzn1.ask.skill.ee768e33-44df-48f8-8fcd-1a187d502b75";
 //TODO: support adding quantities: "add 5 goat cheeses"
@@ -78,7 +78,25 @@ export const addToShoppingList: RequestHandler = {
     const productQuery = intent.slots![PRODUCT_SLOT].value;
     
     // Given the user's tokens, look up their storeId
-    const tokens = await logDuration('getTokens', tokensPromise);
+    let tokens = await logDuration('getTokens', tokensPromise);
+
+    // HACK / TEMPORARY: If the token is expired, grab the pre-refreshed token
+    if (isAccessTokenExpired(tokens)) {
+      logger.error("Alexa gave us an expired access token!"); // If this happens, look into the access-token-refresher
+      const preRefreshedTokens = await logDuration('gettingPreRefreshedTokens', accessCodeDao.getPreRefreshedToken(tokens.refresh));
+      if (!preRefreshedTokens) {
+        const freshTokens = await logDuration('refreshingTokens', wegmansDao.refreshTokens(tokens.refresh, tokens.user));
+        await logDuration('putPreRefreshedTokens', accessCodeDao.putPreRefreshedTokens({
+          refreshed_by: tokens.refresh,
+          ...freshTokens
+        }));
+        tokens = freshTokens;
+      }
+      else {
+        tokens = preRefreshedTokens;
+      }
+      accessToken = tokens.access;
+    }
 
     // Bail if we couldn't get tokens
     if (!tokens) {

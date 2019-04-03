@@ -136,7 +136,6 @@ async (event): Promise<APIGatewayProxyResult> => {
       //TODO: queue up tokens for deletion?  or just delete it?
     }
     else {
-      logger.debug(`getting token by refresh token: ${body.refresh_token}`);
       const oldTokens = await logDuration('getTokensByRefresh', accessCodeDao.getTokensByRefresh(body.refresh_token as string));
       tokens = await logDuration('refreshTokens', wegmansDao.refreshTokens(body.refresh_token as string, oldTokens.user));
       await logDuration('saveAndCleanupTokens', Promise.all([
