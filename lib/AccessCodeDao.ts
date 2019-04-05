@@ -1,11 +1,11 @@
 import * as AWS from "aws-sdk";
-export const TABLENAME_TOKENSBYCODE = "WegmansTokensByAccessCode";
-export const TABLENAME_TOKENSBYACCESS = "WegmansTokensByAccessToken";
-export const TABLENAME_TOKENSBYREFRESH = "WegmansTokensByRefreshToken";
-export const TABLENAME_PREREFRESHEDTOKENSBYREFRESH = "WegmansPreRefreshedTokensByRefreshToken";
 import { AccessToken, PreRefreshedAccessToken } from "../models/AccessToken";
 import { config } from "./config";
 import { DynamoDao } from "./DynamoDao";
+export const TABLENAME_TOKENSBYCODE = config.get('aws.dynamodb.tableNames.TOKENSBYCODE');
+export const TABLENAME_TOKENSBYACCESS = config.get('aws.dynamodb.tableNames.TOKENSBYACCESS');
+export const TABLENAME_TOKENSBYREFRESH = config.get('aws.dynamodb.tableNames.TOKENSBYREFRESH');
+export const TABLENAME_PREREFRESHEDTOKENSBYREFRESH = config.get('aws.dynamodb.tableNames.PREREFRESHEDTOKENSBYREFRESH');
 
 AWS.config.update({
   region: "us-east-1",

@@ -1,11 +1,11 @@
 import * as AWS from "aws-sdk";
-export const TABLENAME_ORDERHISTORYBYUSER = "WegmansOrderHistoryByUser";
 import { DateTime } from 'luxon';
 import { config } from "./config";
 import { DynamoDao } from "./DynamoDao";
 import { OrderedProduct, OrderedProductForDynamo } from "../models/OrderedProduct";
 import { Product } from "../models/Product";
 import * as _ from 'lodash';
+export const TABLENAME_ORDERHISTORYBYUSER = config.get('aws.dynamodb.tableNames.ORDERHISTORYBYUSER');
 
 AWS.config.update({
   region: "us-east-1",

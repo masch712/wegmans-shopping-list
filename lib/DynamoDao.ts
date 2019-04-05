@@ -20,6 +20,10 @@ export abstract class DynamoDao {
     this.docClient = new AWS.DynamoDB.DocumentClient(options);
   }
 
+  static get tableNamePrefix() {
+    return config.get('aws.dynamodb.tableNamePrefix');
+  }
+
   // @traceMethod
   async tableExists(tableName: string, timeout = 30000): Promise<boolean> {
     let tableStatus;

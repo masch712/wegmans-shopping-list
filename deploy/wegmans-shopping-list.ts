@@ -11,45 +11,49 @@ import { TABLENAME_TOKENSBYACCESS, TABLENAME_TOKENSBYCODE, TABLENAME_TOKENSBYREF
 import { PolicyStatement, PolicyStatementEffect, ArnPrincipal } from '@aws-cdk/aws-iam';
 import { TABLENAME_ORDERHISTORYBYUSER } from '../lib/OrderHistoryDao';
 import { WorkType } from '../lib/BasicAsyncQueue';
+import { config } from '../lib/config';
 
 const buildAsset = lambda.Code.asset('./build/build.zip');
 
 export class WegmansCdkStack extends cdk.Stack {
   constructor(scope: cdk.App, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
-
+    if (!config.get('aws.lambda.functionNames.cdk-wegmans-worker-prefix')) {
+      throw new Error('wtf');
+    }
+    else {
+      console.log(config.get('aws.lambda.functionNames.cdk-wegmans-worker-prefix'));
+    }
+    if (!config.get('logical_env')) {
+      throw new Error('You must set LOGICAL_ENV to development or production');
+    }
     const environment = {
       AWS_ENCRYPTED: 'true',
       LOGGING_LEVEL: 'debug',
-      LOGICAL_ENV: 'development-aws',
+      LOGICAL_ENV: config.get('logical_env'),
       //NOTE: this WEGMANS_APIKEY is encrypted by the KMS key.
       WEGMANS_APIKEY: 'AQICAHhEbkp592DXQD2+erIwWGqDeHoUQnAaX1Sw+4YW0087HwH8RXX/AbEVLZkJKaecLtodAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMiKCMxebwomihAFKIAgEQgDuufhAPULVlpHYsEhxt0lMSrTLLWkQ9Oo1aPWEp16Orm4kvVkGYjgiBn/LAGxpu3MELznE3cqPFDletuA==',
     };
 
     new WegmansLambda(this, 'AlexaLambdaWegmansShoppingList', {
       handler: 'dist/lambda/alexa/index.handler',
-      functionName: 'cdk-wegmans-shopping-list',
+      functionName: config.get('aws.lambda.functionNames.cdk-wegmans-shopping-list'),
       environment,
     });
 
     const authServerLambdaGenerateAccessCode = new WegmansLambda(this, 'LambdaWegmansAuthServerGenerateAccessCode', {
       handler: 'dist/lambda/server/auth-server.generateAccessCode',
-      functionName: 'cdk-wegmans-generate-access-code',
-      environment: {
-        AWS_ENCRYPTED: 'true',
-        WEGMANS_APIKEY: 'AQICAHhEbkp592DXQD2+erIwWGqDeHoUQnAaX1Sw+4YW0087HwH8RXX/AbEVLZkJKaecLtodAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMiKCMxebwomihAFKIAgEQgDuufhAPULVlpHYsEhxt0lMSrTLLWkQ9Oo1aPWEp16Orm4kvVkGYjgiBn/LAGxpu3MELznE3cqPFDletuA==',
-        LOGICAL_ENV: 'development-aws',
-      }
+      functionName: config.get('aws.lambda.functionNames.cdk-wegmans-generate-access-code'),
+      environment,
     });
 
     const authServerLambdaGetTokens = new WegmansLambda(this, 'LambdaWegmansAuthServerGetTokens', {
       handler: 'dist/lambda/server/auth-server.getTokens',
-      functionName: 'cdk-wegmans-get-tokens',
+      functionName: config.get('aws.lambda.functionNames.cdk-wegmans-get-tokens'),
       environment: {
-        AWS_ENCRYPTED: 'true',
-        ALEXA_SKILL_NAME: 'wegmans-shopping-list-skill',
-        ALEXA_SKILL_SECRET: 'AQICAHhEbkp592DXQD2+erIwWGqDeHoUQnAaX1Sw+4YW0087HwG84ADCcq8UtZillRJxGQy/AAAAgzCBgAYJKoZIhvcNAQcGoHMwcQIBADBsBgkqhkiG9w0BBwEwHgYJYIZIAWUDBAEuMBEEDMQkr3BBTIYosqvMWgIBEIA/AxXMgH+f0+t2/Kimbo4AG6ktlSchWSsszqH36SHjbA3NblA14q5ApbDG3BhByME3C2sTcvnpJqi34WJz25+B',
-        LOGICAL_ENV: 'development-aws',
+        ...environment,
+        ALEXA_SKILL_NAME: config.get('alexa.skill.name'),
+        ALEXA_SKILL_SECRET: config.get('alexa.skill.secret'),
         //TODO: put all these env vars in config files?
       }
     });
@@ -157,28 +161,28 @@ export class WegmansCdkStack extends cdk.Stack {
     //TODO: some cron framework that reads all the cron files?
     const lambdaOrderHistoryUpdater = new WegmansLambda(this, 'LambdaWegmansOrderHistoryUpdater', {
       environment,
-      functionName: 'cdk-wegmans-cron-order-history-updater',
+      functionName: config.get('aws.lambda.functionNames.cdk-wegmans-cron-order-history-updater'),
       handler: 'dist/lambda/cron/order-history-updater.handler',
       timeout: 180, //TODO: alerting for these lambdas (response / error spikes?)
     });
 
     new events.EventRule(this, 'EventWegmansOrderHistoryUpdater', {
       description: 'Cron trigger for wegmans order history updater',
-      ruleName: 'cdk-wegmans-cron-order-history-updater',
+      ruleName: config.get('aws.lambda.functionNames.cdk-wegmans-cron-order-history-updater'),
       scheduleExpression: 'cron(0 4 * * ? *)',
       targets: [lambdaOrderHistoryUpdater]
     });
 
     const lambdaTokenRefresher = new WegmansLambda(this, 'LambdaWegmansTokenRefresher', {
       environment,
-      functionName: 'cdk-wegmans-cron-access-token-refresher',
+      functionName: config.get('aws.lambda.functionNames.cdk-wegmans-cron-access-token-refresher'),
       handler: 'dist/lambda/cron/access-token-refresher.handler',
       timeout: 180, //TODO: alerting for these lambdas (response / error spikes?)
     });
 
     new events.EventRule(this, 'EventWegmansTokenRefresher', {
       description: 'Cron trigger for wegmans token refresher',
-      ruleName: 'cdk-wegmans-cron-access-token-refresher',
+      ruleName: config.get('aws.lambda.functionNames.cdk-wegmans-cron-access-token-refresher'),
       scheduleExpression: 'cron(30 4 * * ? *)',
       targets: [lambdaTokenRefresher]
     });
@@ -240,13 +244,13 @@ class QueueAndWorker {
     environment: { [key: string]: string },
   }) {
     this._queue = new sqs.Queue(scope, `WegmansWorkerQueue${props.workType}`, {
-      queueName: `wegmans-worker-${props.workType}`,
+      queueName: config.get('aws.sqs.queueNames.worker-queue-prefix') + props.workType,
     });
 
     this._worker = new lambda.Function(scope, `WegmansWorkerLambda${props.workType}`, {
       runtime: lambda.Runtime.NodeJS810,
       code: buildAsset,
-      functionName: `cdk-wegmans-worker-${props.workType}`,
+      functionName: config.get('aws.lambda.functionNames.cdk-wegmans-worker-prefix') + props.workType,
       handler: `dist/lambda/workers/${props.workType}.handler`,
       timeout: 30,
       environment: props.environment,
