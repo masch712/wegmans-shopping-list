@@ -12,6 +12,7 @@ import { PolicyStatement, PolicyStatementEffect, ArnPrincipal } from '@aws-cdk/a
 import { TABLENAME_ORDERHISTORYBYUSER } from '../lib/OrderHistoryDao';
 import { WorkType } from '../lib/BasicAsyncQueue';
 import { config } from '../lib/config';
+import { TABLENAME_PRODUCTREQUESTHISTORY } from '../lib/ProductRequestHistoryDao';
 
 const buildAsset = lambda.Code.asset('./build/build.zip');
 
@@ -112,6 +113,14 @@ export class WegmansCdkStack extends cdk.Stack {
       billingMode: dynamo.BillingMode.PayPerRequest,
       tableName: TABLENAME_PREREFRESHEDTOKENSBYREFRESH,
     });
+    const dynamoProductRequestHistory = new dynamo.Table(this, 'WegmansDynamoProductRequestHistory', {
+      partitionKey: {
+        name: 'user_query',
+        type: dynamo.AttributeType.String,
+      },
+      billingMode: dynamo.BillingMode.PayPerRequest,
+      tableName: TABLENAME_PRODUCTREQUESTHISTORY
+    });
 
 
     const dynamoAccessPolicy = new PolicyStatement(PolicyStatementEffect.Allow)
@@ -130,7 +139,8 @@ export class WegmansCdkStack extends cdk.Stack {
         dynamoTokensByAccess.tableArn,
         dynamoTokensByCode.tableArn,
         dynamoTokensByRefresh.tableArn,
-        dynamoPreRefreshedTokens.tableArn
+        dynamoPreRefreshedTokens.tableArn,
+        dynamoProductRequestHistory.tableArn
       );
 
     const kmsPolicy = new PolicyStatement(PolicyStatementEffect.Allow)

@@ -6,7 +6,7 @@ This is a AWS Lambda endpoint that handles requests from alexa.
 We also have a lambda that acts as the authorization server for account linking with Wegmans.
 ##Setup
 `npm install -g typescript ts-jest`
-`docker run --name wegmans-dynamo -d -p 8000:8000 dwmkerr/dynamodb`
+`docker run -p 8000:8000 --name wegmans-dynamo -d --rm amazon/dynamodb-local`
 ## Build
 `npm run build` to build the .zip file
 `npm run deploy` to deploy development env; `LOGICAL_ENV npm run deploy` to deploy production

@@ -46,7 +46,7 @@
     "@types/uuid": "^3.4.3",
     "@types/winston": "^2.3.9",
     "aws-cdk": "^0.25.2",
-    "aws-sdk": "^2.229.1",
+    "aws-sdk": "^2.437.0",
     "eslint": "^4.19.1",
     "eslint-config-google": "^0.9.1",
     "jest": "^24.1.0",

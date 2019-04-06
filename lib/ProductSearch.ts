@@ -8,6 +8,8 @@ import { DateTime } from "luxon";
 import * as jwt from "jsonwebtoken";
 import * as Fuse from "fuse.js";
 import { LoggedEvent } from "../models/LoggedEvent";
+import { productRequestHistoryDao } from "./ProductRequestHistoryDao";
+
 
 interface ProductSearchResultItem {
   name: string;

@@ -13,6 +13,7 @@ aws:
       TOKENSBYREFRESH: devWegmansTokensByRefreshToken
       PREREFRESHEDTOKENSBYREFRESH: devWegmansPreRefreshedTokensByRefreshToken
       ORDERHISTORYBYUSER: devWegmansOrderHistoryByUser
+      PRODUCTREQUESTHISTORY: devWegmansProductRequestHistory
   lambda:
     functionNames:
       'cdk-wegmans-shopping-list': 'dev-cdk-wegmans-shopping-list'

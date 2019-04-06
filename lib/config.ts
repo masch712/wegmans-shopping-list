@@ -73,6 +73,11 @@ export const config = convict({
           doc: "Table for order history",
           format: String,
           default: "WegmansOrderHistoryByUser",
+        },
+        PRODUCTREQUESTHISTORY: {
+          doc: "Table for alexa request history",
+          format: String,
+          default: "WegmansProductRequestHistory",
         }
       }
     },
