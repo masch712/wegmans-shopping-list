@@ -194,7 +194,7 @@ export class ProductSearch {
     logger.info("Wegmans search result: " + JSON.stringify(candidates[2]));
 
     if (candidates[0]) {
-      return candidates[0];
+      return candidates[0]!;
     }
     const nonNullCandidates = _.filter(candidates, (c): c is Product => !!c && !!c.sku);
     const secondPass = ProductSearch.searchProductsSecondPass(nonNullCandidates, query);

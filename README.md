@@ -9,6 +9,6 @@ We also have a lambda that acts as the authorization server for account linking 
 `docker run --name wegmans-dynamo -d -p 8000:8000 dwmkerr/dynamodb`
 ## Build
 `npm run build` to build the .zip file
-`npm run deploy` to deploy it to AWS S3
+`npm run deploy` to deploy development env; `LOGICAL_ENV npm run deploy` to deploy production
 ## Testing
 Set the log level in jest.config.js

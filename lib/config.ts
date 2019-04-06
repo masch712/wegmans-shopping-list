@@ -118,56 +118,56 @@ export const config = convict({
     accessKeyId: {
       doc: "AWS Access Key Id",
       env: "AWS_ACCESSKEYID",
-    default: "herp",
-},
-  secretAccessKey: {
-    doc: "AWS Secret Key",
-    env: "AWS_SECRETACCESSKEY",
+      default: "herp",
+    },
+    secretAccessKey: {
+      doc: "AWS Secret Key",
+      env: "AWS_SECRETACCESSKEY",
       default: "derp",
     },
   },
-wegmans: {
-  email: {
-    doc: "Wegmans email login",
+  wegmans: {
+    email: {
+      doc: "Wegmans email login",
       default: "",
       format: String,
-        env: "WEGMANS_EMAIL",
-  },
-  password: {
-    doc: "Wegmans password",
+      env: "WEGMANS_EMAIL",
+    },
+    password: {
+      doc: "Wegmans password",
       default: "",
       format: String,
-        env: "WEGMANS_PASSWORD",
-  },
-  apikey: {
-    doc: "Wegmans API key (for Ocp-Apim-Subscription-Key header)",
+      env: "WEGMANS_PASSWORD",
+    },
+    apikey: {
+      doc: "Wegmans API key (for Ocp-Apim-Subscription-Key header)",
       default: "",
       format: String,
-        env: "WEGMANS_APIKEY",
+      env: "WEGMANS_APIKEY",
+    },
   },
-},
-encrypted: {
-  doc: "Whether AWS KMS encryption was used to encrypt credentials",
+  encrypted: {
+    doc: "Whether AWS KMS encryption was used to encrypt credentials",
     default: false,
     format: Boolean,
-      env: "AWS_ENCRYPTED",
-},
-alexa: {
-  skill: {
-    name: {
-      doc: "Name of the alexa skill.  Used for authenticating access token request.",
+    env: "AWS_ENCRYPTED",
+  },
+  alexa: {
+    skill: {
+      name: {
+        doc: "Name of the alexa skill.  Used for authenticating access token request.",
         default: "",
         format: String,
-          env: "ALEXA_SKILL_NAME",
-    },
-    secret: {
-      doc: "The skill client secret created during Account Linking config.",
+        env: "ALEXA_SKILL_NAME",
+      },
+      secret: {
+        doc: "The skill client secret created during Account Linking config.",
         default: "",
         format: String,
-          env: "ALEXA_SKILL_SECRET",
+        env: "ALEXA_SKILL_SECRET",
+      },
     },
   },
-},
 });
 
 // Load environment dependent configuration

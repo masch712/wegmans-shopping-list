@@ -2,8 +2,9 @@ logging:
   level: debug
 alexa:
   skill:
-    name: dev-wegmans-shopping-list
-    secret: 
+    # Client ID and Secret set up in Alexa Skill Console -> Account Linking
+    name: dev-wegmans-shopping-list-skill
+    secret: AQICAHhEbkp592DXQD2+erIwWGqDeHoUQnAaX1Sw+4YW0087HwFTussnC+J0Qo3d5u/WgUpWAAAAgzCBgAYJKoZIhvcNAQcGoHMwcQIBADBsBgkqhkiG9w0BBwEwHgYJYIZIAWUDBAEuMBEEDI5Zp1Cj+TQua7gIMgIBEIA/YfRpHdztTPYlBLXQJ6c4z21mizACdWh78wBuTqLxxGo9GE52RRfkeJR1TIgfI7H5dIrpPKrl5YFA2S4fy6m4
 aws:
   dynamodb:
     tableNames: 
