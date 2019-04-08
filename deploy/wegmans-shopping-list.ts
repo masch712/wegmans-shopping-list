@@ -13,6 +13,7 @@ import { TABLENAME_ORDERHISTORYBYUSER } from '../lib/OrderHistoryDao';
 import { WorkType } from '../lib/BasicAsyncQueue';
 import { config } from '../lib/config';
 import { TABLENAME_PRODUCTREQUESTHISTORY } from '../lib/ProductRequestHistoryDao';
+import { LogGroup } from '@aws-cdk/aws-logs';
 
 const buildAsset = lambda.Code.asset('./build/build.zip');
 
@@ -221,6 +222,10 @@ class WegmansLambda extends lambda.Function {
       this.addToRolePolicy(statement);
     });
     WegmansLambda.wegmansLambdas.push(this);
+    new LogGroup(scope, id + 'Logs', {
+      logGroupName: `/aws/lambda/${this.functionName}`,
+      retentionDays: 7,
+    });
   }
   
   /**
@@ -253,20 +258,27 @@ class QueueAndWorker {
     workType: WorkType
     environment: { [key: string]: string },
   }) {
+    const functionName = config.get('aws.lambda.functionNames.cdk-wegmans-worker-prefix') + props.workType;
+    const lambdaId =`WegmansWorkerLambda${props.workType}`;
+
     this._queue = new sqs.Queue(scope, `WegmansWorkerQueue${props.workType}`, {
       queueName: config.get('aws.sqs.queueNames.worker-queue-prefix') + props.workType,
     });
 
-    this._worker = new lambda.Function(scope, `WegmansWorkerLambda${props.workType}`, {
+    new LogGroup(scope, lambdaId + 'Logs', {
+      logGroupName: `/aws/lambda/${functionName}`,
+      retentionDays: 7,
+    });
+
+    this._worker = new lambda.Function(scope, lambdaId, {
       runtime: lambda.Runtime.NodeJS810,
       code: buildAsset,
-      functionName: config.get('aws.lambda.functionNames.cdk-wegmans-worker-prefix') + props.workType,
+      functionName,
       handler: `dist/lambda/workers/${props.workType}.handler`,
       timeout: 30,
       environment: props.environment,
     });
     this._worker.addEventSource(new SqsEventSource(this._queue));
-
   }
 }
 

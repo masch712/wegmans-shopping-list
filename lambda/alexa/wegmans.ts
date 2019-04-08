@@ -81,6 +81,8 @@ export const addToShoppingList: RequestHandler = {
     let tokens = await logDuration('getTokens', tokensPromise);
 
     // HACK / TEMPORARY: If the token is expired, grab the pre-refreshed token
+    // This shouldn't normally happen, because alexa should be refreshing tokens on its own by calling our auth-server lambda.
+    // If it does happen, it's because our auth-server lambda returned an expired token when alexa asked it to refresh tokens (i think???)
     if (isAccessTokenExpired(tokens)) {
       logger.error("Alexa gave us an expired access token!"); // If this happens, look into the access-token-refresher
       const preRefreshedTokens = await logDuration('gettingPreRefreshedTokens', accessCodeDao.getPreRefreshedToken(tokens.refresh));

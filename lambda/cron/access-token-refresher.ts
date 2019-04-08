@@ -29,30 +29,21 @@ export async function handler() {
   const tokensByUsername = _.groupBy(allTokens, getUsernameFromToken);
 
   for (const username of _.keys(tokensByUsername)) {
-    // If there's already a pre-refreshed token, re-refresh it
     const tokensForUser = tokensByUsername[username] as AccessToken[];
-    let tokensToRefresh: AccessToken;
-    const mostRecentlyIssuedToken = getMostRecentlyIssuedToken(tokensForUser);
-    const preRefreshedToken = await accessCodeDao.getPreRefreshedToken(mostRecentlyIssuedToken.refresh);
-    if (preRefreshedToken) {
-      logger.debug(`${username}: refreshing pre-refreshed token`);
-      tokensToRefresh = preRefreshedToken;
-    }
-    else {
-      logger.debug(`${username}: refreshing most recently issued token`);
-      tokensToRefresh = mostRecentlyIssuedToken;
-    }
-    
-    const freshTokens = await logTime('refreshTokens', wegmansDao.refreshTokens(tokensToRefresh.refresh, tokensToRefresh.user));
 
-    // Put the tokens in the pre-refreshed table
-    await logTime('putPreRefreshedTokens', accessCodeDao.putPreRefreshedTokens({
-      ...freshTokens,
-      refreshed_by: tokensToRefresh.refresh
-    }));
-    
-    // Put the tokens in the conventional access tables so they can be pulled once in circulation
-    await logTime('putTokens', accessCodeDao.put(freshTokens));
+    // For each set of tokens in the primary table, pre-refresh them into the pre-refreshed table
+    // NOTE: we don't need to refresh the pre-refreshed tokens; auth-server is responsible for persisting
+    // pre-refreshed tokens to the primary tables when the tokens go into circulation.
+    for (const tokens of tokensForUser) {
 
+      const freshTokens = await wegmansDao.refreshTokens(tokens.refresh, tokens.user);
+
+      // Put the fresh tokens in the pre-refreshed table
+      await logTime('putPreRefreshedTokens', accessCodeDao.putPreRefreshedTokens({
+        ...freshTokens,
+        refreshed_by: tokens.refresh,
+      }));
+      
+    }
   }
 }
