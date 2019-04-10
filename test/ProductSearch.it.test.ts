@@ -44,3 +44,8 @@ test('search products get pecorino romano', async () => {
   expect(product).toBeDefined();
   expect(product!.name).toMatch(/Pecorino Romano/i);
 });
+test('search products get raisins', async () => {
+  const product = await ProductSearch.searchForProductPreferHistory(orderHistory.orderedProducts, 'raisins', storeId);
+  expect(product).toBeDefined();
+  expect(product!.name).toMatch(/raisins/i);
+});

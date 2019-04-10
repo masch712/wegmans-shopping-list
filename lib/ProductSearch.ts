@@ -165,6 +165,7 @@ export class ProductSearch {
         "subcategory",
         "brand",
         "details",
+        "productLine",
       ],
     });
 
@@ -195,9 +196,9 @@ export class ProductSearch {
     logger.info("Fuse purchase history search result: " + JSON.stringify(candidates[1]));
     logger.info("Wegmans search result: " + JSON.stringify(candidates[2]));
 
-    if (candidates[0]) {
-      return candidates[0]!;
-    }
+    // if (candidates[0]) {
+    //   return candidates[0]!;
+    // }
     const nonNullCandidates = _.filter(candidates, (c): c is Product => !!c && !!c.sku);
     const secondPass = ProductSearch.searchProductsSecondPass(nonNullCandidates, query);
     return secondPass;
