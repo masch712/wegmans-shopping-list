@@ -81,64 +81,64 @@ class OrderHistoryDao extends DynamoDao {
             ...i,
             product
           };
-      }),
-      lastCachedMillisSinceEpoch: orderedProductsResult.Item.endDateMsSinceEpoch as number,
+        }),
+        lastCachedMillisSinceEpoch: orderedProductsResult.Item.endDateMsSinceEpoch as number,
       };
-  }
+    }
     else {
-  return null;
-}
+      return null;
+    }
   }
 
-async getLastSavedEpochMillis(userId: string) {
-  await this.initTables();
-  const endDateResult = await this.docClient.get({
-    Key: {
-      userId,
-    },
-    ProjectionExpression: "endDateMsSinceEpoch",
-    TableName: TABLENAME_ORDERHISTORYBYUSER,
-  }).promise();
+  async getLastSavedEpochMillis(userId: string) {
+    await this.initTables();
+    const endDateResult = await this.docClient.get({
+      Key: {
+        userId,
+      },
+      ProjectionExpression: "endDateMsSinceEpoch",
+      TableName: TABLENAME_ORDERHISTORYBYUSER,
+    }).promise();
 
-  const endDateMsSinceEpoch = (endDateResult.Item && endDateResult.Item.endDateMsSinceEpoch);
+    const endDateMsSinceEpoch = (endDateResult.Item && endDateResult.Item.endDateMsSinceEpoch);
 
-  return endDateMsSinceEpoch as number;
-}
+    return endDateMsSinceEpoch as number;
+  }
 
-async put(username: string, item: OrderedProduct[], freshAsOfEpochMs = DateTime.utc().valueOf()): Promise < void> {
-  await this.initTables();
+  async put(username: string, item: OrderedProduct[], freshAsOfEpochMs = DateTime.utc().valueOf()): Promise<void> {
+    await this.initTables();
 
-  // Strip out any empty-string values because dynamo sucks
-  const cleanOrderedProducts = item.map(rawOp => { //TODO: not 'any' type
-    const product: Product = {
-      brand: rawOp.product!.brand,
-      category: rawOp.product!.category,
-      department: rawOp.product!.department,
-      details: rawOp.product!.details,
-      name: rawOp.product!.name,
-      productLine: rawOp.product!.productLine,
-      sku: rawOp.product!.sku,
-      subcategory: rawOp.product!.subcategory,
+    // Strip out any empty-string values because dynamo sucks
+    const cleanOrderedProducts = item.map(rawOp => { //TODO: not 'any' type
+      const product: Product = {
+        brand: rawOp.product!.brand,
+        category: rawOp.product!.category,
+        department: rawOp.product!.department,
+        details: rawOp.product!.details,
+        name: rawOp.product!.name,
+        productLine: rawOp.product!.productLine,
+        sku: rawOp.product!.sku,
+        subcategory: rawOp.product!.subcategory,
+      };
+      const cleanOorderedProduct = {
+        ...rawOp,
+        product: _.omitBy(product, (val) => !val),
+      };
+      return cleanOorderedProduct;
+    });
+
+    const dbItem: OrderHistoryItem = {
+      endDateMsSinceEpoch: freshAsOfEpochMs,
+      orderedProducts: cleanOrderedProducts,
+      userId: username
     };
-    const cleanOorderedProduct = {
-      ...rawOp,
-      product: _.omitBy(product, (val) => !val),
-    };
-    return cleanOorderedProduct;
-  });
 
-  const dbItem: OrderHistoryItem = {
-    endDateMsSinceEpoch: freshAsOfEpochMs,
-    orderedProducts: cleanOrderedProducts,
-    userId: username
-  };
-
-  await this.docClient.put({
-    Item: dbItem,
-    TableName: TABLENAME_ORDERHISTORYBYUSER,
-  }).promise();
-  return;
-}
+    await this.docClient.put({
+      Item: dbItem,
+      TableName: TABLENAME_ORDERHISTORYBYUSER,
+    }).promise();
+    return;
+  }
 }
 
 export const orderHistoryDao = OrderHistoryDao.getInstance(config.get("aws.dynamodb.endpoint"));

@@ -194,7 +194,7 @@ export class WegmansCdkStack extends cdk.Stack {
     new events.EventRule(this, 'EventWegmansTokenRefresher', {
       description: 'Cron trigger for wegmans token refresher',
       ruleName: config.get('aws.lambda.functionNames.cdk-wegmans-cron-access-token-refresher'),
-      scheduleExpression: 'cron(30 4 * * ? *)',
+      scheduleExpression: 'cron(30 4,12,16 * * ? *)', // Run the refresher every 8 hours
       targets: [lambdaTokenRefresher]
     });
   }

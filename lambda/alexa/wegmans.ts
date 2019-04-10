@@ -13,6 +13,7 @@ import { productRequestHistoryDao } from "../../lib/ProductRequestHistoryDao";
 import { AccessTokenNotFoundLoggedEvent } from "../../models/logged-events/AccessTokenNotFound";
 import { LoggedEvent } from "../../models/LoggedEvent";
 import { AccessToken, getStoreIdFromTokens, isAccessTokenExpired, getUsernameFromToken } from "../../models/AccessToken";
+import { decode } from "jsonwebtoken";
 
 const APP_ID = "amzn1.ask.skill.ee768e33-44df-48f8-8fcd-1a187d502b75";
 //TODO: support adding quantities: "add 5 goat cheeses"
@@ -87,6 +88,7 @@ export const addToShoppingList: RequestHandler = {
       logger.error("Alexa gave us an expired access token!"); // If this happens, look into the access-token-refresher
       const preRefreshedTokens = await logDuration('gettingPreRefreshedTokens', accessCodeDao.getPreRefreshedToken(tokens.refresh));
       if (!preRefreshedTokens || isAccessTokenExpired(preRefreshedTokens)) {
+        logger.debug('preRefreshedToken was: ' + (preRefreshedTokens && JSON.stringify(decode(preRefreshedTokens.access))));
         const freshTokens = await logDuration('refreshingTokens', wegmansDao.refreshTokens(tokens.refresh, tokens.user));
         await logDuration('putPreRefreshedTokens', accessCodeDao.putPreRefreshedTokens({
           refreshed_by: tokens.refresh,

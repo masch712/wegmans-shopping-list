@@ -36,7 +36,7 @@ describe('wegmans dao', () => {
     await wegmans.addProductToShoppingList(tokens.access, goat!);
   });
   describe("purchase history", () => {
-    test.only('gets purchase history', async () => {
+    test('gets purchase history', async () => {
       await orderHistoryDao.delete(config.get('wegmans.email'));
       const history = await wegmans.getOrderHistory(tokens.access, storeId, true);
       // cache should have good stuff
