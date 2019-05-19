@@ -68,6 +68,7 @@ export const addToShoppingList: RequestHandler = {
     let tokensPromise: Promise<AccessToken>;
     if (handlerInput.requestEnvelope.session && handlerInput.requestEnvelope.session.user.accessToken) {
       const accessToken = handlerInput.requestEnvelope.session.user.accessToken;
+      logger.debug("Access token from request: " + accessToken);
       tokensPromise = accessCodeDao.getTokensByAccess(accessToken);
     } else {
       //TODO: do both these approaches work?
@@ -85,7 +86,7 @@ export const addToShoppingList: RequestHandler = {
     // This shouldn't normally happen, because alexa should be refreshing tokens on its own by calling our auth-server lambda.
     // If it does happen, it's because our auth-server lambda returned an expired token when alexa asked it to refresh tokens (i think???)
     if (isAccessTokenExpired(tokens)) {
-      logger.error("Alexa gave us an expired access token!"); // If this happens, look into the access-token-refresher
+      logger.error("Alexa gave us an expired access token: " + JSON.stringify(tokens)); // If this happens, look into the access-token-refresher
       const preRefreshedTokens = await logDuration('gettingPreRefreshedTokens', accessCodeDao.getPreRefreshedToken(tokens.refresh));
       if (!preRefreshedTokens || isAccessTokenExpired(preRefreshedTokens)) {
         logger.debug('preRefreshedToken was: ' + (preRefreshedTokens && JSON.stringify(decode(preRefreshedTokens.access))));

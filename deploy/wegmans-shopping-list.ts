@@ -29,13 +29,16 @@ export class WegmansCdkStack extends cdk.Stack {
     if (!config.get('logical_env')) {
       throw new Error('You must set LOGICAL_ENV to development or production');
     }
-    const environment = {
+    const environment: { [name: string]: string } = {
       AWS_ENCRYPTED: 'true',
       LOGGING_LEVEL: 'debug',
       LOGICAL_ENV: config.get('logical_env'),
       //NOTE: this WEGMANS_APIKEY is encrypted by the KMS key.
       WEGMANS_APIKEY: 'AQICAHhEbkp592DXQD2+erIwWGqDeHoUQnAaX1Sw+4YW0087HwH8RXX/AbEVLZkJKaecLtodAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMiKCMxebwomihAFKIAgEQgDuufhAPULVlpHYsEhxt0lMSrTLLWkQ9Oo1aPWEp16Orm4kvVkGYjgiBn/LAGxpu3MELznE3cqPFDletuA==',
     };
+    if (config.get('logical_env') === 'production') {
+      environment.LIVE_RUN = '1';
+    }
 
     new WegmansLambda(this, 'AlexaLambdaWegmansShoppingList', {
       handler: 'dist/lambda/alexa/index.handler',

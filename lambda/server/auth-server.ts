@@ -119,7 +119,8 @@ export const getTokens: APIGatewayProxyHandler =
 
       logger.debug("deleting access code: " + body.code);
       deletePromise = accessCodeDao.deleteAccessCode(body.code as string)
-        .then(() => logger.debug("access code delete complete."));
+        .then(() => logger.debug("access code delete complete."))
+        .catch(logger.error);
     }
 
     //TODO: what can we performance-optimize here?  Beware cognitive load and dependency hell with access-token-refresher.
@@ -164,6 +165,9 @@ export const getTokens: APIGatewayProxyHandler =
     const now = Math.floor(new Date().getTime() / 1000);
     // tslint:disable-next-line:variable-name
     const expires_in = jwt.exp - now;
+    logger.debug("jwt.exp: " + jwt.exp);
+    logger.debug("now: " + now);
+    logger.debug("expires_in: " + expires_in);
 
     const response: APIGatewayProxyResult = {
       body: JSON.stringify({
