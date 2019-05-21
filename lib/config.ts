@@ -38,6 +38,13 @@ export const config = convict({
     },
   },
   aws: {
+    account: {
+      number: {
+        doc: 'AWS Account number',
+        format: Number,
+        env: 'AWS_ACCOUNT_NUMBER',
+      },
+    },
     dynamodb: {
       endpoint: {
         doc: "DynamoDB endpoint",

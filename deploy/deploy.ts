@@ -8,7 +8,7 @@ if (config.get('logical_env') === 'production') {
   new WegmansCdkStack(app, 'WegmansSkill', {
     env: {
       region: 'us-east-1',
-      account: '412272193202',
+      account: config.get('aws.account.number'),
     },
   });
 }
@@ -16,7 +16,7 @@ else {
   new WegmansCdkStack(app, 'devWegmansSkill', {
     env: {
       region: 'us-east-1',
-      account: '412272193202',
+      account: config.get('aws.account.number'),
     },
   });
 }

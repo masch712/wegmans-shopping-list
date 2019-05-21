@@ -66,3 +66,6 @@ typings/
 config/local.yaml
 
 hax.ts
+
+#generated CDK cloudformation
+deploy/*.yaml

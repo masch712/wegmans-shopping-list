@@ -149,7 +149,7 @@ export class WegmansCdkStack extends cdk.Stack {
 
     const kmsPolicy = new PolicyStatement(PolicyStatementEffect.Allow)
         .addActions('kms:Decrypt', 'kms:Encrypt')
-        .addResource('arn:aws:kms:us-east-1:412272193202:key/1df4d245-9e29-492e-9ee4-93969cad1309');
+        .addResource(`arn:aws:kms:us-east-1:${config.get('aws.account.number')}:key/1df4d245-9e29-492e-9ee4-93969cad1309`);
 
     // Update lambda policies
     WegmansLambda.addToAllRolePolicies(kmsPolicy);
