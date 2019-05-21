@@ -1,10 +1,11 @@
 import * as AWS from "aws-sdk";
-export const TABLENAME_TOKENSBYCODE = "WegmansTokensByAccessCode";
-export const TABLENAME_TOKENSBYACCESS = "WegmansTokensByAccessToken";
-export const TABLENAME_TOKENSBYREFRESH = "WegmansTokensByRefreshToken";
-import { AccessToken } from "../models/AccessToken";
+import { AccessToken, PreRefreshedAccessToken } from "../models/AccessToken";
 import { config } from "./config";
 import { DynamoDao } from "./DynamoDao";
+export const TABLENAME_TOKENSBYCODE = config.get('aws.dynamodb.tableNames.TOKENSBYCODE');
+export const TABLENAME_TOKENSBYACCESS = config.get('aws.dynamodb.tableNames.TOKENSBYACCESS');
+export const TABLENAME_TOKENSBYREFRESH = config.get('aws.dynamodb.tableNames.TOKENSBYREFRESH');
+export const TABLENAME_PREREFRESHEDTOKENSBYREFRESH = config.get('aws.dynamodb.tableNames.PREREFRESHEDTOKENSBYREFRESH');
 
 AWS.config.update({
   region: "us-east-1",
@@ -12,6 +13,7 @@ AWS.config.update({
 
 //TODO: clean out tables periodically
 // TODO: salt the access code?
+//TODO: only store table schema in CDK deployment script?
 const params_TokensByCode: AWS.DynamoDB.CreateTableInput = {
   TableName: TABLENAME_TOKENSBYCODE,
   KeySchema: [
@@ -54,6 +56,20 @@ const params_TokensByAccessToken: AWS.DynamoDB.CreateTableInput = {
   },
 };
 
+const params_PreRefreshedTokensByRefresh: AWS.DynamoDB.CreateTableInput = {
+  TableName: TABLENAME_PREREFRESHEDTOKENSBYREFRESH,
+  KeySchema: [
+    { AttributeName: "refreshed_by", KeyType: "HASH" }, // Partition key; the refresh token that was used to generate these tokens.
+  ],
+  AttributeDefinitions: [
+    { AttributeName: "refreshed_by", AttributeType: "S" },
+  ],
+  ProvisionedThroughput: {
+    ReadCapacityUnits: 10,
+    WriteCapacityUnits: 10,
+  },
+};
+
 class AccessCodeDao extends DynamoDao {
 
   async getAllAccessTokens(): Promise<AccessToken[]> {
@@ -88,7 +104,8 @@ class AccessCodeDao extends DynamoDao {
   tableParams: AWS.DynamoDB.CreateTableInput[] = [
     params_TokensByCode,
     params_TokensByRefresh,
-    params_TokensByAccessToken
+    params_TokensByAccessToken,
+    params_PreRefreshedTokensByRefresh
   ];
 
   async getTokensByCode(code: string): Promise<AccessToken> {
@@ -122,6 +139,24 @@ class AccessCodeDao extends DynamoDao {
     return Promise.resolve(dbTokens.Item as AccessToken);
   }
 
+  async getPreRefreshedToken(refreshedByRefreshToken: string) {
+    const dbTokens = await this.docClient.get({
+      Key: {
+        refreshed_by: refreshedByRefreshToken,
+      },
+      TableName: TABLENAME_PREREFRESHEDTOKENSBYREFRESH,
+    }).promise();
+//TODO: what if no token?  what do we get back from dynamo? what do we return?
+    return Promise.resolve(dbTokens.Item as PreRefreshedAccessToken);
+  }
+
+  async putPreRefreshedTokens(item: PreRefreshedAccessToken) {
+    await this.docClient.put({
+      Item: item,
+      TableName: TABLENAME_PREREFRESHEDTOKENSBYREFRESH,
+    }).promise();
+  }
+
   async put(item: AccessToken): Promise<void> {
     const tokensByCodePromise = item.access_code ? this.docClient.put({
       Item: item,
@@ -145,6 +180,15 @@ class AccessCodeDao extends DynamoDao {
     const result = await this.docClient.delete({
       TableName: TABLENAME_TOKENSBYCODE,
       Key: { access_code },
+    }).promise();
+
+    return;
+  }
+
+  async deletePreRefreshedTokens(refreshed_by: string): Promise<void> {
+    await this.docClient.delete({
+      TableName: TABLENAME_PREREFRESHEDTOKENSBYREFRESH,
+      Key: { refreshed_by },
     }).promise();
 
     return;

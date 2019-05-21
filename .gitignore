@@ -60,9 +60,12 @@ typings/
 .yarn-integrity
 
 # dotenv environment variables file
-.env
+*.env
 
 # local config (contains passwords)
 config/local.yaml
 
 hax.ts
+
+#generated CDK cloudformation
+deploy/*.yaml

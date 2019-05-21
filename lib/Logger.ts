@@ -14,12 +14,12 @@ export const logger = new winston.Logger({
   })],
 });
 
-/**
- * Decorator for logging duration of a method call
- * @param target 
- * @param propertyKey 
- * @param propertyDescriptor 
- */
+// /**
+//  * Decorator for logging duration of a method call
+//  * @param target 
+//  * @param propertyKey 
+//  * @param propertyDescriptor 
+//  */
 // export function traceMethod(async: boolean) {
 //   return (target, propertyKey: string, propertyDescriptor: PropertyDescriptor) => {
 //     const constructorName = target.constructor && target.constructor.name;
@@ -54,6 +54,11 @@ export const logger = new winston.Logger({
 // });
 
 
+/**
+ * Wrapper for logging duration of a promise
+ * @param eventName 
+ * @param promise 
+ */
 export async function logDuration<T>(eventName: string, promise: Promise<T>): Promise<T> {
   const id = uuid();
   logger.debug(new LoggedEvent('starting').addProperty('eventName', eventName).toString());

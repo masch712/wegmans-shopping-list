@@ -2,6 +2,7 @@ import { KMS } from "aws-sdk";
 import * as convict from "convict";
 import * as yaml from "js-yaml";
 import { resolve } from "path";
+import * as dotenv from 'dotenv';
 
 convict.addParser({
   extension: ["yml", "yaml"], parse: (str) => {
@@ -17,14 +18,14 @@ convict.addParser({
 export const config = convict({
   env: {
     doc: "The application environment.",
-    format: ["production", "development", "test", "development-aws"],
+    format: ["production", "development", "test"],
     default: "development",
     env: "NODE_ENV",
   },
   logical_env: {
     doc: "The logical env name for loading config file",
     format: String,
-    default: "local",
+    default: "development",
     env: "LOGICAL_ENV",
   },
 
@@ -37,6 +38,13 @@ export const config = convict({
     },
   },
   aws: {
+    account: {
+      number: {
+        doc: 'AWS Account number',
+        format: Number,
+        env: 'AWS_ACCOUNT_NUMBER',
+      },
+    },
     dynamodb: {
       endpoint: {
         doc: "DynamoDB endpoint",
@@ -48,6 +56,77 @@ export const config = convict({
         format: Boolean,
         default: false,
       },
+      tableNames: {
+        TOKENSBYCODE: {
+          doc: "Table for blah",
+          format: String,
+          default: "WegmansTokensByAccessCode"
+        },
+        TOKENSBYACCESS: {
+          doc: "Table for blah",
+          format: String,
+          default: "WegmansTokensByAccessToken"
+        },
+        TOKENSBYREFRESH: {
+          doc: "Table for blah",
+          format: String,
+          default: "WegmansTokensByRefreshToken"
+        },
+        PREREFRESHEDTOKENSBYREFRESH: {
+          doc: "Table for blah",
+          format: String,
+          default: "WegmansPreRefreshedTokensByRefreshToken"
+        },
+        ORDERHISTORYBYUSER: {
+          doc: "Table for order history",
+          format: String,
+          default: "WegmansOrderHistoryByUser",
+        },
+        PRODUCTREQUESTHISTORY: {
+          doc: "Table for alexa request history",
+          format: String,
+          default: "WegmansProductRequestHistory",
+        }
+      }
+    },
+    lambda: {
+      functionNames: {
+        'cdk-wegmans-shopping-list': {
+          doc: 'lambda function name',
+          type: String,
+          default: 'cdk-wegmans-shopping-list'
+        },
+        'cdk-wegmans-generate-access-code': {
+          doc: 'lambda function name',
+          type: String,
+          default: 'cdk-wegmans-generate-access-code'
+        },
+        'cdk-wegmans-get-tokens': {
+          doc: 'lambda function name',
+          type: String,
+          default: 'cdk-wegmans-get-tokens'
+        },
+        'cdk-wegmans-cron-order-history-updater': {
+          doc: 'lambda function name',
+          type: String,
+          default: 'cdk-wegmans-cron-order-history-updater'
+        },
+        'cdk-wegmans-cron-access-token-refresher': {
+          doc: 'lambda function name',
+          type: String,
+          default: 'cdk-wegmans-cron-access-token-refresher'
+        },
+        'cdk-wegmans-worker-prefix': {
+          doc: 'lambda function name',
+          type: String,
+          default: `cdk-wegmans-worker-`
+        },
+      }
+    },
+    sqs: {
+      queueNames: {
+        'worker-queue-prefix': 'wegmans-worker-'
+      }
     },
     accessKeyId: {
       doc: "AWS Access Key Id",
@@ -106,6 +185,11 @@ export const config = convict({
 
 // Load environment dependent configuration
 const env = config.get("logical_env");
+
+dotenv.config({
+  path: `${env}.env`
+});
+
 const configFile = resolve("config", env + ".yaml");
 config.loadFile(configFile);
 

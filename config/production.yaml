@@ -1,0 +1,6 @@
+logging:
+  level: debug
+alexa:
+  skill:
+  # Client ID and Secret set up in Alexa Skill Console -> Account Linking
+    name: wegmans-shopping-list-skill

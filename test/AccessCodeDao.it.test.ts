@@ -3,6 +3,10 @@ import { accessCodeDao, TABLENAME_TOKENSBYCODE } from "../lib/AccessCodeDao";
 import { AccessToken } from "../models/AccessToken";
 jest.setTimeout(30000);
 
+beforeAll(async () => {
+  await accessCodeDao.initTables();
+});
+
 describe('getAllCurrentAccessTokens', () => {
   test('gets all current access tokens', async () => {
     // Add some tokens to the db first
@@ -91,4 +95,27 @@ describe('login', () => {
   });
 
 
+});
+
+describe('pre-refresh workflow', () => {
+  const refreshed_by = 'the old refresh token';
+  const tokens: AccessToken = {
+    access: 'access token',
+    refresh: 'refresh token',
+    user: 'user token',
+  };
+
+  test('put and get the pre-refreshed token', async () => {
+    const preRefreshedToken = {
+      refreshed_by,
+      ...tokens
+    };
+    
+    await accessCodeDao.putPreRefreshedTokens({
+      refreshed_by,
+      ...tokens
+    });
+    const retrievedTokens = await accessCodeDao.getPreRefreshedToken(refreshed_by);
+    expect(retrievedTokens).toEqual(preRefreshedToken);
+  });
 });

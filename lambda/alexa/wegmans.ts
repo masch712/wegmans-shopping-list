@@ -9,18 +9,18 @@ import { logger, logDuration } from "../../lib/Logger";
 import { WegmansDao } from "../../lib/WegmansDao";
 import { ProductSearch } from "../../lib/ProductSearch";
 import { accessCodeDao } from "../../lib/AccessCodeDao";
+import { productRequestHistoryDao } from "../../lib/ProductRequestHistoryDao";
 import { AccessTokenNotFoundLoggedEvent } from "../../models/logged-events/AccessTokenNotFound";
 import { LoggedEvent } from "../../models/LoggedEvent";
-import { AccessToken, getStoreIdFromTokens } from "../../models/AccessToken";
+import { AccessToken, getStoreIdFromTokens, isAccessTokenExpired, getUsernameFromToken } from "../../models/AccessToken";
+import { decode } from "jsonwebtoken";
 
 const APP_ID = "amzn1.ask.skill.ee768e33-44df-48f8-8fcd-1a187d502b75";
 //TODO: support adding quantities: "add 5 goat cheeses"
-const SPEECH_NOT_IMPLEMENTED = "Aaron says: This feature is not yet implemented.";
-const STOP_MESSAGE = "Bye";
 
 const PRODUCT_SLOT = "product";
 
-const initTablesPromise = accessCodeDao.initTables();
+const initTablesPromise = accessCodeDao.initTables(); //TODO: this initTables pattern sucks ass.  shouldn't be calling this everywhere
 const wegmansDaoPromise = Promise.all([decryptionPromise, initTablesPromise])
   .then(() => new WegmansDao(config.get("wegmans.apikey")));
 
@@ -65,10 +65,10 @@ export const addToShoppingList: RequestHandler = {
     const wegmansDao = await wegmansDaoPromise;
     
     // Get skill access token from request and match it up with wegmans auth tokens from dynamo
-    let accessToken;
     let tokensPromise: Promise<AccessToken>;
     if (handlerInput.requestEnvelope.session && handlerInput.requestEnvelope.session.user.accessToken) {
-      accessToken = handlerInput.requestEnvelope.session.user.accessToken;
+      const accessToken = handlerInput.requestEnvelope.session.user.accessToken;
+      logger.debug("Access token from request: " + accessToken);
       tokensPromise = accessCodeDao.getTokensByAccess(accessToken);
     } else {
       //TODO: do both these approaches work?
@@ -80,7 +80,27 @@ export const addToShoppingList: RequestHandler = {
     const productQuery = intent.slots![PRODUCT_SLOT].value;
     
     // Given the user's tokens, look up their storeId
-    const tokens = await logDuration('getTokens', tokensPromise);
+    let tokens = await logDuration('getTokens', tokensPromise);
+
+    // HACK / TEMPORARY: If the token is expired, grab the pre-refreshed token
+    // This shouldn't normally happen, because alexa should be refreshing tokens on its own by calling our auth-server lambda.
+    // If it does happen, it's because our auth-server lambda returned an expired token when alexa asked it to refresh tokens (i think???)
+    if (isAccessTokenExpired(tokens)) {
+      logger.error("Alexa gave us an expired access token: " + JSON.stringify(tokens)); // If this happens, look into the access-token-refresher
+      const preRefreshedTokens = await logDuration('gettingPreRefreshedTokens', accessCodeDao.getPreRefreshedToken(tokens.refresh));
+      if (!preRefreshedTokens || isAccessTokenExpired(preRefreshedTokens)) {
+        logger.debug('preRefreshedToken was: ' + (preRefreshedTokens && JSON.stringify(decode(preRefreshedTokens.access))));
+        const freshTokens = await logDuration('refreshingTokens', wegmansDao.refreshTokens(tokens.refresh, tokens.user));
+        await logDuration('putPreRefreshedTokens', accessCodeDao.putPreRefreshedTokens({
+          refreshed_by: tokens.refresh,
+          ...freshTokens
+        }));
+        tokens = freshTokens;
+      }
+      else {
+        tokens = preRefreshedTokens;
+      }
+    }
 
     // Bail if we couldn't get tokens
     if (!tokens) {
@@ -91,12 +111,14 @@ export const addToShoppingList: RequestHandler = {
           .getResponse(),
       );
     }
-    accessToken = accessToken || tokens.access;
     
     const storeId = getStoreIdFromTokens(tokens);
     // Find a product
-    const {orderedProducts, cacheUpdatePromise} = await logDuration('wegmansDao.getOrderHistory', wegmansDao.getOrderHistory(accessToken, storeId));
-    const product = await ProductSearch.searchForProductPreferHistory(orderedProducts, productQuery, storeId);
+    const [{orderedProducts, cacheUpdatePromise}, pastRequestedProduct] = await Promise.all([
+      logDuration('wegmansDao.getOrderHistory', wegmansDao.getOrderHistory(tokens.access, storeId)),
+      logDuration('productRequestHistoryDao.get', productRequestHistoryDao.get(getUsernameFromToken(tokens), productQuery)),
+    ]);
+    const product = (pastRequestedProduct && pastRequestedProduct.chosenProduct) || await ProductSearch.searchForProductPreferHistory(orderedProducts, productQuery, storeId);
     if (product) {
       logger.debug(new LoggedEvent('foundProduct')
         .addProperty('name', product.name)
@@ -121,8 +143,12 @@ export const addToShoppingList: RequestHandler = {
       );
     }
 
-    // Add to shopping list asynchronously; don't hold up the response.
-    await wegmansDao.enqueue_addProductToShoppingList(accessToken, product);
+    await Promise.all([
+      // Add to shopping list asynchronously; don't hold up the response.
+      wegmansDao.enqueue_addProductToShoppingList(tokens.access, product),
+      // Store the search result for later
+      productRequestHistoryDao.put(getUsernameFromToken(tokens), productQuery, product),
+    ]);
 
     const alexaFriendlyProductName = product.name.replace(/\&/g, 'and');
 

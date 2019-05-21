@@ -3,7 +3,8 @@ import { decryptionPromise } from "../../lib/decrypt-config";
 import { WegmansDao } from "../../lib/WegmansDao";
 import { config } from "../../lib/config";
 import { logger } from "../../lib/Logger";
-import { getStoreIdFromTokens, isAccessTokenExpired, getUsernameFromToken } from "../../models/AccessToken";
+import { getStoreIdFromTokens, isAccessTokenExpired, getUsernameFromToken, getMostRecentlyIssuedToken, AccessToken } from "../../models/AccessToken";
+import * as _ from 'lodash';
 
 const initTablesPromise = accessCodeDao.initTables();
 const wegmansDaoPromise = Promise.all([decryptionPromise, initTablesPromise])
@@ -17,14 +18,12 @@ export async function handler() {
   logger.debug("getAllAccessTokens");
   const allTokens = await accessCodeDao.getAllAccessTokens();
 
-  const historyUpdatedForUsers: { [username: string]: 1 } = {};
-  for (const token of allTokens) {
-    const storeId = getStoreIdFromTokens(token);
-    const username = getUsernameFromToken(token);
+  const tokensByUsername = _.groupBy(allTokens, getUsernameFromToken);
 
-    if (historyUpdatedForUsers[username]) {
-      continue;
-    }
+  for (const username of _.keys(tokensByUsername)) {
+    const tokensForUser = tokensByUsername[username] as AccessToken[];
+    const token = getMostRecentlyIssuedToken(tokensForUser);
+    const storeId = getStoreIdFromTokens(token);
 
     // Refresh if necessary.  Don't worry, Alexa will still be able to refresh the old token again.
     // That said, it's probably best to leave the expired access token in place so that alexa 
@@ -37,7 +36,6 @@ export async function handler() {
 
     const result = await wegmansDao.getOrderHistory(token.access, storeId, true);
     if (result.cacheUpdatePromise) {
-      historyUpdatedForUsers[username] = 1;
       logger.info('updating cache for user ' + username); //TODO: parse user token into a type
       if (isLiveRun) {
         await result.cacheUpdatePromise;

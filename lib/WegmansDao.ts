@@ -179,18 +179,21 @@ export class WegmansDao {
     return;
   }
 
+  //TODO: refactor this garbage
   async getOrderHistory(accessToken: string, storeId: number, forceCacheUpdate?: boolean) {
     const userId = (jwt.decode(accessToken) as { sub: string }).sub;
     const orderHistory = await logDuration('orderHistoryDao.get(userId)', orderHistoryDao.get(userId));
     let orderedProducts: OrderedProduct[] = [];
     let updateCachePromise = undefined;
 
+    logger.debug('gotOrderHistoryCachedAt: ' + (orderHistory && orderHistory.lastCachedMillisSinceEpoch));
+
     // Update cache if oldre than 24 hours
     if (
       !orderHistory
       || !orderHistory.orderedProducts
       || !orderHistory.orderedProducts.length
-      || orderHistory.lastCachedMillisSinceEpoch < new Date().valueOf() - 24 * 3600 * 1000
+      || orderHistory.lastCachedMillisSinceEpoch < DateTime.utc().valueOf() - 24 * 3600 * 1000
       || orderHistory.lastCachedMillisSinceEpoch < 1551646031169 // Before 3/3/2019, when I fixed a bug that requires me to re-cache order history
       || forceCacheUpdate
     ) {

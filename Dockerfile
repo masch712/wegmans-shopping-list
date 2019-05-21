@@ -1,4 +1,4 @@
-FROM node:8.10
+FROM node:8-stretch
 
 RUN \
   apt-get update -y \
@@ -11,7 +11,7 @@ COPY ./package-lock.json /usr/src/app
 
 WORKDIR /usr/src/app
 
-RUN npm install typescript
+RUN npm install
 
 COPY ./ /usr/src/app
 

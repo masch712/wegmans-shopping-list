@@ -1,4 +1,5 @@
 import { SQS } from "aws-sdk";
+import { config } from "./config";
 
 export enum WorkType {
   AddToShoppingList = 'AddToShoppingList'
@@ -14,7 +15,7 @@ export interface WorkToEnqueue {
 }
 
 function getEndpointFromQueueName(queueName: string) {
-  return `https://sqs.us-east-1.amazonaws.com/412272193202/wegmans-worker-${queueName}`;
+  return `https://sqs.us-east-1.amazonaws.com/${config.get('aws.account.number')}/${config.get('aws.sqs.queueNames.worker-queue-prefix')}${queueName}`;
 }
 
 export class BasicAsyncQueueClient<T extends QueuedWork> {
