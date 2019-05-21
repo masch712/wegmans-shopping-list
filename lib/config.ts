@@ -2,6 +2,7 @@ import { KMS } from "aws-sdk";
 import * as convict from "convict";
 import * as yaml from "js-yaml";
 import { resolve } from "path";
+import * as dotenv from 'dotenv';
 
 convict.addParser({
   extension: ["yml", "yaml"], parse: (str) => {
@@ -177,6 +178,11 @@ export const config = convict({
 
 // Load environment dependent configuration
 const env = config.get("logical_env");
+
+dotenv.config({
+  path: `${env}.env`
+});
+
 const configFile = resolve("config", env + ".yaml");
 config.loadFile(configFile);
 
