@@ -105,7 +105,6 @@ export const getTokens: APIGatewayProxyHandler =
     logger.debug("creds are good!");
 
     const body = querystring.parse(event.body);
-    logger.debug("request body: " + JSON.stringify(body, null, 2));
     logger.debug("getting tokens");
     let tokens: AccessToken | null = null;
     let deletePromise;
@@ -117,7 +116,7 @@ export const getTokens: APIGatewayProxyHandler =
       logger.debug("getting token by code");
       tokens = await accessCodeDao.getTokensByCode(body.code as string);
 
-      logger.debug("deleting access code: " + body.code);
+      logger.debug("deleting access code");
       deletePromise = accessCodeDao.deleteAccessCode(body.code as string)
         .then(() => logger.debug("access code delete complete."))
         .catch(logger.error);
@@ -157,11 +156,9 @@ export const getTokens: APIGatewayProxyHandler =
     }
 
     logger.debug("got tokens");
-    logger.debug("access: " + tokens.access);
 
     // tslint:disable-next-line:no-any
     const jwt = decode(tokens.access) as { [key: string]: any };
-    logger.debug("decoded: " + JSON.stringify(jwt, null, 2));
     const now = Math.floor(new Date().getTime() / 1000);
     // tslint:disable-next-line:variable-name
     const expires_in = jwt.exp - now;
@@ -180,7 +177,6 @@ export const getTokens: APIGatewayProxyHandler =
     };
 
     await deletePromise;
-    logger.debug("Response: " + JSON.stringify(response, null, 2));
     return Promise.resolve(response);
   };
 

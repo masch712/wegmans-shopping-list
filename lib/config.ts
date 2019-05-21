@@ -41,8 +41,9 @@ export const config = convict({
     account: {
       number: {
         doc: 'AWS Account number',
-        format: Number,
+        format: String,
         env: 'AWS_ACCOUNT_NUMBER',
+        default: '',
       },
     },
     dynamodb: {

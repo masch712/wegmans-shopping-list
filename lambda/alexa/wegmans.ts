@@ -68,7 +68,6 @@ export const addToShoppingList: RequestHandler = {
     let tokensPromise: Promise<AccessToken>;
     if (handlerInput.requestEnvelope.session && handlerInput.requestEnvelope.session.user.accessToken) {
       const accessToken = handlerInput.requestEnvelope.session.user.accessToken;
-      logger.debug("Access token from request: " + accessToken);
       tokensPromise = accessCodeDao.getTokensByAccess(accessToken);
     } else {
       //TODO: do both these approaches work?
