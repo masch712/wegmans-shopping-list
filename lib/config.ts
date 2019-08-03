@@ -94,32 +94,32 @@ export const config = convict({
       functionNames: {
         'cdk-wegmans-shopping-list': {
           doc: 'lambda function name',
-          type: String,
+          format: String,
           default: 'cdk-wegmans-shopping-list'
         },
         'cdk-wegmans-generate-access-code': {
           doc: 'lambda function name',
-          type: String,
+          format: String,
           default: 'cdk-wegmans-generate-access-code'
         },
         'cdk-wegmans-get-tokens': {
           doc: 'lambda function name',
-          type: String,
+          format: String,
           default: 'cdk-wegmans-get-tokens'
         },
         'cdk-wegmans-cron-order-history-updater': {
           doc: 'lambda function name',
-          type: String,
+          format: String,
           default: 'cdk-wegmans-cron-order-history-updater'
         },
         'cdk-wegmans-cron-access-token-refresher': {
           doc: 'lambda function name',
-          type: String,
+          format: String,
           default: 'cdk-wegmans-cron-access-token-refresher'
         },
         'cdk-wegmans-worker-prefix': {
           doc: 'lambda function name',
-          type: String,
+          format: String,
           default: `cdk-wegmans-worker-`
         },
       }

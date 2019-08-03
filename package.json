@@ -60,7 +60,8 @@
   "scripts": {
     "test": "jest --runInBand",
     "build": "rm -f ./build/build.zip && docker build -t wegmans-builder . && docker run --rm wegmans-builder cat build.zip > build/build.zip",
-    "deploy": "cdk deploy --app \"ts-node deploy/deploy.ts\" --profile wegmans"
+    "deploy": "cdk deploy --app \"ts-node deploy/deploy.ts\" --profile wegmans",
+    "start-db": "docker run -p 8000:8000 --name wegmans-dynamo -d --rm amazon/dynamodb-local"
   },
   "author": "",
   "license": "ISC"

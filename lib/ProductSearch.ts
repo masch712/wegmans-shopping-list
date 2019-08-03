@@ -27,6 +27,7 @@ export class ProductSearch {
   static async wegmansSearchForProduct(query: string, storeId: number): Promise<Product | null> {
 
     const response = await request.get("https://sp1004f27d.guided.ss-omtrdc.net", {
+      strictSSL: false, //TODO: there's an expired cert in the chain at the moment.  Remove this when they renew their cert.
       qs: {
         q: query,
         rank: "rank-wegmans",
@@ -52,6 +53,7 @@ export class ProductSearch {
     const responsePromise = request({
       method: 'POST',
       url: 'https://sp1004f27d.guided.ss-omtrdc.net/',
+      strictSSL: false, //TODO: there's an expired cert in the chain at the moment.  Remove this when they renew their cert.
       form:
       {
         do: 'prod-search',
@@ -98,6 +100,7 @@ export class ProductSearch {
     const responsePromise = request({
       method: 'POST',
       url: 'https://sp1004f27d.guided.ss-omtrdc.net/',
+      strictSSL: false, //TODO: there's an expired cert in the chain at the moment.  Remove this when they renew their cert.
       form: postForm,
     }).then(_.identity());
 

@@ -46,6 +46,12 @@ export function getStoreIdFromuserToken(userFromJwt: string) {
   return Number.parseInt(storeId);
 }
 
+export function getTokenExpiration(token: AccessToken) {
+  const accessToken = jwt.decode(token.access) as { [key: string]: number }; // TODO: make a real JWT type?
+  const exp = accessToken.exp;
+  return exp;
+}
+
 export function isAccessTokenExpired(token: AccessToken): boolean {
   const accessToken = jwt.decode(token.access) as { [key: string]: number }; // TODO: make a real JWT type?
   const exp = accessToken.exp;
@@ -58,6 +64,6 @@ export function getUsernameFromToken(token: AccessToken) {
 
 export function getStoreIdFromTokens(token: AccessToken): number {
   const userToken = jwt.decode(token.user) as { [key: string]: number }; // TODO: make a real JWT type?
-  const storeId = userToken!['wfa_profile_store'];
+  const storeId = userToken!['wfm_profile_store'];
   return storeId;
 }

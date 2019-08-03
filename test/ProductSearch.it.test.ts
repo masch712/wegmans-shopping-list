@@ -13,10 +13,15 @@ let orderHistory: {
   cacheUpdatePromise?: Promise<void>;
 };
 beforeAll(async () => {
-  tokens = await wegmans.login(config.get('wegmans.email'), config.get('wegmans.password'));
-  storeId = getStoreIdFromTokens(tokens);
-  expect(tokens).toBeDefined();
-  orderHistory = await wegmans.getOrderHistory(tokens.access, storeId);
+  try {
+    tokens = await wegmans.login(config.get('wegmans.email'), config.get('wegmans.password'));
+    storeId = getStoreIdFromTokens(tokens);
+    expect(tokens).toBeDefined();
+    orderHistory = await wegmans.getOrderHistory(tokens.access, storeId);
+  } catch (err) {
+    //TODO: upgrade jest cuz this doesn't actually cause the tests to fail
+    fail(err);
+  }
 });
 
 test('search products get olive oil', async () => {
