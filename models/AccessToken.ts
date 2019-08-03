@@ -43,19 +43,19 @@ export function getMostRecentlyIssuedToken(tokens: AccessToken[]) {
 export function getStoreIdFromuserToken(userFromJwt: string) {
   const decoded = decode(userFromJwt) as { [key: string]: any };
   const storeId = decoded.wfm_profile_store;
-  return Number.parseInt(storeId);
+  return Number.parseInt(storeId, 10);
 }
 
-export function getTokenExpiration(token: AccessToken) {
+export function getTokenInfo(token: AccessToken) {
   const accessToken = jwt.decode(token.access) as { [key: string]: number }; // TODO: make a real JWT type?
-  const exp = accessToken.exp;
-  return exp;
+  return {
+    expiration: new Date(accessToken.exp * 1000),
+    issued: new Date(accessToken.iss * 1000),
+  };
 }
 
 export function isAccessTokenExpired(token: AccessToken): boolean {
-  const accessToken = jwt.decode(token.access) as { [key: string]: number }; // TODO: make a real JWT type?
-  const exp = accessToken.exp;
-  return exp*1000 < new Date().valueOf();
+  return getTokenInfo(token).expiration.valueOf() < new Date().valueOf();
 }
 
 export function getUsernameFromToken(token: AccessToken) {

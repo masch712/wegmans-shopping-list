@@ -12,7 +12,7 @@ import { accessCodeDao } from "../../lib/AccessCodeDao";
 import { productRequestHistoryDao } from "../../lib/ProductRequestHistoryDao";
 import { AccessTokenNotFoundLoggedEvent } from "../../models/logged-events/AccessTokenNotFound";
 import { LoggedEvent } from "../../models/LoggedEvent";
-import { AccessToken, getStoreIdFromTokens, isAccessTokenExpired, getUsernameFromToken, getTokenExpiration } from "../../models/AccessToken";
+import { AccessToken, getStoreIdFromTokens, isAccessTokenExpired, getUsernameFromToken, getTokenInfo } from "../../models/AccessToken";
 import { decode } from "jsonwebtoken";
 
 const APP_ID = "amzn1.ask.skill.ee768e33-44df-48f8-8fcd-1a187d502b75";
@@ -76,11 +76,11 @@ export const addToShoppingList: RequestHandler = {
     }
     
     // What did the user ask for?  Pull it out of the intent slot.
-    const productQuery = intent.slots![PRODUCT_SLOT].value;
+    const productQuery = intent.slots![PRODUCT_SLOT].value || '';
     
     // Given the user's tokens, look up their storeId
     let tokens = await logDuration('getTokens', tokensPromise);
-    logger.debug(JSON.stringify({ tokenExpiration: getTokenExpiration(tokens) }));
+    logger.debug(JSON.stringify(getTokenInfo(tokens)));
     
     // HACK / TEMPORARY: If the token is expired, grab the pre-refreshed token
     // This shouldn't normally happen, because alexa should be refreshing tokens on its own by calling our auth-server lambda.
