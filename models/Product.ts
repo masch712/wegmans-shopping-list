@@ -8,3 +8,16 @@ export interface Product {
   brand: string;
   details: string;
 }
+
+export function getStringyProduct(product: Product) {
+  return [
+    product.name,
+    product.brand,
+    product.category,
+    product.subcategory,
+    product.department,
+    product.productLine
+  ]
+    .join(" ")
+    .toLowerCase();
+}

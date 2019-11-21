@@ -3,9 +3,10 @@ import { WegmansDao } from "../lib/WegmansDao";
 import { AccessToken, getStoreIdFromTokens } from "../models/AccessToken";
 import { config } from "../lib/config";
 import { OrderedProduct } from "../models/OrderedProduct";
+import { getStringyProduct } from "../models/Product";
 
 jest.setTimeout(30000);
-const wegmans = new WegmansDao(config.get('wegmans.apikey'));
+const wegmans = new WegmansDao(config.get("wegmans.apikey"));
 let tokens: AccessToken;
 let storeId: number;
 let orderHistory: {
@@ -14,7 +15,10 @@ let orderHistory: {
 };
 beforeAll(async () => {
   try {
-    tokens = await wegmans.login(config.get('wegmans.email'), config.get('wegmans.password'));
+    tokens = await wegmans.login(
+      config.get("wegmans.email"),
+      config.get("wegmans.password")
+    );
     storeId = getStoreIdFromTokens(tokens);
     expect(tokens).toBeDefined();
     orderHistory = await wegmans.getOrderHistory(tokens.access, storeId);
@@ -24,33 +28,57 @@ beforeAll(async () => {
   }
 });
 
-test('search products get olive oil', async () => {
-  const product = await ProductSearch.searchForProductPreferHistory(orderHistory.orderedProducts, 'extra-virgin olive oil', storeId);
+test("search products get olive oil", async () => {
+  const product = await ProductSearch.searchForProductPreferHistory(
+    orderHistory.orderedProducts,
+    "extra-virgin olive oil",
+    storeId
+  );
   expect(product).toBeDefined();
-  expect(product!.name).toMatch(/olive oil/i);
+  expect(getStringyProduct(product!)).toMatch(/olive oil/i);
 });
-test('search products get raisin bran', async () => {
-  const product = await ProductSearch.searchForProductPreferHistory(orderHistory.orderedProducts, 'raisin bran', storeId);
+test("search products get raisin bran", async () => {
+  const product = await ProductSearch.searchForProductPreferHistory(
+    orderHistory.orderedProducts,
+    "raisin bran",
+    storeId
+  );
   expect(product).toBeDefined();
-  expect(product!.productLine).toMatch(/raisin bran/i);
+  expect(getStringyProduct(product!)).toMatch(/raisin bran/i);
 });
-test('search products get ice cream', async () => {
-  const product = await ProductSearch.searchForProductPreferHistory(orderHistory.orderedProducts, 'ice cream', storeId);
+test("search products get ice cream", async () => {
+  const product = await ProductSearch.searchForProductPreferHistory(
+    orderHistory.orderedProducts,
+    "ice cream",
+    storeId
+  );
   expect(product).toBeDefined();
-  expect(product!.category).toMatch(/ice cream/i);
+  expect(getStringyProduct(product!)).toMatch(/ice cream/i);
 });
-test('search products get organic whole wheat flour', async () => {
-  const product = await ProductSearch.searchForProductPreferHistory(orderHistory.orderedProducts, 'organic whole wheat flour', storeId);
+test("search products get organic whole wheat flour", async () => {
+  const product = await ProductSearch.searchForProductPreferHistory(
+    orderHistory.orderedProducts,
+    "organic whole wheat flour",
+    storeId
+  );
   expect(product).toBeDefined();
-  expect(product!.name).toMatch(/flour, whole wheat/i);
+  expect(getStringyProduct(product!)).toMatch(/flour, whole wheat/i);
 });
-test('search products get pecorino romano', async () => {
-  const product = await ProductSearch.searchForProductPreferHistory(orderHistory.orderedProducts, 'pecorino romano', storeId);
+test("search products get pecorino romano", async () => {
+  const product = await ProductSearch.searchForProductPreferHistory(
+    orderHistory.orderedProducts,
+    "pecorino romano",
+    storeId
+  );
   expect(product).toBeDefined();
-  expect(product!.name).toMatch(/Pecorino Romano/i);
+  expect(getStringyProduct(product!)).toMatch(/Pecorino Romano/i);
 });
-test('search products get raisins', async () => {
-  const product = await ProductSearch.searchForProductPreferHistory(orderHistory.orderedProducts, 'raisins', storeId);
+test.only("search products get raisins", async () => {
+  const product = await ProductSearch.searchForProductPreferHistory(
+    orderHistory.orderedProducts,
+    "raisins",
+    storeId
+  );
   expect(product).toBeDefined();
   expect(product!.name).toMatch(/raisins/i);
 });
