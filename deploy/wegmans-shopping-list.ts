@@ -299,7 +299,7 @@ class WegmansLambda extends lambda.Function {
     }
   ) {
     super(scope, id, {
-      runtime: lambda.Runtime.NodeJS810,
+      runtime: lambda.Runtime.NODEJS_10_X,
       handler: props.handler,
       code: buildAsset,
       functionName: props.functionName,
@@ -364,7 +364,7 @@ class QueueAndWorker {
     });
 
     this._worker = new lambda.Function(scope, lambdaId, {
-      runtime: lambda.Runtime.NodeJS810,
+      runtime: lambda.Runtime.NODEJS_10_X,
       code: buildAsset,
       functionName,
       handler: `dist/lambda/workers/${props.workType}.handler`,
@@ -393,7 +393,7 @@ export function addCorsOptions(apiResource: apigw.IResource) {
           }
         }
       ],
-      passthroughBehavior: apigw.PassthroughBehavior.Never,
+      passthroughBehavior: apigw.PassthroughBehavior.NEVER,
       requestTemplates: {
         "application/json": '{"statusCode": 200}'
       }

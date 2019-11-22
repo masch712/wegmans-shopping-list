@@ -43,7 +43,7 @@
     "@types/lodash": "^4.14.108",
     "@types/luxon": "^0.5.3",
     "@types/nock": "^9.3.0",
-    "@types/node": "^8.10.10",
+    "@types/node": "^10",
     "@types/request": "^2.47.0",
     "@types/request-promise-native": "^1.0.15",
     "@types/uuid": "^3.4.3",
@@ -52,17 +52,24 @@
     "aws-sdk": "^2.437.0",
     "jest": "^24.1.0",
     "nock": "^9.4.1",
+    "npm-run-all": "^4.1.5",
     "ts-jest": "^24",
     "ts-node": "^6.2.0",
     "tslint": "^5.18.0",
     "typescript": "^3.7"
   },
   "scripts": {
-    "test": "jest --runInBand",
+    "test:jest": "jest --runInBand",
+    "test:start-db": "docker run -p 8000:8000 --name wegmans-dynamo-test -d --rm amazon/dynamodb-local",
+    "test:stop-db": "docker kill wegmans-dynamo-test",
+    "test": "npm-run-all --continue-on-error test:start-db test:jest test:stop-db",
     "build": "rm -f ./build/build.zip && docker build -t wegmans-builder . && docker run --rm wegmans-builder cat build.zip > build/build.zip",
     "deploy": "cdk deploy --app \"ts-node deploy/deploy.ts\" --profile wegmans",
-    "start-db": "docker run -p 8000:8000 --name wegmans-dynamo -d --rm amazon/dynamodb-local"
+    "cicd": "npm-run-all build deploy"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "repository": {
+    "url": "https://github.com/masch712/wegmans-shopping-list"
+  }
 }

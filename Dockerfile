@@ -1,4 +1,4 @@
-FROM node:8-stretch
+FROM node:10-stretch
 
 RUN \
   apt-get update -y \
@@ -10,7 +10,7 @@ COPY ./package.json /usr/src/app
 COPY ./package-lock.json /usr/src/app
 
 WORKDIR /usr/src/app
-
+RUN cat /usr/src/app/package.json
 RUN npm install
 
 COPY ./ /usr/src/app
