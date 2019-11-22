@@ -25,7 +25,7 @@ export class ProductSearch {
   static async wegmansSearchForProduct(
     query: string,
     storeId: number
-  ): Promise<Product | null> {
+  ): Promise<Product[]> {
     // Sanitize the query because the search service doesnt like hyphens (eg. "extra-virgin olive oil")
     const sanitizedQuery = query.replace(/-/g, " ");
     const response = await request.get(
@@ -42,7 +42,7 @@ export class ProductSearch {
     const body = JSON.parse(response);
 
     if (!body.results || !body.results.length) {
-      return null;
+      return [];
     }
 
     const firstResult = body.results[0] as ProductSearchResultItem;
@@ -51,7 +51,10 @@ export class ProductSearch {
       sku: Number.parseInt(firstResult.sku, 10)
     };
 
-    return product;
+    return ((body.results || []) as ProductSearchResultItem[]).map(result => ({
+      ...result,
+      sku: Number.parseInt(result.sku, 10)
+    }));
   }
 
   static async getProductBySku(
@@ -177,7 +180,7 @@ export class ProductSearch {
     const bestProduct =
       searchResults[0] &&
       _.maxBy(searchResults, result => result.item.purchaseMsSinceEpoch);
-    return bestProduct ? bestProduct.item.product : null;
+    return bestProduct ? bestProduct.item.product || null : null;
   }
 
   static searchProductsSecondPass(products: Product[], query: string) {
@@ -213,13 +216,16 @@ export class ProductSearch {
     }
   }
 
-  static getMostCommonProductBySku(products: Product[]): Product | null {
+  static getMostCommonProductBySku(
+    products: Product[],
+    minOccurrences?: number
+  ): Product | null {
     const productsBySku = _.groupBy(products, product => product.sku);
     const modeProducts = _.maxBy(
       Object.values(productsBySku),
       skuProducts => skuProducts.length
     );
-    if (modeProducts && modeProducts.length > 1) {
+    if (modeProducts && modeProducts.length >= (minOccurrences || 2)) {
       return modeProducts[0];
     }
     return null;
@@ -231,7 +237,7 @@ export class ProductSearch {
     storeId: number
   ): Promise<Product | null> {
     // Get the candidates in order of preference
-
+    const maxWegmansProductSearchResults = 3;
     const candidates = await Promise.all([
       // Best:
       logDuration(
@@ -249,7 +255,9 @@ export class ProductSearch {
       ),
       logDuration(
         "wegmansProductSearch",
-        ProductSearch.wegmansSearchForProduct(query, storeId)
+        ProductSearch.wegmansSearchForProduct(query, storeId).then(results =>
+          results.slice(0, maxWegmansProductSearchResults)
+        )
       )
     ]);
 
@@ -260,15 +268,15 @@ export class ProductSearch {
     logger.info(
       "Fuse purchase history search result: " + JSON.stringify(candidates[1])
     );
-    logger.info("Wegmans search result: " + JSON.stringify(candidates[2]));
+    logger.info("Wegmans search results: " + JSON.stringify(candidates[2]));
 
-    const nonNullCandidates = _.filter(
-      candidates,
-      (c): c is Product => !!c && !!c.sku
+    const nonNullCandidates = _.flatten(
+      _.filter(candidates, (c): c is Product => !!c)
     );
 
     const modeSkuProduct = ProductSearch.getMostCommonProductBySku(
-      nonNullCandidates
+      nonNullCandidates,
+      maxWegmansProductSearchResults
     );
     if (modeSkuProduct) {
       return modeSkuProduct;

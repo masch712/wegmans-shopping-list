@@ -21,7 +21,6 @@ interface OrderHistoryResponseItem {
 }
 
 export class WegmansDao {
-
   private apiKey: string;
   private shoppingListId: number | undefined;
 
@@ -38,17 +37,15 @@ export class WegmansDao {
       await request({
         method: "POST",
         url: "https://www.wegmans.com/j_security_check",
-        headers:
-        {
+        headers: {
           "Content-Type": "application/x-www-form-urlencoded",
-          "Cache-Control": "no-cache",
+          "Cache-Control": "no-cache"
         },
-        form:
-        {
+        form: {
           j_username: email,
           j_password: password,
-          j_staysigned: "on",
-        },
+          j_staysigned: "on"
+        }
       });
     } catch (err) {
       // We get a redirect response, which `request` considers an error.  whotevs
@@ -76,8 +73,10 @@ export class WegmansDao {
    * Send a refresh token to Wegmans and get back fresh access and user tokens.
    * @param refreshToken The refresh token
    */
-  async refreshTokens(refreshToken: string, userToken: string): Promise<AccessToken> {
-
+  async refreshTokens(
+    refreshToken: string,
+    userToken: string
+  ): Promise<AccessToken> {
     try {
       const jar = request.jar();
       const refreshCookie = request.cookie(`wegmans_refresh=${refreshToken}`)!;
@@ -89,11 +88,10 @@ export class WegmansDao {
         method: "GET",
         jar,
         url: "https://www.wegmans.com/j_security_check",
-        headers:
-        {
+        headers: {
           "Content-Type": "application/x-www-form-urlencoded",
-          "Cache-Control": "no-cache",
-        },
+          "Cache-Control": "no-cache"
+        }
       });
     } catch (err) {
       // We get a redirect response, which `request` considers an error.  whotevs
@@ -113,28 +111,33 @@ export class WegmansDao {
   }
 
   static getCookie(response: Response, cookieKey: string) {
-    const cookie = _.find<string>(response.headers["set-cookie"],
-      (cookie: string) => !!cookie.match(`${cookieKey}=`));
-    if (!cookie) { return; }
+    const cookie = _.find<string>(
+      response.headers["set-cookie"],
+      (cookie: string) => !!cookie.match(`${cookieKey}=`)
+    );
+    if (!cookie) {
+      return;
+    }
 
     const value = cookie.substring(`${cookieKey}=`.length, cookie.indexOf(";"));
     return value;
   }
 
   async getShoppingListId(accessToken: string): Promise<number> {
-
     if (this.shoppingListId) {
       return this.shoppingListId;
     }
 
-    const response = await request.get("https://wegapi.azure-api.net/shoppinglists/all/?api-version=1.0",
+    const response = await request.get(
+      "https://wegapi.azure-api.net/shoppinglists/all/?api-version=1.0",
       {
         headers: {
-          "Authorization": accessToken,
-          "Ocp-Apim-Subscription-Key": this.apiKey,
+          Authorization: accessToken,
+          "Ocp-Apim-Subscription-Key": this.apiKey
         },
-        json: true,
-      });
+        json: true
+      }
+    );
 
     const shoppingListId = response[0].Id;
     this.shoppingListId = shoppingListId;
@@ -142,90 +145,121 @@ export class WegmansDao {
     return shoppingListId;
   }
 
-  async enqueue_addProductToShoppingList(accessToken: string, product: Product, quantity = 1): Promise<void> {
-    await logDuration('enqueue_addProductToShoppingList', this.workQueue.enqueue({
-      payload: {
-        accessToken,
-        product,
-        quantity
-      },
-      workType: WorkType.AddToShoppingList
-    }));  
+  async enqueue_addProductToShoppingList(
+    accessToken: string,
+    product: Product,
+    quantity = 1
+  ): Promise<void> {
+    await logDuration(
+      "enqueue_addProductToShoppingList",
+      this.workQueue.enqueue({
+        payload: {
+          accessToken,
+          product,
+          quantity
+        },
+        workType: WorkType.AddToShoppingList
+      })
+    );
   }
-  
-  async addProductToShoppingList(accessToken: string, product: Product, quantity = 1): Promise<void> {
+
+  async addProductToShoppingList(
+    accessToken: string,
+    product: Product,
+    quantity = 1
+  ): Promise<void> {
     const shoppingListId = await this.getShoppingListId(accessToken);
-    const response = await request("https://wegapi.azure-api.net/shoppinglists/shoppinglistitem/my/?api-version=1.1",
+    const response = await request(
+      "https://wegapi.azure-api.net/shoppinglists/shoppinglistitem/my/?api-version=1.1",
       {
         method: "POST",
         qs: { "api-version": "1.1" },
         headers: {
           "Content-Type": "application/json",
           "Ocp-Apim-Subscription-Key": this.apiKey,
-          "Authorization": accessToken,
+          Authorization: accessToken
         },
         body: JSON.stringify([
           {
             ShoppingListId: shoppingListId,
             Quantity: quantity,
-            Sku: product.sku,
-          },
+            Sku: product.sku
+          }
         ]),
-        resolveWithFullResponse: true,
-      });
+        resolveWithFullResponse: true
+      }
+    );
 
-    logger.debug("addProducttoShoppingList response status: " + response.statusCode);
+    logger.debug(
+      "addProducttoShoppingList response status: " + response.statusCode
+    );
 
     return;
   }
 
   //TODO: refactor this garbage
-  async getOrderHistory(accessToken: string, storeId: number, forceCacheUpdate?: boolean) {
+  async getOrderHistory(
+    accessToken: string,
+    storeId: number,
+    forceCacheUpdate?: boolean
+  ) {
     const userId = (jwt.decode(accessToken) as { sub: string }).sub;
-    const orderHistory = await logDuration('orderHistoryDao.get(userId)', orderHistoryDao.get(userId));
+    const orderHistory = await logDuration(
+      "orderHistoryDao.get(userId)",
+      orderHistoryDao.get(userId)
+    );
     let orderedProducts: OrderedProduct[] = [];
     let updateCachePromise = undefined;
 
-    logger.debug('gotOrderHistoryCachedAt: ' + (orderHistory && orderHistory.lastCachedMillisSinceEpoch));
+    logger.debug(
+      "gotOrderHistoryCachedAt: " +
+        (orderHistory && orderHistory.lastCachedMillisSinceEpoch)
+    );
 
     // Update cache if oldre than 24 hours
     if (
-      !orderHistory
-      || !orderHistory.orderedProducts
-      || !orderHistory.orderedProducts.length
-      || orderHistory.lastCachedMillisSinceEpoch < DateTime.utc().valueOf() - 24 * 3600 * 1000
-      || orderHistory.lastCachedMillisSinceEpoch < 1551646031169 // Before 3/3/2019, when I fixed a bug that requires me to re-cache order history
-      || forceCacheUpdate
+      !orderHistory ||
+      !orderHistory.orderedProducts ||
+      !orderHistory.orderedProducts.length ||
+      orderHistory.lastCachedMillisSinceEpoch <
+        DateTime.utc().valueOf() - 24 * 3600 * 1000 ||
+      orderHistory.lastCachedMillisSinceEpoch < 1551646031169 || // Before 3/3/2019, when I fixed a bug that requires me to re-cache order history
+      forceCacheUpdate
     ) {
-      logger.debug('order history cache miss');
-      const response = await logDuration('wegmansRequestOrderHistory', request({
-        method: 'GET',
-        url: `https://wegapi.azure-api.net/purchases/history/summary/${storeId}`,
-        qs: {
-          offset: 0,
-          records: 1000,
-          start: DateTime.local().plus({ days: -120 }).toFormat('MM/dd/yyyy'),
-          end: DateTime.local().toFormat('MM/dd/yyyy'),
-          onlineshopping: 'False',
-          sortBy: 'popularity',
-          sortOrder: 'desc',
-          'api-version': '1.0'
-        },
-        headers: {
-          'Ocp-Apim-Subscription-Key': this.apiKey,
-          Authorization: accessToken,
-          Accept: 'application/json',
-        }
-      }).then(_.identity())); //TODO: wtf is up with ts and this _.identity business?  return type undefined?
+      logger.debug("order history cache miss");
+      const response = await logDuration(
+        "wegmansRequestOrderHistory",
+        request({
+          method: "GET",
+          url: `https://wegapi.azure-api.net/purchases/history/summary/${storeId}`,
+          qs: {
+            offset: 0,
+            records: 1000,
+            start: DateTime.local()
+              .plus({ days: -120 })
+              .toFormat("MM/dd/yyyy"),
+            end: DateTime.local().toFormat("MM/dd/yyyy"),
+            onlineshopping: "False",
+            sortBy: "popularity",
+            sortOrder: "desc",
+            "api-version": "1.0"
+          },
+          headers: {
+            "Ocp-Apim-Subscription-Key": this.apiKey,
+            Authorization: accessToken,
+            Accept: "application/json"
+          }
+        }).then(_.identity())
+      ); //TODO: wtf is up with ts and this _.identity business?  return type undefined?
 
       const body = JSON.parse(response) as OrderHistoryResponseItem[];
       orderedProducts = body.map(item => {
         const epochStr = item.LastPurchaseDate.substring(6, 19);
-        const epoch = Number.parseInt(epochStr);
+        const epoch = Number.parseInt(epochStr, 10);
         const orderedProduct: OrderedProduct = {
           sku: item.Sku,
           purchaseMsSinceEpoch: epoch,
-          quantity: item.Quantity,
+          quantity: item.Quantity
         };
         return orderedProduct;
       });
@@ -233,7 +267,13 @@ export class WegmansDao {
       // Get the actual products.  These are useful later for in-memory fuzzy search
       const skus = orderedProducts.map(orderedProduct => orderedProduct.sku);
       //TODO: this seems....slow
-      const productsBySku = await logDuration('map_getProductBySku', ProductSearch.getProductBySku(skus.map(sku => `SKU_${sku}`), storeId));
+      const productsBySku = await logDuration(
+        "map_getProductBySku",
+        ProductSearch.getProductBySku(
+          skus.map(sku => `SKU_${sku}`),
+          storeId
+        )
+      );
 
       for (let index = orderedProducts.length - 1; index >= 0; index--) {
         const orderedProduct = orderedProducts[index];
@@ -241,26 +281,30 @@ export class WegmansDao {
         // In that case, remove it from order history
         if (productsBySku[orderedProduct.sku]) {
           orderedProduct.product = productsBySku[orderedProduct.sku][0];
-        }
-        else {
+        } else {
           orderedProducts.splice(index, 1);
         }
       }
 
-      logger.debug('writing order history to cache');
-      updateCachePromise = orderHistoryDao.put(userId, orderedProducts)
-        .then(() => { logger.debug('order history cache written'); });
-    }
-    else {
-      logger.debug('order history cache hit');
+      logger.debug("writing order history to cache");
+      updateCachePromise = orderHistoryDao
+        .put(userId, orderedProducts)
+        .then(() => {
+          logger.debug("order history cache written");
+        });
+    } else {
+      logger.debug("order history cache hit");
       orderedProducts = orderHistory.orderedProducts;
     }
 
-    const sortedOrderedProducts = _.sortBy(orderedProducts, (op: OrderedProduct) => op.sku);
+    const sortedOrderedProducts = _.sortBy(
+      orderedProducts,
+      (op: OrderedProduct) => op.sku
+    );
 
     return {
       orderedProducts: sortedOrderedProducts,
-      cacheUpdatePromise: updateCachePromise,
+      cacheUpdatePromise: updateCachePromise
     };
   }
 }

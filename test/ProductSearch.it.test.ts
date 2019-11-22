@@ -36,6 +36,7 @@ test("search products get olive oil", async () => {
   );
   expect(product).toBeDefined();
   expect(getStringyProduct(product!)).toMatch(/olive oil/i);
+  expect(getStringyProduct(product!)).toMatch(/extra virgin/i);
 });
 test("search products get raisin bran", async () => {
   const product = await ProductSearch.searchForProductPreferHistory(
@@ -73,7 +74,7 @@ test("search products get pecorino romano", async () => {
   expect(product).toBeDefined();
   expect(getStringyProduct(product!)).toMatch(/Pecorino Romano/i);
 });
-test.only("search products get raisins", async () => {
+test("search products get raisins", async () => {
   const product = await ProductSearch.searchForProductPreferHistory(
     orderHistory.orderedProducts,
     "raisins",
