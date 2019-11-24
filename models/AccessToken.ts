@@ -1,8 +1,8 @@
 import { decode } from "jsonwebtoken";
 
 import { logger } from "../lib/Logger";
-import * as jwt from 'jsonwebtoken';
-import * as _ from 'lodash';
+import * as jwt from "jsonwebtoken";
+import * as _ from "lodash";
 
 export interface AccessToken {
   access: string;
@@ -22,20 +22,19 @@ export interface DecodedAccessToken {
 }
 
 export function decodeAccess(accessToken: string): DecodedAccessToken {
-  
   const decoded = decode(accessToken)! as any;
   return {
     exp: new Date(decoded.exp * 1000),
     iat: new Date(decoded.iat * 1000),
-    sub: decoded.sub,
+    sub: decoded.sub
   };
-
 }
 
 export function getMostRecentlyIssuedToken(tokens: AccessToken[]) {
-  const sortedTokensForUser = _.sortBy(tokens, (token: AccessToken) => 
-      decodeAccess(token.access).iat.valueOf() * -1
-    );
+  const sortedTokensForUser = _.sortBy(
+    tokens,
+    (token: AccessToken) => decodeAccess(token.access).iat.valueOf() * -1
+  );
 
   return sortedTokensForUser[0];
 }
@@ -50,7 +49,7 @@ export function getTokenInfo(token: AccessToken) {
   const accessToken = jwt.decode(token.access) as { [key: string]: number }; // TODO: make a real JWT type?
   return {
     expiration: new Date(accessToken.exp * 1000),
-    issued: new Date(accessToken.iss * 1000),
+    issued: new Date(accessToken.iss * 1000)
   };
 }
 
@@ -64,6 +63,6 @@ export function getUsernameFromToken(token: AccessToken) {
 
 export function getStoreIdFromTokens(token: AccessToken): number {
   const userToken = jwt.decode(token.user) as { [key: string]: number }; // TODO: make a real JWT type?
-  const storeId = userToken!['wfm_profile_store'];
+  const storeId = userToken!["wfm_profile_store"];
   return storeId;
 }
