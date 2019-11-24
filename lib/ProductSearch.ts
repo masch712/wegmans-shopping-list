@@ -77,9 +77,9 @@ export class ProductSearch {
         sp_q_exact_20: skus.join("|")
       }
     });
-    logger.debug("getting products for skus");
+    logger().debug("getting products for skus");
     const response = await responsePromise;
-    logger.debug("got products");
+    logger().debug("got products");
 
     const body = JSON.parse(response);
 
@@ -110,7 +110,7 @@ export class ProductSearch {
       storeNumber: storeId, //TODO: get storeNumber from JWT?
       sp_q_exact_20: skuStrings
     };
-    logger.silly(
+    logger().silly(
       new LoggedEvent("wegmansSearchSkus")
         .addProperty("form", postForm)
         .toString()
@@ -261,14 +261,14 @@ export class ProductSearch {
       )
     ]);
 
-    logger.info("search query: " + query);
-    logger.info(
+    logger().info("search query: " + query);
+    logger().info(
       "Wegmans purchase history search result: " + JSON.stringify(candidates[0])
     );
-    logger.info(
+    logger().info(
       "Fuse purchase history search result: " + JSON.stringify(candidates[1])
     );
-    logger.info("Wegmans search results: " + JSON.stringify(candidates[2]));
+    logger().info("Wegmans search results: " + JSON.stringify(candidates[2]));
 
     const nonNullCandidates = _.flatten(
       _.filter(candidates, (c): c is Product => !!c)

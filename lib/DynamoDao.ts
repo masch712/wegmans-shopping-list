@@ -1,14 +1,16 @@
 import * as AWS from "aws-sdk";
-import { CreateTableInput, DescribeTableOutput } from "aws-sdk/clients/dynamodb";
+import {
+  CreateTableInput,
+  DescribeTableOutput
+} from "aws-sdk/clients/dynamodb";
 import { logger } from "../lib/Logger";
 import { config } from "../lib/config";
 
 AWS.config.update({
-  region: "us-east-1",
+  region: "us-east-1"
 });
 
 export abstract class DynamoDao {
-
   private isInitted = false;
   protected dynamodb: AWS.DynamoDB;
   protected docClient: AWS.DynamoDB.DocumentClient;
@@ -21,7 +23,7 @@ export abstract class DynamoDao {
   }
 
   static get tableNamePrefix() {
-    return config.get('aws.dynamodb.tableNamePrefix');
+    return config.get("aws.dynamodb.tableNamePrefix");
   }
 
   // @traceMethod
@@ -32,18 +34,23 @@ export abstract class DynamoDao {
     do {
       let data: DescribeTableOutput = {};
       try {
-        data = await this.dynamodb.describeTable(
-          {
-            TableName: tableName,
-          },
-        ).promise();
+        data = await this.dynamodb
+          .describeTable({
+            TableName: tableName
+          })
+          .promise();
       } catch (err) {
-        logger.warn(err);
+        logger().warn(err);
         return false;
       }
       tableStatus = data.Table && data.Table.TableStatus;
       duration += new Date().getTime() - (startTime + duration);
-    } while (tableStatus && tableStatus !== "ACTIVE" && duration < timeout && await sleep(2000));
+    } while (
+      tableStatus &&
+      tableStatus !== "ACTIVE" &&
+      duration < timeout &&
+      (await sleep(2000))
+    );
     if (tableStatus && tableStatus !== "ACTIVE") {
       throw new Error(`Table ${tableName} is ${tableStatus}`);
     }
@@ -52,10 +59,13 @@ export abstract class DynamoDao {
 
   // @traceMethod
   async dropTables(tableNames: string[]) {
-    const promises = tableNames.map((table) =>
-      this.dynamodb.deleteTable({
-        TableName: table,
-      }).promise());
+    const promises = tableNames.map(table =>
+      this.dynamodb
+        .deleteTable({
+          TableName: table
+        })
+        .promise()
+    );
 
     await Promise.all(promises);
     this.isInitted = false;
@@ -68,14 +78,18 @@ export abstract class DynamoDao {
     const tableParam = this.tableParams;
     const tableExists: { [key: string]: boolean } = {};
     for (let i = 0; i < tableParam.length; i++) {
-      tableExists[tableParam[i].TableName] = await this.tableExists(tableParam[i].TableName);
+      tableExists[tableParam[i].TableName] = await this.tableExists(
+        tableParam[i].TableName
+      );
     }
     // TODO: why do i need this?
     const self = this;
-    const promises = tableParam.map((param) => {
+    const promises = tableParam.map(param => {
       if (!tableExists[param.TableName]) {
-        return self.dynamodb.createTable(param).promise().then(() => {
-        });
+        return self.dynamodb
+          .createTable(param)
+          .promise()
+          .then(() => {});
       }
       return Promise.resolve();
     });
@@ -85,9 +99,8 @@ export abstract class DynamoDao {
 
     return;
   }
-
 }
 
 export function sleep(time: number) {
-  return new Promise((resolve) => setTimeout(() => resolve(true), time));
+  return new Promise(resolve => setTimeout(() => resolve(true), time));
 }

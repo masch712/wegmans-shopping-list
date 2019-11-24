@@ -14,16 +14,8 @@ let orderHistory: {
   orderedProducts: OrderedProduct[];
   cacheUpdatePromise?: Promise<void>;
 };
-beforeAll(async () => {
-  tokens = await wegmans.login(
-    config.get("wegmans.email"),
-    config.get("wegmans.password")
-  );
-  storeId = getStoreIdFromTokens(tokens);
-  expect(tokens).toBeDefined();
-});
 
-describe("10 searches", async () => {
+describe.skip("10 searches", async () => {
   const queries = [
     "grapefruit",
     "ice cream",
@@ -38,6 +30,12 @@ describe("10 searches", async () => {
   ];
   beforeAll(async () => {
     orderHistory = await wegmans.getOrderHistory(tokens.access, storeId);
+    tokens = await wegmans.login(
+      config.get("wegmans.email"),
+      config.get("wegmans.password")
+    );
+    storeId = getStoreIdFromTokens(tokens);
+    expect(tokens).toBeDefined();
   });
   const numTests = 3;
   for (const skuMax of _.rangeRight(1, numTests + 1)) {
@@ -63,4 +61,5 @@ describe("10 searches", async () => {
       console.log(_.mean(durations));
     });
   }
+  return;
 });

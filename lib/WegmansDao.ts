@@ -54,11 +54,13 @@ export class WegmansDao {
       const user = WegmansDao.getCookie(err.response, "wegmans_user");
       if (!access || !refresh || !user) {
         // BEWARE: might contain  password; do not log
-        // logger.debug(JSON.stringify(err, null, 2));
+        // logger().debug(JSON.stringify(err, null, 2));
         throw new Error("No access tokens in response; bad login credentials?");
       }
       tokens = { access, refresh, user };
-      logger.debug("Logged in and got access token of length " + access.length);
+      logger().debug(
+        "Logged in and got access token of length " + access.length
+      );
     }
 
     if (!tokens) {
@@ -99,11 +101,13 @@ export class WegmansDao {
       const refresh = WegmansDao.getCookie(err.response, "wegmans_refresh");
       const user = WegmansDao.getCookie(err.response, "wegmans_user");
       if (!access || !refresh || !user) {
-        logger.debug(JSON.stringify(err, null, 2));
+        logger().debug(JSON.stringify(err, null, 2));
         throw new Error("No access tokens in response; bad login credentials?");
       }
       const tokens: AccessToken = { access, refresh, user };
-      logger.debug("Logged in and got access token of length " + access.length);
+      logger().debug(
+        "Logged in and got access token of length " + access.length
+      );
       return tokens;
     }
 
@@ -190,7 +194,7 @@ export class WegmansDao {
       }
     );
 
-    logger.debug(
+    logger().debug(
       "addProducttoShoppingList response status: " + response.statusCode
     );
 
@@ -211,7 +215,7 @@ export class WegmansDao {
     let orderedProducts: OrderedProduct[] = [];
     let updateCachePromise = undefined;
 
-    logger.debug(
+    logger().debug(
       "gotOrderHistoryCachedAt: " +
         (orderHistory && orderHistory.lastCachedMillisSinceEpoch)
     );
@@ -226,7 +230,7 @@ export class WegmansDao {
       orderHistory.lastCachedMillisSinceEpoch < 1551646031169 || // Before 3/3/2019, when I fixed a bug that requires me to re-cache order history
       forceCacheUpdate
     ) {
-      logger.debug("order history cache miss");
+      logger().debug("order history cache miss");
       const response = await logDuration(
         "wegmansRequestOrderHistory",
         request({
@@ -286,14 +290,14 @@ export class WegmansDao {
         }
       }
 
-      logger.debug("writing order history to cache");
+      logger().debug("writing order history to cache");
       updateCachePromise = orderHistoryDao
         .put(userId, orderedProducts)
         .then(() => {
-          logger.debug("order history cache written");
+          logger().debug("order history cache written");
         });
     } else {
-      logger.debug("order history cache hit");
+      logger().debug("order history cache hit");
       orderedProducts = orderHistory.orderedProducts;
     }
 

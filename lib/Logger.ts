@@ -2,23 +2,29 @@ import * as winston from "winston";
 import { config } from "./config";
 import { LoggedEvent } from "../models/LoggedEvent";
 
-import * as uuid from 'uuid/v4';
+import * as uuid from "uuid/v4";
 
 // TODO: winston v3 @types
 
-export const logger = new winston.Logger({
-  transports: [new winston.transports.Console({
-    timestamp: true,
-    showLevel: true,
-    level: config.get("logging.level"),
-  })],
+const _logger = new winston.Logger({
+  transports: [
+    new winston.transports.Console({
+      timestamp: true,
+      showLevel: true,
+      level: config.get("logging.level")
+    })
+  ]
 });
+
+export function logger() {
+  return _logger;
+}
 
 // /**
 //  * Decorator for logging duration of a method call
-//  * @param target 
-//  * @param propertyKey 
-//  * @param propertyDescriptor 
+//  * @param target
+//  * @param propertyKey
+//  * @param propertyDescriptor
 //  */
 // export function traceMethod(async: boolean) {
 //   return (target, propertyKey: string, propertyDescriptor: PropertyDescriptor) => {
@@ -30,12 +36,12 @@ export const logger = new winston.Logger({
 //     }
 //     const originalMethodDefinition = propertyDescriptor.value;
 
-//     const wrappedCall = 
+//     const wrappedCall =
 //     propertyDescriptor.value = function () {
 //       const startTime = new Date().valueOf();
 //       const returnValue = originalMethodDefinition.apply(this, arguments);
 //       const endTime = new Date().valueOf();
-//       logger.debug(new LoggedEvent('trace').addProperty('call', traceLocation).addProperty('duration', endTime - startTime).toString());
+//       logger().debug(new LoggedEvent('trace').addProperty('call', traceLocation).addProperty('duration', endTime - startTime).toString());
 //       return returnValue;
 //     };
 //   };
@@ -53,18 +59,28 @@ export const logger = new winston.Logger({
 //   ),
 // });
 
-
 /**
  * Wrapper for logging duration of a promise
- * @param eventName 
- * @param promise 
+ * @param eventName
+ * @param promise
  */
-export async function logDuration<T>(eventName: string, promise: Promise<T>): Promise<T> {
+export async function logDuration<T>(
+  eventName: string,
+  promise: Promise<T>
+): Promise<T> {
   const id = uuid();
-  logger.debug(new LoggedEvent('starting').addProperty('eventName', eventName).toString());
+  logger().debug(
+    new LoggedEvent("starting").addProperty("eventName", eventName).toString()
+  );
   const startTime = new Date().getTime();
   const result = await promise;
   const endTime = new Date().getTime();
-  logger.debug(new LoggedEvent('finished').addProperty('eventName', eventName).addProperty('durationMillis', endTime - startTime).toString());
+  logger().debug(
+    new LoggedEvent("finished")
+      .addProperty("eventName", eventName)
+      .addProperty("durationMillis", endTime - startTime)
+      .addProperty("result", result)
+      .toString()
+  );
   return result;
 }

@@ -19,20 +19,26 @@ export interface AddToShoppingListWork extends QueuedWork {
 }
 
 const initTablesPromise = accessCodeDao.initTables();
-const wegmansDaoPromise = Promise.all([decryptionPromise, initTablesPromise])
-  .then(() => new WegmansDao(config.get("wegmans.apikey")));
+const wegmansDaoPromise = Promise.all([
+  decryptionPromise,
+  initTablesPromise
+]).then(() => new WegmansDao(config.get("wegmans.apikey")));
 
 export async function handler(event: SQSEvent) {
-
   const wegmansDao = await wegmansDaoPromise;
 
-  const messageBodies = event.Records.map((r: { body: string}) => r.body);
+  const messageBodies = event.Records.map((r: { body: string }) => r.body);
 
-  for(const body of messageBodies) {
+  for (const body of messageBodies) {
     const message = JSON.parse(body) as AddToShoppingListWork;
     const username = decode(message.payload.accessToken)!.sub;
-    logger.debug('adding ' + message.payload.product.sku + ' for ' + username);
-    await wegmansDao.addProductToShoppingList(message.payload.accessToken, message.payload.product, message.payload.quantity);
+    logger().debug(
+      "adding " + message.payload.product.sku + " for " + username
+    );
+    await wegmansDao.addProductToShoppingList(
+      message.payload.accessToken,
+      message.payload.product,
+      message.payload.quantity
+    );
   }
-
 }
