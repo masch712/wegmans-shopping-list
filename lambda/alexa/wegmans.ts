@@ -64,20 +64,20 @@ export const addToShoppingList: RequestHandler = {
     const wegmansDao = await wegmansDaoPromise;
     const wegmansService = new WegmansService(wegmansDao, accessCodeDao);
 
-    return handleAddtoShoppingList(wegmansService, intent, session, handlerInput.responseBuilder);
+    // What did the user ask for?  Pull it out of the intent slot.
+    const productQuery = intent.slots![PRODUCT_SLOT].value || "";
+
+    return handleAddtoShoppingList(wegmansService, productQuery, session, handlerInput.responseBuilder);
   }
 };
 
 export async function handleAddtoShoppingList(
   wegmansService: WegmansService,
-  intent: Intent,
+  productQuery: string,
   session: Session | undefined,
   responseBuilder: ResponseBuilder
 ) {
   const startMs = new Date().valueOf();
-
-  // What did the user ask for?  Pull it out of the intent slot.
-  const productQuery = intent.slots![PRODUCT_SLOT].value || "";
 
   const tokens = await logDuration("getTokens", wegmansService.getTokensFromAccess(_.get(session, "user.accessToken")));
 
