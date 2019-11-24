@@ -1,5 +1,5 @@
-import { HandlerInput, RequestHandler } from "ask-sdk-core";
-import { IntentRequest, Response } from "ask-sdk-model";
+import { HandlerInput, RequestHandler, ResponseBuilder } from "ask-sdk-core";
+import { IntentRequest, Response, Intent, Session } from "ask-sdk-model";
 import { KMS } from "aws-sdk";
 import * as _ from "lodash";
 import { config } from "../../lib/config";
@@ -57,62 +57,69 @@ export const addToShoppingList: RequestHandler = {
     return request.type === "IntentRequest" && request.intent.name === "AddToShoppingList";
   },
   async handle(handlerInput: HandlerInput): Promise<Response> {
-    const startMs = new Date().valueOf();
-
     const request = handlerInput.requestEnvelope.request as IntentRequest;
     const intent = request.intent;
+    const session = handlerInput.requestEnvelope.session;
 
     const wegmansDao = await wegmansDaoPromise;
     const wegmansService = new WegmansService(wegmansDao, accessCodeDao);
 
-    // What did the user ask for?  Pull it out of the intent slot.
-    const productQuery = intent.slots![PRODUCT_SLOT].value || "";
-
-    const tokens = await logDuration(
-      "getTokens",
-      wegmansService.getTokensFromAccess(_.get(handlerInput, "requestEnvelope.session.user.accessToken"))
-    );
-
-    // Bail if we couldn't get tokens
-    if (!tokens) {
-      logger().error("Couldn't get tokens!");
-      return Promise.resolve(
-        handlerInput.responseBuilder
-          .speak("Sorry, Wedgies is having trouble logging in to Wegmans.  Please try again later.")
-          .getResponse()
-      );
-    }
-    logger().debug(JSON.stringify(getTokenInfo(tokens)));
-
-    const product = await wegmansService.searchForProduct(productQuery, tokens);
-
-    if (product) {
-      logger().debug(
-        new LoggedEvent("foundProduct")
-          .addProperty("name", product.name)
-          .addProperty("ms", new Date().valueOf() - startMs)
-          .toString()
-      );
-    } else {
-      logger().debug(new LoggedEvent("noProductFound").addProperty("ms", new Date().valueOf() - startMs).toString());
-      const msg = `Sorry, Wegmans doesn't sell ${productQuery}.`;
-      logger().info(new LoggedEvent("response").addProperty("msg", msg).toString());
-      return Promise.resolve(handlerInput.responseBuilder.speak(msg).getResponse());
-    }
-
-    //TODO: 1) test logDuration start/end for searchPrfeerHIstory
-    // 2) Promise.race between the search and setTimeout(1000) that just returns nothin
-
-    // Add to shopping list asynchronously; don't hold up the response.
-    await wegmansDao.enqueue_addProductToShoppingList(tokens.access, product);
-
-    const alexaFriendlyProductName = product.name.replace(/\&/g, "and");
-
-    const msg = `Added ${alexaFriendlyProductName} to your wegmans shopping list.`;
-    logger().info(new LoggedEvent("response").addProperty("msg", msg).toString());
-    return handlerInput.responseBuilder.speak(msg).getResponse();
+    return handleAddtoShoppingList(wegmansService, intent, session, handlerInput.responseBuilder);
   }
 };
+
+export async function handleAddtoShoppingList(
+  wegmansService: WegmansService,
+  intent: Intent,
+  session: Session | undefined,
+  responseBuilder: ResponseBuilder
+) {
+  const startMs = new Date().valueOf();
+
+  // What did the user ask for?  Pull it out of the intent slot.
+  const productQuery = intent.slots![PRODUCT_SLOT].value || "";
+
+  const tokens = await logDuration("getTokens", wegmansService.getTokensFromAccess(_.get(session, "user.accessToken")));
+
+  // Bail if we couldn't get tokens
+  if (!tokens) {
+    logger().error("Couldn't get tokens!");
+    return Promise.resolve(
+      responseBuilder
+        .speak("Sorry, Wedgies is having trouble logging in to Wegmans.  Please try again later.")
+        .getResponse()
+    );
+  }
+  logger().debug(JSON.stringify(getTokenInfo(tokens)));
+
+  const product = await wegmansService.searchForProduct(productQuery, tokens);
+
+  if (product) {
+    logger().debug(
+      new LoggedEvent("foundProduct")
+        .addProperty("name", product.name)
+        .addProperty("ms", new Date().valueOf() - startMs)
+        .toString()
+    );
+  } else {
+    logger().debug(new LoggedEvent("noProductFound").addProperty("ms", new Date().valueOf() - startMs).toString());
+    const msg = `Sorry, Wegmans doesn't sell ${productQuery}.`;
+    logger().info(new LoggedEvent("response").addProperty("msg", msg).toString());
+    return Promise.resolve(responseBuilder.speak(msg).getResponse());
+  }
+
+  //TODO: 1) test logDuration start/end for searchPrfeerHIstory
+  // 2) Promise.race between the search and setTimeout(1000) that just returns nothin
+
+  // Add to shopping list asynchronously; don't hold up the response.
+  await wegmansService.wegmansDao.enqueue_addProductToShoppingList(tokens.access, product);
+
+  const alexaFriendlyProductName = product.name.replace(/\&/g, "and");
+
+  const msg = `Added ${alexaFriendlyProductName} to your wegmans shopping list.`;
+  logger().info(new LoggedEvent("response").addProperty("msg", msg).toString());
+  return responseBuilder.speak(msg).getResponse();
+}
 
 export const testAuth: RequestHandler = {
   canHandle(handlerInput: HandlerInput): Promise<boolean> | boolean {

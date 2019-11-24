@@ -13,12 +13,15 @@ import { decode } from "jsonwebtoken";
 import { LoggedEvent } from "../models/LoggedEvent";
 
 export class WegmansService {
-  constructor(private wegmansDao: WegmansDao, private accessCodeDao: AccessCodeDao) {}
+  constructor(private _wegmansDao: WegmansDao, private _accessCodeDao: AccessCodeDao) {}
+  get wegmansDao() {
+    return this._wegmansDao;
+  }
   async searchForProduct(productQuery: string, tokens: AccessToken) {
     const storeId = getStoreIdFromTokens(tokens);
     // Find a product
     const [orderHistoryResult, pastRequestedProduct] = await Promise.all([
-      logDuration("wegmansDao.getOrderHistory", this.wegmansDao.getOrderHistory(tokens.access, storeId)),
+      logDuration("wegmansDao.getOrderHistory", this._wegmansDao.getOrderHistory(tokens.access, storeId)),
       logDuration(
         "productRequestHistoryDao.get",
         productRequestHistoryDao.get(getUsernameFromToken(tokens), productQuery)
@@ -48,11 +51,11 @@ export class WegmansService {
     );
     let tokensPromise: Promise<AccessToken>;
     if (accessToken) {
-      tokensPromise = this.accessCodeDao.getTokensByAccess(accessToken);
+      tokensPromise = this._accessCodeDao.getTokensByAccess(accessToken);
     } else {
       //TODO: do both these approaches work?
       logger().info(new AccessTokenNotFoundLoggedEvent().toString());
-      tokensPromise = this.wegmansDao.login(config.get("wegmans.email"), config.get("wegmans.password"));
+      tokensPromise = this._wegmansDao.login(config.get("wegmans.email"), config.get("wegmans.password"));
     }
 
     let tokens = await tokensPromise;
@@ -65,7 +68,7 @@ export class WegmansService {
       logger().error("Alexa gave us an expired access token: " + JSON.stringify(tokens)); // If this happens, look into the access-token-refresher
       const preRefreshedTokens = await logDuration(
         "gettingPreRefreshedTokens",
-        this.accessCodeDao.getPreRefreshedToken(tokens.refresh)
+        this._accessCodeDao.getPreRefreshedToken(tokens.refresh)
       );
       if (!preRefreshedTokens || isAccessTokenExpired(preRefreshedTokens)) {
         logger().debug(
@@ -73,11 +76,11 @@ export class WegmansService {
         );
         const freshTokens = await logDuration(
           "refreshingTokens",
-          this.wegmansDao.refreshTokens(tokens.refresh, tokens.user)
+          this._wegmansDao.refreshTokens(tokens.refresh, tokens.user)
         );
         await logDuration(
           "putPreRefreshedTokens",
-          this.accessCodeDao.putPreRefreshedTokens({
+          this._accessCodeDao.putPreRefreshedTokens({
             refreshed_by: tokens.refresh,
             ...freshTokens
           })
