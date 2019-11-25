@@ -31,10 +31,7 @@ export function decodeAccess(accessToken: string): DecodedAccessToken {
 }
 
 export function getMostRecentlyIssuedToken(tokens: AccessToken[]) {
-  const sortedTokensForUser = _.sortBy(
-    tokens,
-    (token: AccessToken) => decodeAccess(token.access).iat.valueOf() * -1
-  );
+  const sortedTokensForUser = _.sortBy(tokens, (token: AccessToken) => decodeAccess(token.access).iat.valueOf() * -1);
 
   return sortedTokensForUser[0];
 }
