@@ -6,7 +6,6 @@ import { decryptionPromise } from "../../lib/decrypt-config";
 import { WegmansDao } from "../../lib/WegmansDao";
 import { accessCodeDao } from "../../lib/AccessCodeDao";
 import { WegmansService } from "../../lib/WegmansService";
-import { handleAddtoShoppingList } from "./handleAddtoShoppingList";
 
 //TODO: support adding quantities: "add 5 goat cheeses"
 
@@ -43,9 +42,12 @@ export const addToShoppingList: RequestHandler = {
     return request.type === "IntentRequest" && request.intent.name === "AddToShoppingList";
   },
   async handle(handlerInput: HandlerInput): Promise<Response> {
+    /**
+     * Try to keep this wraper razor-thin because it's hard to write tests for it.
+     */
     const request = handlerInput.requestEnvelope.request as IntentRequest;
     const intent = request.intent;
-    const session = handlerInput.requestEnvelope.session;
+    const accessToken = _.get(handlerInput, "requestEnvelope.session.user.accessToken");
 
     const wegmansDao = await wegmansDaoPromise;
     const wegmansService = new WegmansService(wegmansDao, accessCodeDao);
@@ -53,7 +55,7 @@ export const addToShoppingList: RequestHandler = {
     // What did the user ask for?  Pull it out of the intent slot.
     const productQuery = intent.slots![PRODUCT_SLOT].value || "";
 
-    const responseMessage = await handleAddtoShoppingList(wegmansService, productQuery, session);
+    const responseMessage = await wegmansService.handleAddtoShoppingList(productQuery, accessToken);
     return handlerInput.responseBuilder.speak(responseMessage).getResponse();
   }
 };

@@ -2,7 +2,13 @@ import { logDuration, logger } from "./Logger";
 
 import { productRequestHistoryDao } from "./ProductRequestHistoryDao";
 
-import { getUsernameFromToken, AccessToken, getStoreIdFromTokens, isAccessTokenExpired } from "../models/AccessToken";
+import {
+  getUsernameFromToken,
+  AccessToken,
+  getStoreIdFromTokens,
+  isAccessTokenExpired,
+  getTokenInfo
+} from "../models/AccessToken";
 
 import { WegmansDao } from "./WegmansDao";
 import { ProductSearch } from "./ProductSearch";
@@ -18,6 +24,43 @@ export class WegmansService {
   get wegmansDao() {
     return this._wegmansDao;
   }
+
+  async handleAddtoShoppingList(productQuery: string, accessToken?: string) {
+    const startMs = new Date().valueOf();
+    const tokens = await logDuration("getTokens", this.getFreshTokensOrLogin(accessToken));
+    // Bail if we couldn't get tokens
+    if (!tokens) {
+      logger().error("Couldn't get tokens!");
+      return "Sorry, Wedgies is having trouble logging in to Wegmans.  Please try again later.";
+    }
+    logger().debug(JSON.stringify(getTokenInfo(tokens)));
+    const product = await this.searchForProduct(productQuery, tokens);
+    if (product) {
+      logger().debug(
+        new LoggedEvent("foundProduct")
+          .addProperty("name", product.name)
+          .addProperty("ms", new Date().valueOf() - startMs)
+          .toString()
+      );
+    } else {
+      logger().debug(new LoggedEvent("noProductFound").addProperty("ms", new Date().valueOf() - startMs).toString());
+      const msg = `Sorry, Wegmans doesn't sell ${productQuery}.`;
+      logger().info(new LoggedEvent("response").addProperty("msg", msg).toString());
+      return msg;
+    }
+    //TODO: 1) test logDuration start/end for searchPrfeerHIstory
+    // 2) Promise.race between the search and setTimeout(1000) that just returns nothin
+
+    // Add to shopping list asynchronously; don't hold up the response.
+    await this.enqueue_addProductToShoppingList(tokens.access, product, 1);
+    const alexaFriendlyProductName = product.name.replace(/\&/g, "and");
+    const msg = `Added ${alexaFriendlyProductName} to your wegmans shopping list.`;
+    logger().info(new LoggedEvent("response").addProperty("msg", msg).toString());
+
+    return msg;
+    //   return Promise.resolve(responseBuilder.speak(msg).getResponse());
+  }
+
   async searchForProduct(productQuery: string, tokens: AccessToken) {
     const storeId = getStoreIdFromTokens(tokens);
     // Find a product
@@ -45,7 +88,7 @@ export class WegmansService {
     return product;
   }
 
-  async getTokensFromAccess(accessToken?: string) {
+  async getFreshTokensOrLogin(accessToken?: string) {
     // Get skill access token from request and match it up with wegmans auth tokens from dynamo
     logger().debug(
       new LoggedEvent("WegmansService.getTokensFromAccess").addProperty("accessToken", accessToken).toString()
