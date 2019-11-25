@@ -9,9 +9,7 @@
       "name": "Jest file",
       "request": "launch",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest",
-      "args": [
-        "${fileBasename}"
-      ],
+      "args": ["${fileBasename}"],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
@@ -21,22 +19,17 @@
       "type": "node",
       "request": "launch",
       "name": "Launch Program",
-      "args": [
-        "${relativeFile}"
-      ],
+      "args": ["${relativeFile}"],
       "cwd": "${workspaceFolder}",
       "runtimeArgs": ["-r", "ts-node/register"],
-      "internalConsoleOptions": "openOnSessionStart",
+      "internalConsoleOptions": "openOnSessionStart"
     },
     {
       "type": "node",
       "name": "vscode-jest-tests",
       "request": "launch",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest",
-      "args": [
-        "--runInBand",
-        "${relativeFile}"
-      ],
+      "args": ["--runInBand", "${relativeFile}"],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen"

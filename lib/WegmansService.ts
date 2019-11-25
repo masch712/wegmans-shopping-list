@@ -11,6 +11,7 @@ import { AccessTokenNotFoundLoggedEvent } from "../models/logged-events/AccessTo
 import { config } from "./config";
 import { decode } from "jsonwebtoken";
 import { LoggedEvent } from "../models/LoggedEvent";
+import { Product } from "../models/Product";
 
 export class WegmansService {
   constructor(private _wegmansDao: WegmansDao, private _accessCodeDao: AccessCodeDao) {}
@@ -91,5 +92,9 @@ export class WegmansService {
       }
     }
     return tokens;
+  }
+
+  async enqueue_addProductToShoppingList(accessToken: string, product: Product, quantity?: number) {
+    return this.wegmansDao.enqueue_addProductToShoppingList(accessToken, product, quantity);
   }
 }
