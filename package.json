@@ -61,7 +61,7 @@
     "typescript": "^3.7"
   },
   "scripts": {
-    "test:jest": "jest --runInBand",
+    "test:jest": "jest --runInBand --detectOpenHandles",
     "test:start-db": "docker run -p 8000:8000 --name wegmans-dynamo-test -d --rm amazon/dynamodb-local",
     "test:stop-db": "docker kill wegmans-dynamo-test",
     "test": "npm-run-all --continue-on-error test:start-db test:jest test:stop-db",

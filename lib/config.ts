@@ -179,6 +179,12 @@ export const config = convict({
         default: "",
         format: String,
         env: "ALEXA_SKILL_SECRET"
+      },
+      productSearchShortCircuitMillis: {
+        doc: "millis to search for product before giving up",
+        default: 1500,
+        format: Number,
+        env: "SEARCH_SHORT_CIRCUIT_MILLIS"
       }
     }
   }

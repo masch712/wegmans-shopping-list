@@ -14,6 +14,7 @@ export interface SearchThenAddToShoppingListWork extends QueuedWork {
     productQuery: string;
     quantity: number;
     accessToken: string; //TODO: take all the tokens here in case we need a refresh?
+    // TODO: stop putting fucking tokens in fucking queues, horrible idea
   };
   workType: WorkType.SearchThenAddToShoppingList;
 }
@@ -42,6 +43,7 @@ export async function handler(event: SQSEvent) {
     }
 
     logger().debug("adding " + product.sku + " for " + username);
+
     //TODO: is the timestamp in the shopping list note gonna be right here?  close enough?
     await wegmansService.handleAddtoShoppingList(productQuery, accessToken);
   }

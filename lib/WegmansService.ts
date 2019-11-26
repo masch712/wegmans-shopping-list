@@ -25,7 +25,7 @@ export class WegmansService {
     return this._wegmansDao;
   }
 
-  async handleAddtoShoppingList(productQuery: string, accessToken?: string) {
+  async handleAddtoShoppingList(productQuery: string, accessToken?: string, shortCircuitMillis = 1500) {
     const startMs = new Date().valueOf();
     const tokens = await logDuration("getTokens", this.getFreshTokensOrLogin(accessToken));
     // Bail if we couldn't get tokens
@@ -34,31 +34,50 @@ export class WegmansService {
       return "Sorry, Wedgies is having trouble logging in to Wegmans.  Please try again later.";
     }
     logger().debug(JSON.stringify(getTokenInfo(tokens)));
-    const product = await this.searchForProduct(productQuery, tokens);
-    if (product) {
-      logger().debug(
-        new LoggedEvent("foundProduct")
-          .addProperty("name", product.name)
-          .addProperty("ms", new Date().valueOf() - startMs)
-          .toString()
-      );
-    } else {
-      logger().debug(new LoggedEvent("noProductFound").addProperty("ms", new Date().valueOf() - startMs).toString());
-      const msg = `Sorry, Wegmans doesn't sell ${productQuery}.`;
-      logger().info(new LoggedEvent("response").addProperty("msg", msg).toString());
-      return msg;
-    }
-    //TODO: 1) test logDuration start/end for searchPrfeerHIstory
-    // 2) Promise.race between the search and setTimeout(1000) that just returns nothin
 
-    // Add to shopping list asynchronously; don't hold up the response.
-    await this.enqueue_addProductToShoppingList(tokens.access, product, 1, this._getNoteForShoppingList(productQuery));
-    const alexaFriendlyProductName = product.name.replace(/\&/g, "and");
-    const msg = `Added ${alexaFriendlyProductName} to your wegmans shopping list.`;
+    const msg = await Promise.race([
+      (async () => {
+        await new Promise(resolve => {
+          setTimeout(() => {
+            resolve();
+          }, shortCircuitMillis);
+        });
+        return `Adding ${productQuery} to your wegmans shopping list.`;
+      })(),
+
+      (async () => {
+        const product = await this.searchForProduct(productQuery, tokens);
+        if (product) {
+          logger().debug(
+            new LoggedEvent("foundProduct")
+              .addProperty("name", product.name)
+              .addProperty("ms", new Date().valueOf() - startMs)
+              .toString()
+          );
+        } else {
+          logger().debug(
+            new LoggedEvent("noProductFound").addProperty("ms", new Date().valueOf() - startMs).toString()
+          );
+          const msg = `Sorry, Wegmans doesn't sell ${productQuery}.`;
+          logger().info(new LoggedEvent("response").addProperty("msg", msg).toString());
+          return msg;
+        }
+
+        // Add to shopping list asynchronously; don't hold up the response.
+        await this.enqueue_addProductToShoppingList(
+          tokens.access,
+          product,
+          1,
+          this._getNoteForShoppingList(productQuery)
+        );
+        const alexaFriendlyProductName = product.name.replace(/\&/g, "and");
+        const msg = `Added ${alexaFriendlyProductName} to your wegmans shopping list.`;
+        return msg;
+      })()
+    ]);
+
     logger().info(new LoggedEvent("response").addProperty("msg", msg).toString());
-
     return msg;
-    //   return Promise.resolve(responseBuilder.speak(msg).getResponse());
   }
 
   async searchForProduct(productQuery: string, tokens: AccessToken) {
@@ -144,5 +163,9 @@ export class WegmansService {
   // TODO: typescript passthrough method? args, etc?
   async enqueue_addProductToShoppingList(accessToken: string, product: Product, quantity = 1, note: string) {
     return this.wegmansDao.enqueue_addProductToShoppingList(accessToken, product, quantity, note);
+  }
+
+  async enqueue_searchAndAddProductToShoppingList(accessToken: string, productQuery: string, quantity = 1) {
+    return this.wegmansDao.enqueue_searchThenAddProductToShoppingList(accessToken, productQuery, quantity);
   }
 }

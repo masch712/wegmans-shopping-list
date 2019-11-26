@@ -55,7 +55,11 @@ export const addToShoppingList: RequestHandler = {
     // What did the user ask for?  Pull it out of the intent slot.
     const productQuery = intent.slots![PRODUCT_SLOT].value || "";
 
-    const responseMessage = await wegmansService.handleAddtoShoppingList(productQuery, accessToken);
+    const responseMessage = await wegmansService.handleAddtoShoppingList(
+      productQuery,
+      accessToken,
+      config.get("alexa.skill.productSearchShortCircuitMillis")
+    );
     return handlerInput.responseBuilder.speak(responseMessage).getResponse();
   }
 };

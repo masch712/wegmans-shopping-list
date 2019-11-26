@@ -13,6 +13,7 @@ import { ProductSearch } from "./ProductSearch";
 import { config } from "../lib/config";
 import { BasicAsyncQueueClient, WorkType } from "./BasicAsyncQueue";
 import { AddToShoppingListWork } from "../lambda/workers/AddToShoppingList";
+import { SearchThenAddToShoppingListWork } from "../lambda/workers/SearchForProduct";
 
 interface OrderHistoryResponseItem {
   LastPurchaseDate: string;
@@ -24,11 +25,12 @@ export class WegmansDao {
   private apiKey: string;
   private shoppingListId: number | undefined;
 
-  private workQueue: BasicAsyncQueueClient<AddToShoppingListWork>;
-
+  private addToShoppingListWorkQueue: BasicAsyncQueueClient<AddToShoppingListWork>;
+  private searchThenAddToShoppingListWorkQueue: BasicAsyncQueueClient<SearchThenAddToShoppingListWork>;
   constructor(apiKey: string) {
     this.apiKey = apiKey;
-    this.workQueue = new BasicAsyncQueueClient();
+    this.addToShoppingListWorkQueue = new BasicAsyncQueueClient();
+    this.searchThenAddToShoppingListWorkQueue = new BasicAsyncQueueClient();
   }
 
   async login(email: string, password: string): Promise<AccessToken> {
@@ -136,6 +138,20 @@ export class WegmansDao {
     return shoppingListId;
   }
 
+  async enqueue_searchThenAddProductToShoppingList(accessToken: string, productQuery: string, quantity: number) {
+    await logDuration(
+      "enqueue_searchAndAddProductToShoppingList",
+      this.searchThenAddToShoppingListWorkQueue.enqueue({
+        payload: {
+          productQuery,
+          quantity,
+          accessToken
+        },
+        workType: WorkType.SearchThenAddToShoppingList
+      })
+    );
+  }
+
   async enqueue_addProductToShoppingList(
     accessToken: string,
     product: Product,
@@ -144,7 +160,7 @@ export class WegmansDao {
   ): Promise<void> {
     await logDuration(
       "enqueue_addProductToShoppingList",
-      this.workQueue.enqueue({
+      this.addToShoppingListWorkQueue.enqueue({
         payload: {
           accessToken,
           product,
