@@ -2,11 +2,7 @@ import * as request from "request-promise-native";
 import { config } from "../lib/config";
 import { WegmansDao } from "../lib/WegmansDao";
 import { orderHistoryDao } from "../lib/OrderHistoryDao";
-import {
-  AccessToken,
-  getStoreIdFromTokens,
-  getUsernameFromToken
-} from "../models/AccessToken";
+import { AccessToken, getStoreIdFromTokens, getUsernameFromToken } from "../models/AccessToken";
 import { ProductSearch } from "../lib/ProductSearch";
 jest.setTimeout(3000000);
 
@@ -22,18 +18,12 @@ describe("wegmans dao", () => {
   let tokens: AccessToken;
   let storeId: number;
   beforeAll(async () => {
-    tokens = await wegmans.login(
-      config.get("wegmans.email"),
-      config.get("wegmans.password")
-    );
+    tokens = await wegmans.login(config.get("wegmans.email"), config.get("wegmans.password"));
     storeId = getStoreIdFromTokens(tokens);
     expect(tokens).toBeDefined();
   });
   test("gets goat cheese", async () => {
-    const [goat] = await ProductSearch.wegmansSearchForProduct(
-      "goat cheese",
-      storeId
-    );
+    const [goat] = await ProductSearch.wegmansSearchForProduct("goat cheese", storeId);
     expect(goat).not.toBeNull();
     expect(goat!.subcategory).toEqual("Goat Cheese");
   });
@@ -42,21 +32,14 @@ describe("wegmans dao", () => {
     expect(shoppingListId).toBeGreaterThan(0);
   });
   test("adds goat cheese to list", async () => {
-    const [goat] = await ProductSearch.wegmansSearchForProduct(
-      "goat cheese",
-      storeId
-    );
-    await wegmans.addProductToShoppingList(tokens.access, goat!);
+    const [goat] = await ProductSearch.wegmansSearchForProduct("goat cheese", storeId);
+    await wegmans.addProductToShoppingList(tokens.access, goat!, 1, "IGNORE ME");
   });
   describe("purchase history", () => {
     test("gets purchase history", async () => {
       const userId = getUsernameFromToken(tokens);
       await orderHistoryDao.delete(userId);
-      const history = await wegmans.getOrderHistory(
-        tokens.access,
-        storeId,
-        true
-      );
+      const history = await wegmans.getOrderHistory(tokens.access, storeId, true);
       // cache should have good stuff
       if (history.cacheUpdatePromise) {
         await history.cacheUpdatePromise;

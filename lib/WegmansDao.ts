@@ -58,9 +58,7 @@ export class WegmansDao {
         throw new Error("No access tokens in response; bad login credentials?");
       }
       tokens = { access, refresh, user };
-      logger().debug(
-        "Logged in and got access token of length " + access.length
-      );
+      logger().debug("Logged in and got access token of length " + access.length);
     }
 
     if (!tokens) {
@@ -75,10 +73,7 @@ export class WegmansDao {
    * Send a refresh token to Wegmans and get back fresh access and user tokens.
    * @param refreshToken The refresh token
    */
-  async refreshTokens(
-    refreshToken: string,
-    userToken: string
-  ): Promise<AccessToken> {
+  async refreshTokens(refreshToken: string, userToken: string): Promise<AccessToken> {
     try {
       const jar = request.jar();
       const refreshCookie = request.cookie(`wegmans_refresh=${refreshToken}`)!;
@@ -105,9 +100,7 @@ export class WegmansDao {
         throw new Error("No access tokens in response; bad login credentials?");
       }
       const tokens: AccessToken = { access, refresh, user };
-      logger().debug(
-        "Logged in and got access token of length " + access.length
-      );
+      logger().debug("Logged in and got access token of length " + access.length);
       return tokens;
     }
 
@@ -115,10 +108,7 @@ export class WegmansDao {
   }
 
   static getCookie(response: Response, cookieKey: string) {
-    const cookie = _.find<string>(
-      response.headers["set-cookie"],
-      (cookie: string) => !!cookie.match(`${cookieKey}=`)
-    );
+    const cookie = _.find<string>(response.headers["set-cookie"], (cookie: string) => !!cookie.match(`${cookieKey}=`));
     if (!cookie) {
       return;
     }
@@ -132,16 +122,13 @@ export class WegmansDao {
       return this.shoppingListId;
     }
 
-    const response = await request.get(
-      "https://wegapi.azure-api.net/shoppinglists/all/?api-version=1.0",
-      {
-        headers: {
-          Authorization: accessToken,
-          "Ocp-Apim-Subscription-Key": this.apiKey
-        },
-        json: true
-      }
-    );
+    const response = await request.get("https://wegapi.azure-api.net/shoppinglists/all/?api-version=1.0", {
+      headers: {
+        Authorization: accessToken,
+        "Ocp-Apim-Subscription-Key": this.apiKey
+      },
+      json: true
+    });
 
     const shoppingListId = response[0].Id;
     this.shoppingListId = shoppingListId;
@@ -152,7 +139,8 @@ export class WegmansDao {
   async enqueue_addProductToShoppingList(
     accessToken: string,
     product: Product,
-    quantity = 1
+    quantity = 1,
+    note: string
   ): Promise<void> {
     await logDuration(
       "enqueue_addProductToShoppingList",
@@ -160,73 +148,55 @@ export class WegmansDao {
         payload: {
           accessToken,
           product,
-          quantity
+          quantity,
+          note
         },
         workType: WorkType.AddToShoppingList
       })
     );
   }
 
-  async addProductToShoppingList(
-    accessToken: string,
-    product: Product,
-    quantity = 1
-  ): Promise<void> {
+  async addProductToShoppingList(accessToken: string, product: Product, quantity = 1, note: string): Promise<void> {
     const shoppingListId = await this.getShoppingListId(accessToken);
-    const response = await request(
-      "https://wegapi.azure-api.net/shoppinglists/shoppinglistitem/my/?api-version=1.1",
-      {
-        method: "POST",
-        qs: { "api-version": "1.1" },
-        headers: {
-          "Content-Type": "application/json",
-          "Ocp-Apim-Subscription-Key": this.apiKey,
-          Authorization: accessToken
-        },
-        body: JSON.stringify([
-          {
-            ShoppingListId: shoppingListId,
-            Quantity: quantity,
-            Sku: product.sku
-          }
-        ]),
-        resolveWithFullResponse: true
-      }
-    );
+    const response = await request("https://wegapi.azure-api.net/shoppinglists/shoppinglistitem/my/?api-version=1.1", {
+      method: "POST",
+      qs: { "api-version": "1.1" },
+      headers: {
+        "Content-Type": "application/json",
+        "Ocp-Apim-Subscription-Key": this.apiKey,
+        Authorization: accessToken
+      },
+      body: JSON.stringify([
+        {
+          ShoppingListId: shoppingListId,
+          Quantity: quantity,
+          Sku: product.sku,
+          Note: note
+        }
+      ]),
+      resolveWithFullResponse: true
+    });
 
-    logger().debug(
-      "addProducttoShoppingList response status: " + response.statusCode
-    );
+    logger().debug("addProducttoShoppingList response status: " + response.statusCode);
 
     return;
   }
 
   //TODO: refactor this garbage
-  async getOrderHistory(
-    accessToken: string,
-    storeId: number,
-    forceCacheUpdate?: boolean
-  ) {
+  async getOrderHistory(accessToken: string, storeId: number, forceCacheUpdate?: boolean) {
     const userId = (jwt.decode(accessToken) as { sub: string }).sub;
-    const orderHistory = await logDuration(
-      "orderHistoryDao.get(userId)",
-      orderHistoryDao.get(userId)
-    );
+    const orderHistory = await logDuration("orderHistoryDao.get(userId)", orderHistoryDao.get(userId));
     let orderedProducts: OrderedProduct[] = [];
     let updateCachePromise = undefined;
 
-    logger().debug(
-      "gotOrderHistoryCachedAt: " +
-        (orderHistory && orderHistory.lastCachedMillisSinceEpoch)
-    );
+    logger().debug("gotOrderHistoryCachedAt: " + (orderHistory && orderHistory.lastCachedMillisSinceEpoch));
 
     // Update cache if oldre than 24 hours
     if (
       !orderHistory ||
       !orderHistory.orderedProducts ||
       !orderHistory.orderedProducts.length ||
-      orderHistory.lastCachedMillisSinceEpoch <
-        DateTime.utc().valueOf() - 24 * 3600 * 1000 ||
+      orderHistory.lastCachedMillisSinceEpoch < DateTime.utc().valueOf() - 24 * 3600 * 1000 ||
       orderHistory.lastCachedMillisSinceEpoch < 1551646031169 || // Before 3/3/2019, when I fixed a bug that requires me to re-cache order history
       forceCacheUpdate
     ) {
@@ -291,20 +261,15 @@ export class WegmansDao {
       }
 
       logger().debug("writing order history to cache");
-      updateCachePromise = orderHistoryDao
-        .put(userId, orderedProducts)
-        .then(() => {
-          logger().debug("order history cache written");
-        });
+      updateCachePromise = orderHistoryDao.put(userId, orderedProducts).then(() => {
+        logger().debug("order history cache written");
+      });
     } else {
       logger().debug("order history cache hit");
       orderedProducts = orderHistory.orderedProducts;
     }
 
-    const sortedOrderedProducts = _.sortBy(
-      orderedProducts,
-      (op: OrderedProduct) => op.sku
-    );
+    const sortedOrderedProducts = _.sortBy(orderedProducts, (op: OrderedProduct) => op.sku);
 
     return {
       orderedProducts: sortedOrderedProducts,

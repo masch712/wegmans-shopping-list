@@ -40,6 +40,7 @@ export async function handler(event: SQSEvent) {
       logger().error(new LoggedEvent("noProductFound").addProperty("query", productQuery).toString());
       return;
     }
+
     logger().debug("adding " + product.sku + " for " + username);
     await wegmansDao.addProductToShoppingList(accessToken, product, quantity);
   }

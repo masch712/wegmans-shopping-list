@@ -1,5 +1,5 @@
 // jest.mock("../../lib/Logger");
-import { mock, when, verify, deepEqual, instance, spy } from "ts-mockito";
+import { mock, when, verify, deepEqual, instance, spy, anyString } from "ts-mockito";
 import { WegmansService } from "../../lib/WegmansService";
 import { ResponseBuilder } from "ask-sdk-core";
 import { Response } from "ask-sdk-model";
@@ -22,8 +22,10 @@ describe("Given a product is found", () => {
 
     when(spiedWegmansService.getFreshTokensOrLogin(fakeTokens.access)).thenResolve(fakeTokens);
     when(spiedWegmansService.searchForProduct("raisins", fakeTokens)).thenResolve(fakeProduct);
+    when(spiedWegmansService._getNoteForShoppingList("raisins")).thenReturn("some note");
 
     await wegmansService.handleAddtoShoppingList("raisins", fakeTokens.access);
-    verify(spiedWegmansService.enqueue_addProductToShoppingList(fakeTokens.access, fakeProduct, 1)).once();
+
+    verify(spiedWegmansService.enqueue_addProductToShoppingList(fakeTokens.access, fakeProduct, 1, "some note")).once();
   });
 });

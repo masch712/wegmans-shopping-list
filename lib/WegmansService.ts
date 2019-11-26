@@ -52,7 +52,7 @@ export class WegmansService {
     // 2) Promise.race between the search and setTimeout(1000) that just returns nothin
 
     // Add to shopping list asynchronously; don't hold up the response.
-    await this.enqueue_addProductToShoppingList(tokens.access, product, 1);
+    await this.enqueue_addProductToShoppingList(tokens.access, product, 1, this._getNoteForShoppingList(productQuery));
     const alexaFriendlyProductName = product.name.replace(/\&/g, "and");
     const msg = `Added ${alexaFriendlyProductName} to your wegmans shopping list.`;
     logger().info(new LoggedEvent("response").addProperty("msg", msg).toString());
@@ -137,7 +137,12 @@ export class WegmansService {
     return tokens;
   }
 
-  async enqueue_addProductToShoppingList(accessToken: string, product: Product, quantity?: number) {
-    return this.wegmansDao.enqueue_addProductToShoppingList(accessToken, product, quantity);
+  _getNoteForShoppingList(productQuery: string) {
+    return `"${productQuery}" [added by wedgies on ${new Date().toLocaleString()}]`;
+  }
+
+  // TODO: typescript passthrough method? args, etc?
+  async enqueue_addProductToShoppingList(accessToken: string, product: Product, quantity = 1, note: string) {
+    return this.wegmansDao.enqueue_addProductToShoppingList(accessToken, product, quantity, note);
   }
 }
