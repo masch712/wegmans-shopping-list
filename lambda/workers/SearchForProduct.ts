@@ -42,6 +42,7 @@ export async function handler(event: SQSEvent) {
     }
 
     logger().debug("adding " + product.sku + " for " + username);
-    await wegmansDao.addProductToShoppingList(accessToken, product, quantity);
+    //TODO: is the timestamp in the shopping list note gonna be right here?  close enough?
+    await wegmansService.handleAddtoShoppingList(productQuery, accessToken);
   }
 }
