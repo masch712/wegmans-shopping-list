@@ -35,47 +35,42 @@ export class WegmansService {
     }
     logger().debug(JSON.stringify(getTokenInfo(tokens)));
 
-    const msg = await Promise.race([
+    //TODO: the race should ONLY time the search bit.  Maybe just use bluebird?
+    //      neeed to distinguish between search-fidining-no-product and timeout
+    const product = await Promise.race([
       (async () => {
         await new Promise(resolve => {
           setTimeout(() => {
-            resolve();
-          }, shortCircuitMillis);
+            resolve(undefined);
+          }, Math.max(0, shortCircuitMillis - (new Date().valueOf() - startMs)));
         });
-        return `Adding ${productQuery} to your wegmans shopping list.`;
       })(),
 
       (async () => {
         const product = await this.searchForProduct(productQuery, tokens);
-        if (product) {
-          logger().debug(
-            new LoggedEvent("foundProduct")
-              .addProperty("name", product.name)
-              .addProperty("ms", new Date().valueOf() - startMs)
-              .toString()
-          );
-        } else {
-          logger().debug(
-            new LoggedEvent("noProductFound").addProperty("ms", new Date().valueOf() - startMs).toString()
-          );
-          const msg = `Sorry, Wegmans doesn't sell ${productQuery}.`;
-          logger().info(new LoggedEvent("response").addProperty("msg", msg).toString());
-          return msg;
-        }
-
-        // Add to shopping list asynchronously; don't hold up the response.
-        await this.enqueue_addProductToShoppingList(
-          tokens.access,
-          product,
-          1,
-          this._getNoteForShoppingList(productQuery)
-        );
-        const alexaFriendlyProductName = product.name.replace(/\&/g, "and");
-        const msg = `Added ${alexaFriendlyProductName} to your wegmans shopping list.`;
-        return msg;
+        return product;
       })()
     ]);
 
+    if (product) {
+      logger().debug(
+        new LoggedEvent("foundProduct")
+          .addProperty("name", product.name)
+          .addProperty("ms", new Date().valueOf() - startMs)
+          .toString()
+      );
+    } else {
+      logger().debug(new LoggedEvent("noProductFound").addProperty("ms", new Date().valueOf() - startMs).toString());
+      const msg = `Sorry, Wegmans doesn't sell ${productQuery}.`;
+      logger().info(new LoggedEvent("response").addProperty("msg", msg).toString());
+      return msg;
+    }
+
+    // Add to shopping list asynchronously; don't hold up the response.
+    await this.enqueue_addProductToShoppingList(tokens.access, product, 1, this._getNoteForShoppingList(productQuery));
+    const alexaFriendlyProductName = product.name.replace(/\&/g, "and");
+    const msg = `Added ${alexaFriendlyProductName} to your wegmans shopping list.`;
+    return msg;
     logger().info(new LoggedEvent("response").addProperty("msg", msg).toString());
     return msg;
   }
