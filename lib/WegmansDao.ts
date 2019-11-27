@@ -13,7 +13,7 @@ import { ProductSearch } from "./ProductSearch";
 import { config } from "../lib/config";
 import { BasicAsyncQueueClient, WorkType } from "./BasicAsyncQueue";
 import { AddToShoppingListWork } from "../lambda/workers/AddToShoppingList";
-import { SearchThenAddToShoppingListWork } from "../lambda/workers/SearchForProduct";
+import { SearchThenAddToShoppingListWork } from "../lambda/workers/SearchThenAddToShoppingList";
 
 interface OrderHistoryResponseItem {
   LastPurchaseDate: string;

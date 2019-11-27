@@ -22,23 +22,17 @@ interface ProductSearchResultItem {
 }
 
 export class ProductSearch {
-  static async wegmansSearchForProduct(
-    query: string,
-    storeId: number
-  ): Promise<Product[]> {
+  static async wegmansSearchForProduct(query: string, storeId: number): Promise<Product[]> {
     // Sanitize the query because the search service doesnt like hyphens (eg. "extra-virgin olive oil")
     const sanitizedQuery = query.replace(/-/g, " ");
-    const response = await request.get(
-      "https://sp1004f27d.guided.ss-omtrdc.net",
-      {
-        strictSSL: false, //TODO: there's an expired cert in the chain at the moment.  Remove this when they renew their cert.
-        qs: {
-          q: sanitizedQuery,
-          rank: "rank-wegmans",
-          storeNumber: storeId // TODO: break this out into config
-        }
+    const response = await request.get("https://sp1004f27d.guided.ss-omtrdc.net", {
+      strictSSL: false, //TODO: there's an expired cert in the chain at the moment.  Remove this when they renew their cert.
+      qs: {
+        q: sanitizedQuery,
+        rank: "rank-wegmans",
+        storeNumber: storeId // TODO: break this out into config
       }
-    );
+    });
     const body = JSON.parse(response);
 
     if (!body.results || !body.results.length) {
@@ -57,10 +51,7 @@ export class ProductSearch {
     }));
   }
 
-  static async getProductBySku(
-    skus: string[],
-    storeId: number
-  ): Promise<_.Dictionary<Product[]>> {
+  static async getProductBySku(skus: string[], storeId: number): Promise<_.Dictionary<Product[]>> {
     const responsePromise = request({
       method: "POST",
       url: "https://sp1004f27d.guided.ss-omtrdc.net/",
@@ -93,11 +84,7 @@ export class ProductSearch {
     return _.groupBy(products, "sku");
   }
 
-  static async wegmansSearchSkus(
-    skus: number[],
-    query: string,
-    storeId: number
-  ): Promise<Product | null> {
+  static async wegmansSearchSkus(skus: number[], query: string, storeId: number): Promise<Product | null> {
     const skuStrings = skus.map(sku => `SKU_${sku}`).join("|");
     const postForm = {
       do: "prod-search",
@@ -110,11 +97,7 @@ export class ProductSearch {
       storeNumber: storeId, //TODO: get storeNumber from JWT?
       sp_q_exact_20: skuStrings
     };
-    logger().silly(
-      new LoggedEvent("wegmansSearchSkus")
-        .addProperty("form", postForm)
-        .toString()
-    );
+    logger().silly(new LoggedEvent("wegmansSearchSkus").addProperty("form", postForm).toString());
     const responsePromise = request({
       method: "POST",
       url: "https://sp1004f27d.guided.ss-omtrdc.net/",
@@ -128,10 +111,7 @@ export class ProductSearch {
       skuHash[sku] = skuIndex++;
     });
 
-    const response = await logDuration(
-      "wegmansSearchSkusRequest",
-      responsePromise
-    );
+    const response = await logDuration("wegmansSearchSkusRequest", responsePromise);
 
     const body = JSON.parse(response);
 
@@ -177,9 +157,7 @@ export class ProductSearch {
       score: number;
     }>;
 
-    const bestProduct =
-      searchResults[0] &&
-      _.maxBy(searchResults, result => result.item.purchaseMsSinceEpoch);
+    const bestProduct = searchResults[0] && _.maxBy(searchResults, result => result.item.purchaseMsSinceEpoch);
     return bestProduct ? bestProduct.item.product || null : null;
   }
 
@@ -193,21 +171,13 @@ export class ProductSearch {
       distance: 100,
       maxPatternLength: 32,
       minMatchCharLength: 1,
-      keys: [
-        "name",
-        "category",
-        "subcategory",
-        "brand",
-        "details",
-        "productLine"
-      ]
+      keys: ["name", "category", "subcategory", "brand", "details", "productLine"]
     });
 
     const searchResults = fuse.search(query);
     // If a product other than the 0-indexed product is the best match,
     // it better have a score that's 0.15 better than the next one
-    const bestScore: number | undefined =
-      searchResults && searchResults[0] && searchResults[0].score!;
+    const bestScore: number | undefined = searchResults && searchResults[0] && searchResults[0].score!;
     if (searchResults.length > 0) {
       //1 && bestScore < _.last(searchResults)!.score! - 0.15) {
       return searchResults[0].item;
@@ -216,15 +186,9 @@ export class ProductSearch {
     }
   }
 
-  static getMostCommonProductBySku(
-    products: Product[],
-    minOccurrences?: number
-  ): Product | null {
+  static getMostCommonProductBySku(products: Product[], minOccurrences?: number): Product | null {
     const productsBySku = _.groupBy(products, product => product.sku);
-    const modeProducts = _.maxBy(
-      Object.values(productsBySku),
-      skuProducts => skuProducts.length
-    );
+    const modeProducts = _.maxBy(Object.values(productsBySku), skuProducts => skuProducts.length);
     if (modeProducts && modeProducts.length >= (minOccurrences || 2)) {
       return modeProducts[0];
     }
@@ -248,11 +212,7 @@ export class ProductSearch {
           storeId
         )
       ),
-      logDuration(
-        "fuseHistorySearch",
-        (async () =>
-          ProductSearch.fuseSearchOrderedProducts(orderedProducts, query))()
-      ),
+      logDuration("fuseHistorySearch", (async () => ProductSearch.fuseSearchOrderedProducts(orderedProducts, query))()),
       logDuration(
         "wegmansProductSearch",
         ProductSearch.wegmansSearchForProduct(query, storeId).then(results =>
@@ -262,30 +222,18 @@ export class ProductSearch {
     ]);
 
     logger().info("search query: " + query);
-    logger().info(
-      "Wegmans purchase history search result: " + JSON.stringify(candidates[0])
-    );
-    logger().info(
-      "Fuse purchase history search result: " + JSON.stringify(candidates[1])
-    );
+    logger().info("Wegmans purchase history search result: " + JSON.stringify(candidates[0]));
+    logger().info("Fuse purchase history search result: " + JSON.stringify(candidates[1]));
     logger().info("Wegmans search results: " + JSON.stringify(candidates[2]));
 
-    const nonNullCandidates = _.flatten(
-      _.filter(candidates, (c): c is Product => !!c)
-    );
+    const nonNullCandidates = _.flatten(_.filter(candidates, (c): c is Product => !!c));
 
-    const modeSkuProduct = ProductSearch.getMostCommonProductBySku(
-      nonNullCandidates,
-      maxWegmansProductSearchResults
-    );
+    const modeSkuProduct = ProductSearch.getMostCommonProductBySku(nonNullCandidates, maxWegmansProductSearchResults);
     if (modeSkuProduct) {
       return modeSkuProduct;
     }
 
-    const secondPass = ProductSearch.searchProductsSecondPass(
-      nonNullCandidates,
-      query
-    );
+    const secondPass = ProductSearch.searchProductsSecondPass(nonNullCandidates, query);
     return secondPass;
   }
 }
