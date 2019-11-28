@@ -19,13 +19,13 @@ async function delay(ms: number) {
 async function manyPromises() {
   const proms = [];
   for (let index = 0; index < 5; index++) {
-    proms.push(logDuration("manyPromises awaiting " + index, delay(250)));
+    proms.push(logDuration("manyPromises awaiting " + index, delay(1000)));
   }
   return await Promise.all(proms);
 }
 
 async function onePromise() {
-  return await logDuration("onePromise awaiting", delay(10));
+  return await logDuration("onePromise awaiting", delay(500));
 }
 //TODO: put this in an integration test
 
@@ -39,8 +39,8 @@ async function single() {
   return await onePromise();
 }
 async function main() {
-  //   const res = await logDuration("***bigRace", bigRace);
-  await logDuration("***single", single);
+  const res = await logDuration("***bigRace", bigRace);
+  //   await logDuration("***single", single);
   //   await logDuration("***singleRace", singleRace);
   cancelAllRequests();
   setTimeout(() => {
