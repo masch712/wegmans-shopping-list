@@ -39,9 +39,9 @@ async function single() {
   return await onePromise();
 }
 async function main() {
-  const res = await logDuration("***bigRace", bigRace);
+  //   const res = await logDuration("***bigRace", bigRace);
   await logDuration("***single", single);
-  await logDuration("***singleRace", singleRace);
+  //   await logDuration("***singleRace", singleRace);
   cancelAllRequests();
   setTimeout(() => {
     logger().info("***Program finished");
