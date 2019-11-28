@@ -5,7 +5,7 @@ import { config } from "./lib/config";
 
 async function delay(ms: number) {
   try {
-    const res = await cancellableRequest({
+    const res = await cancellableRequest.get({
       url: `http://slowwly.robertomurray.co.uk/delay/${ms}/url/http://www.google.com`,
       followAllRedirects: true
     });
