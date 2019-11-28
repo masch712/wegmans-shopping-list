@@ -1,4 +1,5 @@
-import { cancellableRequest, cancelAllRequests } from "./lib/CancellableRequest";
+import { cancelAllRequests } from "./lib/CancellableRequestUtils";
+import * as cancellableRequest from "./lib/CancellableRequest";
 import { logger, logDuration } from "./lib/Logger";
 import { config } from "./lib/config";
 
@@ -18,7 +19,7 @@ async function delay(ms: number) {
 async function manyPromises() {
   const proms = [];
   for (let index = 0; index < 5; index++) {
-    proms.push(logDuration("manyPromises awaiting " + index, delay(1000)));
+    proms.push(logDuration("manyPromises awaiting " + index, delay(250)));
   }
   return await Promise.all(proms);
 }
