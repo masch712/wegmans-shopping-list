@@ -27,12 +27,12 @@ function createToken() {
 
 const _cancelAllRequestsToken = createToken();
 
-export async function cancellableRequest(
+export const cancellableRequest = async (
   ...args: [
     (UriOptions & originalRequest.RequestPromiseOptions) | (UrlOptions & originalRequest.RequestPromiseOptions),
     (RequestCallback | undefined)?
   ]
-) {
+) => {
   //TODO: sad type coupling here.  Can't i just passthrough ...args?
   const originalRequestPromise = originalRequest(...args);
 
@@ -48,7 +48,7 @@ export async function cancellableRequest(
   });
 
   return originalRequestPromise;
-}
+};
 
 export function cancelAllRequests() {
   logger().debug(new LoggedEvent("cancelAllRequests").toString());

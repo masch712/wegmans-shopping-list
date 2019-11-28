@@ -1,12 +1,14 @@
 logging:
   level: debug
+  logDuration:
+    logResolveValue: false
 alexa:
   skill:
     # Client ID and Secret set up in Alexa Skill Console -> Account Linking
     name: dev-wegmans-shopping-list-skill
 aws:
   dynamodb:
-    tableNames: 
+    tableNames:
       TOKENSBYCODE: devWegmansTokensByAccessCode
       TOKENSBYACCESS: devWegmansTokensByAccessToken
       TOKENSBYREFRESH: devWegmansTokensByRefreshToken
@@ -15,12 +17,12 @@ aws:
       PRODUCTREQUESTHISTORY: devWegmansProductRequestHistory
   lambda:
     functionNames:
-      'cdk-wegmans-shopping-list': 'dev-cdk-wegmans-shopping-list'
-      'cdk-wegmans-generate-access-code': 'dev-cdk-wegmans-generate-access-code'
-      'cdk-wegmans-get-tokens': 'dev-cdk-wegmans-get-tokens'
-      'cdk-wegmans-cron-order-history-updater': 'dev-cdk-wegmans-cron-order-history-updater'
-      'cdk-wegmans-cron-access-token-refresher': 'dev-cdk-wegmans-cron-access-token-refresher'
-      'cdk-wegmans-worker-prefix': 'dev-cdk-wegmans-worker-'
+      "cdk-wegmans-shopping-list": "dev-cdk-wegmans-shopping-list"
+      "cdk-wegmans-generate-access-code": "dev-cdk-wegmans-generate-access-code"
+      "cdk-wegmans-get-tokens": "dev-cdk-wegmans-get-tokens"
+      "cdk-wegmans-cron-order-history-updater": "dev-cdk-wegmans-cron-order-history-updater"
+      "cdk-wegmans-cron-access-token-refresher": "dev-cdk-wegmans-cron-access-token-refresher"
+      "cdk-wegmans-worker-prefix": "dev-cdk-wegmans-worker-"
   sqs:
     queueNames:
-      'worker-queue-prefix': 'dev-wegmans-worker-'
+      "worker-queue-prefix": "dev-wegmans-worker-"

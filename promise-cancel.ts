@@ -1,5 +1,6 @@
 import { cancellableRequest, cancelAllRequests } from "./lib/CancellableRequest";
 import { logger, logDuration } from "./lib/Logger";
+import { config } from "./lib/config";
 
 async function delay(ms: number) {
   try {
@@ -19,28 +20,28 @@ async function manyPromises() {
   for (let index = 0; index < 5; index++) {
     proms.push(logDuration("manyPromises awaiting " + index, delay(1000)));
   }
-  return proms;
+  return await Promise.all(proms);
 }
 
 async function onePromise() {
-  const res = await logDuration("onePromise awaiting", delay(10));
+  return await logDuration("onePromise awaiting", delay(10));
 }
 //TODO: put this in an integration test
 
 async function bigRace() {
-  await Promise.race([manyPromises(), onePromise()]);
+  return await Promise.race([manyPromises(), onePromise()]);
 }
 async function singleRace() {
-  await Promise.race([onePromise()]);
+  return await Promise.race([onePromise()]);
 }
 async function single() {
-  await onePromise();
+  return await onePromise();
 }
 async function main() {
-  await logDuration("***bigRace", bigRace);
+  const res = await logDuration("***bigRace", bigRace);
   await logDuration("***single", single);
   await logDuration("***singleRace", singleRace);
-  //   cancelAllRequests();
+  cancelAllRequests();
   setTimeout(() => {
     logger().info("***Program finished");
   });
