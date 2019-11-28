@@ -1,5 +1,3 @@
-import * as originalRequest from "request-promise-native";
-import { UriOptions, UrlOptions, RequestCallback } from "request";
 import { logger } from "./Logger";
 import { LoggedEvent } from "../models/LoggedEvent";
 
