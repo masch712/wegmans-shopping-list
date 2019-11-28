@@ -64,23 +64,27 @@ export function logger() {
  * @param eventName
  * @param promise
  */
-export async function logDuration<T>(
-  eventName: string,
-  promise: Promise<T>
-): Promise<T> {
+export async function logDuration<T>(eventName: string, promise: Promise<T> | (() => Promise<T>)): Promise<T> {
   const id = uuid();
-  logger().debug(
-    new LoggedEvent("starting").addProperty("eventName", eventName).toString()
-  );
+  logger().debug(new LoggedEvent("starting").addProperty("eventName", eventName).toString());
   const startTime = new Date().getTime();
-  const result = await promise;
+
+  let result;
+  if (promise instanceof Promise) {
+    result = await promise;
+  } else {
+    result = await promise();
+  }
   const endTime = new Date().getTime();
-  logger().debug(
-    new LoggedEvent("finished")
-      .addProperty("eventName", eventName)
-      .addProperty("durationMillis", endTime - startTime)
-      .addProperty("result", result)
-      .toString()
-  );
+  const loggedEvent = new LoggedEvent("finished")
+    .addProperty("eventName", eventName)
+    .addProperty("durationMillis", endTime - startTime);
+
+  if (config.get("logging.logDuration.logResolveValue")) {
+    loggedEvent.addProperty("result", result);
+  }
+
+  logger().debug(loggedEvent.toString());
+
   return result;
 }

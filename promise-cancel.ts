@@ -3,8 +3,12 @@ import { logger, logDuration } from "./lib/Logger";
 
 async function delay(ms: number) {
   try {
-    await cancellableRequest(`http://slowwly.robertomurray.co.uk/delay/${ms}/url/http://www.google.com`);
+    const res = await cancellableRequest({
+      url: `http://slowwly.robertomurray.co.uk/delay/${ms}/url/http://www.google.com`,
+      followAllRedirects: true
+    });
     logger().debug("*RESPONDED " + ms);
+    return res;
   } catch (e) {
     logger().warn(e);
   }
@@ -19,13 +23,24 @@ async function manyPromises() {
 }
 
 async function onePromise() {
-  await logDuration("onePromise awaiting", delay(10));
+  const res = await logDuration("onePromise awaiting", delay(10));
 }
 //TODO: put this in an integration test
-async function main() {
+
+async function bigRace() {
   await Promise.race([manyPromises(), onePromise()]);
-  logger().info("**Race finished");
-  cancelAllRequests();
+}
+async function singleRace() {
+  await Promise.race([onePromise()]);
+}
+async function single() {
+  await onePromise();
+}
+async function main() {
+  await logDuration("***bigRace", bigRace);
+  await logDuration("***single", single);
+  await logDuration("***singleRace", singleRace);
+  //   cancelAllRequests();
   setTimeout(() => {
     logger().info("***Program finished");
   });

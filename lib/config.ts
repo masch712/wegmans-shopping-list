@@ -35,6 +35,14 @@ export const config = convict({
       default: "debug",
       format: ["error", "warn", "info", "verbose", "debug", "silly"],
       env: "LOGGING_LEVEL"
+    },
+    logDuration: {
+      logResolveValue: {
+        doc: "Whether to log the promise resolution value in logDuration(...) calls",
+        default: false,
+        format: Boolean,
+        env: "LOGGING_LOGDURATION_LOGRESOLVEVALUE"
+      }
     }
   },
   aws: {

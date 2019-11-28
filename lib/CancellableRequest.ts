@@ -38,6 +38,12 @@ export async function cancellableRequest(
 
   _cancelAllRequestsToken.token.promise.then(reason => {
     logger().debug(new LoggedEvent("cancelledRequest").addProperty("url", originalRequestPromise.uri.path).toString());
+    if (/\/10\//.test(originalRequestPromise.uri.href)) {
+      // TODO: try this shit
+      originalRequestPromise.then(res => {
+        console.log("****got it");
+      });
+    }
     originalRequestPromise.abort();
   });
 
