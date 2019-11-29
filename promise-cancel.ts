@@ -1,4 +1,4 @@
-import { cancelAllRequests } from "./lib/CancellableRequestUtils";
+import { cancelAllRequests } from "./lib/CancelAllRequestsUtils";
 import * as cancellableRequest from "./lib/CancellableRequest";
 import { logger, logDuration } from "./lib/Logger";
 import { config } from "./lib/config";

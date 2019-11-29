@@ -1,22 +1,23 @@
 import * as AWS from "aws-sdk";
-import {
-  CreateTableInput,
-  DescribeTableOutput
-} from "aws-sdk/clients/dynamodb";
+import { CreateTableInput, DescribeTableOutput } from "aws-sdk/clients/dynamodb";
 import { logger } from "../lib/Logger";
 import { config } from "../lib/config";
+import { Request } from "aws-sdk";
+import { Canceler, createCanceler } from "./CancellableRequestUtils";
+import { LoggedEvent } from "../models/LoggedEvent";
+import _ = require("lodash");
 
 AWS.config.update({
   region: "us-east-1"
 });
 
 export abstract class DynamoDao {
-  private isInitted = false;
+  private _isInitted = false;
   protected dynamodb: AWS.DynamoDB;
   protected docClient: AWS.DynamoDB.DocumentClient;
   abstract tableParams: CreateTableInput[];
 
-  constructor(endpoint: string) {
+  constructor(endpoint: string, private _canceler: Canceler = createCanceler()) {
     const options = endpoint ? { endpoint } : undefined;
     this.dynamodb = new AWS.DynamoDB(options);
     this.docClient = new AWS.DynamoDB.DocumentClient(options);
@@ -24,6 +25,21 @@ export abstract class DynamoDao {
 
   static get tableNamePrefix() {
     return config.get("aws.dynamodb.tableNamePrefix");
+  }
+
+  cancelRequests(reason = "cancelled") {
+    this._canceler.cancel(reason);
+  }
+
+  protected makeCancellable<D, E>(awsRequest: Request<D, E>) {
+    this._canceler.token.promise.then(() => {
+      logger().debug(
+        new LoggedEvent("cancelledDynamoRequest").addProperty("path", _.get(awsRequest, "httpRequest.path")).toString()
+      );
+      //TODO: should .abort() be try/catched or something?
+      awsRequest.abort();
+    });
+    return awsRequest;
   }
 
   // @traceMethod
@@ -45,12 +61,7 @@ export abstract class DynamoDao {
       }
       tableStatus = data.Table && data.Table.TableStatus;
       duration += new Date().getTime() - (startTime + duration);
-    } while (
-      tableStatus &&
-      tableStatus !== "ACTIVE" &&
-      duration < timeout &&
-      (await sleep(2000))
-    );
+    } while (tableStatus && tableStatus !== "ACTIVE" && duration < timeout && (await sleep(2000)));
     if (tableStatus && tableStatus !== "ACTIVE") {
       throw new Error(`Table ${tableName} is ${tableStatus}`);
     }
@@ -68,19 +79,17 @@ export abstract class DynamoDao {
     );
 
     await Promise.all(promises);
-    this.isInitted = false;
+    this._isInitted = false;
   }
 
   async initTables() {
-    if (this.isInitted || !config.get("aws").dynamodb.initTables) {
+    if (this._isInitted || !config.get("aws").dynamodb.initTables) {
       return Promise.resolve();
     }
     const tableParam = this.tableParams;
     const tableExists: { [key: string]: boolean } = {};
     for (let i = 0; i < tableParam.length; i++) {
-      tableExists[tableParam[i].TableName] = await this.tableExists(
-        tableParam[i].TableName
-      );
+      tableExists[tableParam[i].TableName] = await this.tableExists(tableParam[i].TableName);
     }
     // TODO: why do i need this?
     const self = this;
@@ -95,7 +104,7 @@ export abstract class DynamoDao {
     });
 
     await Promise.all(promises);
-    this.isInitted = true;
+    this._isInitted = true;
 
     return;
   }

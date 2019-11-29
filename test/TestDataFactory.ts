@@ -19,7 +19,7 @@ export const tokenFactory = Factory.Sync.makeFactory<AccessToken>({
   access: jwt.sign(
     {
       exp: new Date().valueOf() / 1000 + 3600,
-      iss: new Date().valueOf() / 1000
+      iat: new Date().valueOf() / 1000
     },
     FAKE_JWT_SECRET
   ),

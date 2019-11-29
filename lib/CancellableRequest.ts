@@ -1,13 +1,13 @@
-import { cancelAllRequestsToken } from "./CancellableRequestUtils";
 import { logger } from "./Logger";
 import { LoggedEvent } from "../models/LoggedEvent";
 import { RequestAPI, RequiredUriUrl } from "request";
 import { RequestPromise, RequestPromiseOptions } from "request-promise-native";
+import { cancelAllRequestsToken } from "./CancellableRequestUtils";
 
 const stealthyRequire = require("stealthy-require");
 
 // Load Request freshly - so that users can require an unaltered request instance!
-const requestPromiseNative = stealthyRequire(require.cache, function() {
+const requestPromiseNative = stealthyRequire(require.cache, () => {
   return require("request-promise-native");
 }) as RequestAPI<RequestPromise, RequestPromiseOptions, RequiredUriUrl>;
 

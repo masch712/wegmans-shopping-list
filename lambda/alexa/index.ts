@@ -4,10 +4,6 @@ const skillBuilder = SkillBuilders.custom();
 
 /* LAMBDA SETUP */
 exports.handler = skillBuilder
-  .addRequestHandlers(
-    addToShoppingList,
-    testAuth,
-    splashResponse,
-  )
+  .addRequestHandlers(addToShoppingList, testAuth, splashResponse)
   // .addErrorHandlers(UserConfigErrorHandler)
   .lambda();

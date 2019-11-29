@@ -6,7 +6,7 @@ import { decryptionPromise } from "../../lib/decrypt-config";
 import { WegmansDao } from "../../lib/WegmansDao";
 import { accessCodeDao } from "../../lib/AccessCodeDao";
 import { WegmansService } from "../../lib/WegmansService";
-import { cancelAllRequests } from "../../lib/CancellableRequestUtils";
+import { cancelAllRequests } from "../../lib/CancelAllRequestsUtils";
 
 //TODO: support adding quantities: "add 5 goat cheeses"
 

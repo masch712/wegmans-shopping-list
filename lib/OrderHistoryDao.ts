@@ -54,14 +54,14 @@ class OrderHistoryDao extends DynamoDao {
 
   async get(userId: string): Promise<{ orderedProducts: OrderedProduct[]; lastCachedMillisSinceEpoch: number } | null> {
     await this.initTables();
-    const orderedProductsResult = await this.docClient
-      .get({
+    const orderedProductsResult = await this.makeCancellable(
+      this.docClient.get({
         Key: {
           userId
         },
         TableName: TABLENAME_ORDERHISTORYBYUSER
       })
-      .promise();
+    ).promise();
 
     if (orderedProductsResult.Item) {
       const itemOrderedProducts = orderedProductsResult.Item.orderedProducts as OrderedProductForDynamo[];

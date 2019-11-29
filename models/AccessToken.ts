@@ -46,7 +46,7 @@ export function getTokenInfo(token: AccessToken) {
   const accessToken = jwt.decode(token.access) as { [key: string]: number }; // TODO: make a real JWT type?
   return {
     expiration: new Date(accessToken.exp * 1000),
-    issued: new Date(accessToken.iss * 1000)
+    issued: new Date(accessToken.iat * 1000)
   };
 }
 

@@ -1,6 +1,6 @@
 import * as cancellableRequest from "./CancellableRequest";
-import { cancelAllRequests } from "./CancellableRequestUtils";
-import { logger, logDuration } from "./Logger";
+import { cancelAllRequests } from "./CancelAllRequestsUtils";
+
 async function delay(ms: number, responseRepo: any[]) {
   const res = await cancellableRequest.get({
     url: `http://slowwly.robertomurray.co.uk/delay/${ms}/url/http://www.google.com`,

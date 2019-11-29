@@ -1,13 +1,15 @@
-import { logger } from "./Logger";
-import { LoggedEvent } from "../models/LoggedEvent";
-
 // from https://medium.com/@benlesh/promise-cancellation-is-dead-long-live-promise-cancellation-c6601f1f5082
 interface CancelToken {
   promise: Promise<string>;
   reason?: string;
 }
 
-function createToken() {
+export interface Canceler {
+  token: CancelToken;
+  cancel: (reason: string) => void;
+}
+
+export function createCanceler(): Canceler {
   let cancel: (reason: string) => void = () => {};
   const token: CancelToken = {
     promise: new Promise(resolve => {
@@ -22,10 +24,4 @@ function createToken() {
 
   return { token, cancel };
 }
-
-export const cancelAllRequestsToken = createToken();
-
-export function cancelAllRequests() {
-  logger().debug(new LoggedEvent("cancelAllRequests").toString());
-  cancelAllRequestsToken.cancel("globally cancelled");
-}
+export const cancelAllRequestsToken = createCanceler();
