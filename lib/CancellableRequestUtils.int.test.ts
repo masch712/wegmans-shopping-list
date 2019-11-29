@@ -1,5 +1,5 @@
+import cancellableRequest = require("./CancellableRequest");
 import { cancelAllRequests } from "./CancellableRequestUtils";
-import * as cancellableRequest from "./CancellableRequest";
 import { logger, logDuration } from "./Logger";
 
 const responsesReceived: any[] = [];
