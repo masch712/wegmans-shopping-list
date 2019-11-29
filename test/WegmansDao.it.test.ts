@@ -1,4 +1,3 @@
-import * as request from "request-promise-native";
 import { config } from "../lib/config";
 import { WegmansDao } from "../lib/WegmansDao";
 import { orderHistoryDao } from "../lib/OrderHistoryDao";
@@ -21,11 +20,6 @@ describe("wegmans dao", () => {
     tokens = await wegmans.login(config.get("wegmans.email"), config.get("wegmans.password"));
     storeId = getStoreIdFromTokens(tokens);
     expect(tokens).toBeDefined();
-  });
-  test("gets goat cheese", async () => {
-    const [goat] = await ProductSearch.wegmansSearchForProduct("goat cheese", storeId);
-    expect(goat).not.toBeNull();
-    expect(goat!.subcategory).toEqual("Goat Cheese");
   });
   test("gets shopping list id", async () => {
     const shoppingListId = await wegmans.getShoppingListId(tokens.access);

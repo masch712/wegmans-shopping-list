@@ -1,14 +1,10 @@
 import * as _ from "lodash";
-import * as request from "request-promise-native";
+import * as request from "./CancellableRequest";
 import { Product } from "../models/Product";
 import { logger, logDuration } from "./Logger";
-import { Response } from "request";
 import { OrderedProduct } from "../models/OrderedProduct";
-import { DateTime } from "luxon";
-import * as jwt from "jsonwebtoken";
 import * as Fuse from "fuse.js";
 import { LoggedEvent } from "../models/LoggedEvent";
-import { productRequestHistoryDao } from "./ProductRequestHistoryDao";
 
 interface ProductSearchResultItem {
   name: string;

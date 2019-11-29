@@ -1,5 +1,5 @@
 import * as _ from "lodash";
-import * as request from "request-promise-native";
+import * as request from "./CancellableRequest";
 import { AccessToken } from "../models/AccessToken";
 import { Product } from "../models/Product";
 import { logger, logDuration } from "./Logger";
