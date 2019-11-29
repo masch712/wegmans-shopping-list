@@ -20,9 +20,16 @@ const originalInit = ((requestPromiseNative as unknown) as any).Request.prototyp
   cancelAllRequestsToken.token.promise.then(reason => {
     logger().debug(new LoggedEvent("cancelledRequest").addProperty("url", this.uri.path).toString());
     this.abort();
+    this._rp_reject(new RequestAbortedError());
   });
 
   return this;
 };
+
+class RequestAbortedError extends Error {
+  constructor(message?: string) {
+    super(message);
+  }
+}
 
 export = requestPromiseNative;
