@@ -30,9 +30,7 @@ export class WegmansCdkStack extends cdk.Stack {
     if (!config.get("aws.lambda.functionNames.cdk-wegmans-worker-prefix")) {
       throw new Error("wtf");
     } else {
-      console.log(
-        config.get("aws.lambda.functionNames.cdk-wegmans-worker-prefix")
-      );
+      console.log(config.get("aws.lambda.functionNames.cdk-wegmans-worker-prefix"));
     }
     if (!config.get("logical_env")) {
       throw new Error("You must set LOGICAL_ENV to development or production");
@@ -51,40 +49,26 @@ export class WegmansCdkStack extends cdk.Stack {
 
     new WegmansLambda(this, "AlexaLambdaWegmansShoppingList", {
       handler: "dist/lambda/alexa/index.handler",
-      functionName: config.get(
-        "aws.lambda.functionNames.cdk-wegmans-shopping-list"
-      ),
+      functionName: config.get("aws.lambda.functionNames.cdk-wegmans-shopping-list"),
       environment
     });
 
-    const authServerLambdaGenerateAccessCode = new WegmansLambda(
-      this,
-      "LambdaWegmansAuthServerGenerateAccessCode",
-      {
-        handler: "dist/lambda/server/auth-server.generateAccessCode",
-        functionName: config.get(
-          "aws.lambda.functionNames.cdk-wegmans-generate-access-code"
-        ),
-        environment
-      }
-    );
+    const authServerLambdaGenerateAccessCode = new WegmansLambda(this, "LambdaWegmansAuthServerGenerateAccessCode", {
+      handler: "dist/lambda/server/auth-server.generateAccessCode",
+      functionName: config.get("aws.lambda.functionNames.cdk-wegmans-generate-access-code"),
+      environment
+    });
 
-    const authServerLambdaGetTokens = new WegmansLambda(
-      this,
-      "LambdaWegmansAuthServerGetTokens",
-      {
-        handler: "dist/lambda/server/auth-server.getTokens",
-        functionName: config.get(
-          "aws.lambda.functionNames.cdk-wegmans-get-tokens"
-        ),
-        environment: {
-          ...environment,
-          ALEXA_SKILL_NAME: config.get("alexa.skill.name"),
-          ALEXA_SKILL_SECRET: config.get("alexa.skill.secret")
-          //TODO: put all these env vars in config files?
-        }
+    const authServerLambdaGetTokens = new WegmansLambda(this, "LambdaWegmansAuthServerGetTokens", {
+      handler: "dist/lambda/server/auth-server.getTokens",
+      functionName: config.get("aws.lambda.functionNames.cdk-wegmans-get-tokens"),
+      environment: {
+        ...environment,
+        ALEXA_SKILL_NAME: config.get("alexa.skill.name"),
+        ALEXA_SKILL_SECRET: config.get("alexa.skill.secret")
+        //TODO: put all these env vars in config files?
       }
-    );
+    });
 
     const authServerApi = new apigw.RestApi(this, "WegmansAuthServerAPI", {
       deployOptions: {
@@ -94,92 +78,63 @@ export class WegmansCdkStack extends cdk.Stack {
     });
     const wegmansAuthResource = authServerApi.root.addResource("wegmans-auth");
     const accessCodeRsource = wegmansAuthResource.addResource("access-code");
-    accessCodeRsource.addMethod(
-      "POST",
-      new apigw.LambdaIntegration(authServerLambdaGenerateAccessCode)
-    );
+    accessCodeRsource.addMethod("POST", new apigw.LambdaIntegration(authServerLambdaGenerateAccessCode));
     addCorsOptions(accessCodeRsource);
     const accessTokenResource = wegmansAuthResource.addResource("access-token");
-    accessTokenResource.addMethod(
-      "POST",
-      new apigw.LambdaIntegration(authServerLambdaGetTokens)
-    );
+    accessTokenResource.addMethod("POST", new apigw.LambdaIntegration(authServerLambdaGetTokens));
     addCorsOptions(accessTokenResource);
 
     // TODO: generate schema from code?
-    const dynamoOrderHistoryByUser = new dynamo.Table(
-      this,
-      "WegmansDynamoOrderHistoryByUser",
-      {
-        partitionKey: {
-          name: "userId",
-          type: dynamo.AttributeType.STRING
-        },
-        billingMode: dynamo.BillingMode.PAY_PER_REQUEST,
-        tableName: TABLENAME_ORDERHISTORYBYUSER
-      }
-    );
-    const dynamoTokensByAccess = new dynamo.Table(
-      this,
-      "WegmansDynamoTokensByAccessToken",
-      {
-        partitionKey: {
-          name: "access",
-          type: dynamo.AttributeType.STRING
-        },
-        billingMode: dynamo.BillingMode.PAY_PER_REQUEST,
-        tableName: TABLENAME_TOKENSBYACCESS
-      }
-    );
-    const dynamoTokensByRefresh = new dynamo.Table(
-      this,
-      "WegmansDynamoTokensByRefreshToken",
-      {
-        partitionKey: {
-          name: "refresh",
-          type: dynamo.AttributeType.STRING
-        },
-        billingMode: dynamo.BillingMode.PAY_PER_REQUEST,
-        tableName: TABLENAME_TOKENSBYREFRESH
-      }
-    );
-    const dynamoTokensByCode = new dynamo.Table(
-      this,
-      "WegmansDynamoTokensByAccessCode",
-      {
-        partitionKey: {
-          name: "access_code",
-          type: dynamo.AttributeType.STRING
-        },
-        billingMode: dynamo.BillingMode.PAY_PER_REQUEST,
-        tableName: TABLENAME_TOKENSBYCODE
-      }
-    ); //TODO: delete the dynamo autoscaling alarms in cloudwatch, they cost like $3.20 a month
-    const dynamoPreRefreshedTokens = new dynamo.Table(
-      this,
-      "WegmansDynamoPreRefreshedTokens",
-      {
-        partitionKey: {
-          name: "refreshed_by",
-          type: dynamo.AttributeType.STRING
-        },
-        billingMode: dynamo.BillingMode.PAY_PER_REQUEST,
-        tableName: TABLENAME_PREREFRESHEDTOKENSBYREFRESH
-      }
-    );
-    const dynamoProductRequestHistory = new dynamo.Table(
-      this,
-      "WegmansDynamoProductRequestHistory",
-      {
-        partitionKey: {
-          name: "user_query",
-          type: dynamo.AttributeType.STRING
-        },
-        billingMode: dynamo.BillingMode.PAY_PER_REQUEST,
-        tableName: TABLENAME_PRODUCTREQUESTHISTORY
-      }
-    );
+    const dynamoOrderHistoryByUser = new dynamo.Table(this, "WegmansDynamoOrderHistoryByUser", {
+      partitionKey: {
+        name: "userId",
+        type: dynamo.AttributeType.STRING
+      },
+      billingMode: dynamo.BillingMode.PAY_PER_REQUEST,
+      tableName: TABLENAME_ORDERHISTORYBYUSER
+    });
+    const dynamoTokensByAccess = new dynamo.Table(this, "WegmansDynamoTokensByAccessToken", {
+      partitionKey: {
+        name: "access",
+        type: dynamo.AttributeType.STRING
+      },
+      billingMode: dynamo.BillingMode.PAY_PER_REQUEST,
+      tableName: TABLENAME_TOKENSBYACCESS
+    });
+    const dynamoTokensByRefresh = new dynamo.Table(this, "WegmansDynamoTokensByRefreshToken", {
+      partitionKey: {
+        name: "refresh",
+        type: dynamo.AttributeType.STRING
+      },
+      billingMode: dynamo.BillingMode.PAY_PER_REQUEST,
+      tableName: TABLENAME_TOKENSBYREFRESH
+    });
+    const dynamoTokensByCode = new dynamo.Table(this, "WegmansDynamoTokensByAccessCode", {
+      partitionKey: {
+        name: "access_code",
+        type: dynamo.AttributeType.STRING
+      },
+      billingMode: dynamo.BillingMode.PAY_PER_REQUEST,
+      tableName: TABLENAME_TOKENSBYCODE
+    }); //TODO: delete the dynamo autoscaling alarms in cloudwatch, they cost like $3.20 a month
+    const dynamoPreRefreshedTokens = new dynamo.Table(this, "WegmansDynamoPreRefreshedTokens", {
+      partitionKey: {
+        name: "refreshed_by",
+        type: dynamo.AttributeType.STRING
+      },
+      billingMode: dynamo.BillingMode.PAY_PER_REQUEST,
+      tableName: TABLENAME_PREREFRESHEDTOKENSBYREFRESH
+    });
+    const dynamoProductRequestHistory = new dynamo.Table(this, "WegmansDynamoProductRequestHistory", {
+      partitionKey: {
+        name: "user_query",
+        type: dynamo.AttributeType.STRING
+      },
+      billingMode: dynamo.BillingMode.PAY_PER_REQUEST,
+      tableName: TABLENAME_PRODUCTREQUESTHISTORY
+    });
 
+    // TODO: more granular access policies per worker?
     const dynamoAccessPolicy = new PolicyStatement({
       effect: Effect.ALLOW,
       actions: [
@@ -206,11 +161,7 @@ export class WegmansCdkStack extends cdk.Stack {
     const kmsPolicy = new PolicyStatement({
       effect: Effect.ALLOW,
       actions: ["kms:Decrypt", "kms:Encrypt"],
-      resources: [
-        `arn:aws:kms:us-east-1:${config.get(
-          "aws.account.number"
-        )}:key/1df4d245-9e29-492e-9ee4-93969cad1309`
-      ]
+      resources: [`arn:aws:kms:us-east-1:${config.get("aws.account.number")}:key/1df4d245-9e29-492e-9ee4-93969cad1309`]
     });
 
     // Update lambda policies
@@ -230,54 +181,42 @@ export class WegmansCdkStack extends cdk.Stack {
         resources: [queueAndWorker.queue.queueArn]
       });
 
-      WegmansLambda.wegmansLambdas.forEach(wl =>
-        wl.addToRolePolicy(enqueuerPolicy)
-      );
+      // Every WegmansLambda (eg. alexa handler, auth handlers) can do anything with dynamo.... :-/
+      // TODO: the workers should EXCLUSIVELY call APIs, not call directly to the database?
+      WegmansLambda.wegmansLambdas.forEach(wl => wl.addToRolePolicy(enqueuerPolicy));
+
       queueAndWorker.worker.addToRolePolicy(kmsPolicy);
+
+      // Every worker can do anything with dynamo
+      queueAndWorker.worker.addToRolePolicy(dynamoAccessPolicy);
     }
 
     // Crons
     //TODO: some cron framework that reads all the cron files?
-    const lambdaOrderHistoryUpdater = new WegmansLambda(
-      this,
-      "LambdaWegmansOrderHistoryUpdater",
-      {
-        environment,
-        functionName: config.get(
-          "aws.lambda.functionNames.cdk-wegmans-cron-order-history-updater"
-        ),
-        handler: "dist/lambda/cron/order-history-updater.handler",
-        timeout: 180 //TODO: alerting for these lambdas (response / error spikes?)
-      }
-    );
+    const lambdaOrderHistoryUpdater = new WegmansLambda(this, "LambdaWegmansOrderHistoryUpdater", {
+      environment,
+      functionName: config.get("aws.lambda.functionNames.cdk-wegmans-cron-order-history-updater"),
+      handler: "dist/lambda/cron/order-history-updater.handler",
+      timeout: 180 //TODO: alerting for these lambdas (response / error spikes?)
+    });
 
     new events.Rule(this, "EventWegmansOrderHistoryUpdater", {
       description: "Cron trigger for wegmans order history updater",
-      ruleName: config.get(
-        "aws.lambda.functionNames.cdk-wegmans-cron-order-history-updater"
-      ),
+      ruleName: config.get("aws.lambda.functionNames.cdk-wegmans-cron-order-history-updater"),
       schedule: Schedule.expression("cron(0 4 * * ? *)"),
       targets: [new events_targets.LambdaFunction(lambdaOrderHistoryUpdater)]
     });
 
-    const lambdaTokenRefresher = new WegmansLambda(
-      this,
-      "LambdaWegmansTokenRefresher",
-      {
-        environment,
-        functionName: config.get(
-          "aws.lambda.functionNames.cdk-wegmans-cron-access-token-refresher"
-        ),
-        handler: "dist/lambda/cron/access-token-refresher.handler",
-        timeout: 180 //TODO: alerting for these lambdas (response / error spikes?)
-      }
-    );
+    const lambdaTokenRefresher = new WegmansLambda(this, "LambdaWegmansTokenRefresher", {
+      environment,
+      functionName: config.get("aws.lambda.functionNames.cdk-wegmans-cron-access-token-refresher"),
+      handler: "dist/lambda/cron/access-token-refresher.handler",
+      timeout: 180 //TODO: alerting for these lambdas (response / error spikes?)
+    });
 
     new events.Rule(this, "EventWegmansTokenRefresher", {
       description: "Cron trigger for wegmans token refresher",
-      ruleName: config.get(
-        "aws.lambda.functionNames.cdk-wegmans-cron-access-token-refresher"
-      ),
+      ruleName: config.get("aws.lambda.functionNames.cdk-wegmans-cron-access-token-refresher"),
       schedule: Schedule.expression("cron(30 4,12,16 * * ? *)"), // Run the refresher every 8 hours
       targets: [new events_targets.LambdaFunction(lambdaTokenRefresher)]
     });
@@ -348,14 +287,11 @@ class QueueAndWorker {
       environment: { [key: string]: string };
     }
   ) {
-    const functionName =
-      config.get("aws.lambda.functionNames.cdk-wegmans-worker-prefix") +
-      props.workType;
+    const functionName = config.get("aws.lambda.functionNames.cdk-wegmans-worker-prefix") + props.workType;
     const lambdaId = `WegmansWorkerLambda${props.workType}`;
 
     this._queue = new sqs.Queue(scope, `WegmansWorkerQueue${props.workType}`, {
-      queueName:
-        config.get("aws.sqs.queueNames.worker-queue-prefix") + props.workType
+      queueName: config.get("aws.sqs.queueNames.worker-queue-prefix") + props.workType
     });
 
     new LogGroup(scope, lambdaId + "Logs", {
@@ -386,10 +322,8 @@ export function addCorsOptions(apiResource: apigw.IResource) {
             "method.response.header.Access-Control-Allow-Headers":
               "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
             "method.response.header.Access-Control-Allow-Origin": "'*'",
-            "method.response.header.Access-Control-Allow-Credentials":
-              "'false'",
-            "method.response.header.Access-Control-Allow-Methods":
-              "'OPTIONS,GET,PUT,POST,DELETE'"
+            "method.response.header.Access-Control-Allow-Credentials": "'false'",
+            "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE'"
           }
         }
       ],

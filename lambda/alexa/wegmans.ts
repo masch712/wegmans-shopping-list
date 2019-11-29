@@ -62,12 +62,6 @@ export const addToShoppingList: RequestHandler = {
       config.get("alexa.skill.productSearchShortCircuitMillis")
     );
 
-    // Sorry about the global side effects of cancelAllRequests() but we gotta do cleanup somewhere.
-    // If you have an HTTP request you don't want cancelled, you should either:
-    //  A) import request-promise-native, not CancellableRequest
-    //  B) Put that request promise on the critical path so that it's resolve by this point
-    cancelAllRequests();
-
     return handlerInput.responseBuilder.speak(responseMessage).getResponse();
   }
 };

@@ -18,6 +18,7 @@ import { config } from "./config";
 import { decode } from "jsonwebtoken";
 import { LoggedEvent } from "../models/LoggedEvent";
 import { Product } from "../models/Product";
+import { cancelAllRequests } from "./CancelAllRequestsUtils";
 
 export class WegmansService {
   constructor(private _wegmansDao: WegmansDao, private _accessCodeDao: AccessCodeDao) {}
@@ -67,6 +68,13 @@ export class WegmansService {
 
     let msg;
     if (didSearchTimeout) {
+      // Sorry about the global side effects of cancelAllRequests() but we gotta do cleanup somewhere.
+      // If you have an HTTP request you don't want cancelled, you should either:
+      //  A) import request-promise-native, not CancellableRequest
+      //  B) Put that request promise on the critical path so that it's resolve by this point
+      process.nextTick(() => {
+        cancelAllRequests();
+      });
       await this.enqueue_searchAndAddProductToShoppingList(tokens.access, productQuery, 1);
       msg = `Adding ${productQuery} to your wegmans shopping list.`;
     } else if (product) {
