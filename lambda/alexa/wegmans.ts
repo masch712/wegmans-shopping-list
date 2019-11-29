@@ -6,6 +6,7 @@ import { decryptionPromise } from "../../lib/decrypt-config";
 import { WegmansDao } from "../../lib/WegmansDao";
 import { accessCodeDao } from "../../lib/AccessCodeDao";
 import { WegmansService } from "../../lib/WegmansService";
+import { cancelAllRequests } from "../../lib/CancellableRequestUtils";
 
 //TODO: support adding quantities: "add 5 goat cheeses"
 
@@ -60,6 +61,13 @@ export const addToShoppingList: RequestHandler = {
       accessToken,
       config.get("alexa.skill.productSearchShortCircuitMillis")
     );
+
+    // Sorry about the global side effects of cancelAllRequests() but we gotta do cleanup somewhere.
+    // If you have an HTTP request you don't want cancelled, you should either:
+    //  A) import request-promise-native, not CancellableRequest
+    //  B) Put that request promise on the critical path so that it's resolve by this point
+    cancelAllRequests();
+
     return handlerInput.responseBuilder.speak(responseMessage).getResponse();
   }
 };
