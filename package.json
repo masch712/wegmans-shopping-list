@@ -67,6 +67,7 @@
     "test:stop-db": "docker kill wegmans-dynamo-test",
     "test": "npm-run-all --continue-on-error test:start-db test:jest test:stop-db",
     "build": "rm -f ./build/build.zip && docker build -t wegmans-builder . && docker run --rm wegmans-builder cat build.zip > build/build.zip",
+    "deploy:diff": "cdk diff --app \"ts-node deploy/deploy.ts\" --profile wegmans",
     "deploy": "cdk deploy --app \"ts-node deploy/deploy.ts\" --profile wegmans",
     "cicd": "npm-run-all build deploy"
   },

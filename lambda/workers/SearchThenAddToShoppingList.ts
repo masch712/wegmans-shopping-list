@@ -46,8 +46,8 @@ export async function handler(event: SQSEvent) {
     logger().debug("adding " + product.sku + " for " + username);
 
     //TODO: is the timestamp in the shopping list note gonna be right here?  close enough?
-    TODO: GIVE PERMISSION FOR THIS WORKER OT addToShoppingList
-    https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logEventViewer:group=/aws/lambda/dev-cdk-wegmans-worker-SearchThenAddToShoppingList;stream=2019/11/29/[$LATEST]4936f2f71e7242a39a6d31c5b25e03f8;start=2019-11-28T16:31:48Z
+    // TODO: GIVE PERMISSION FOR THIS WORKER OT addToShoppingList
+    // https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logEventViewer:group=/aws/lambda/dev-cdk-wegmans-worker-SearchThenAddToShoppingList;stream=2019/11/29/[$LATEST]4936f2f71e7242a39a6d31c5b25e03f8;start=2019-11-28T16:31:48Z
     await wegmansService.handleAddtoShoppingList(productQuery, accessToken, 10_000);
   }
 }

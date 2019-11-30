@@ -14,7 +14,7 @@ import {
   TABLENAME_PREREFRESHEDTOKENSBYREFRESH
 } from "../lib/AccessCodeDao";
 import { PolicyStatement, Effect } from "@aws-cdk/aws-iam";
-import { TABLENAME_ORDERHISTORYBYUSER, orderHistoryDao, tableOrderHistoryByUser } from "../lib/OrderHistoryDao";
+import { TABLENAME_ORDERHISTORYBYUSER, orderHistoryDao, tableOrderHistoryByUser, RESOURCENAME_ORDERHISTORYBYUSER } from "../lib/OrderHistoryDao";
 import { WorkType } from "../lib/BasicAsyncQueue";
 import { config } from "../lib/config";
 import { TABLENAME_PRODUCTREQUESTHISTORY } from "../lib/ProductRequestHistoryDao";
@@ -22,6 +22,7 @@ import { LogGroup, RetentionDays } from "@aws-cdk/aws-logs";
 import { Duration } from "@aws-cdk/core";
 import { Schedule } from "@aws-cdk/aws-events";
 import { dynamoTablesFromSdk } from "./Sdk2CdkUtils";
+import { worker } from "cluster";
 
 const buildAsset = lambda.Code.asset("./build/build.zip");
 
@@ -86,8 +87,11 @@ export class WegmansCdkStack extends cdk.Stack {
     addCorsOptions(accessTokenResource);
 
     // TODO: generate schema from code?
-
-    const dynamoOrderHistoryTables = dynamoTablesFromSdk(this, orderHistoryDao.tableParams);
+TODO: make this worker, follow this pattern
+    const dynamoOrderHistoryTables = dynamoTablesFromSdk(this, {
+      tableParams: orderHistoryDao.tableParams,
+      resourceName: RESOURCENAME_ORDERHISTORYBYUSER,
+    });
     const dynamoTokensByAccess = new dynamo.Table(this, "WegmansDynamoTokensByAccessToken", {
       partitionKey: {
         name: "access",

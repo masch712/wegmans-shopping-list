@@ -5,7 +5,9 @@ import { DynamoDao } from "./DynamoDao";
 import { OrderedProduct, OrderedProductForDynamo } from "../models/OrderedProduct";
 import { Product } from "../models/Product";
 import * as _ from "lodash";
-export const TABLENAME_ORDERHISTORYBYUSER = config.get("aws.dynamodb.tableNames.ORDERHISTORYBYUSER");
+export const RESOURCENAME_ORDERHISTORYBYUSER = "WegmansOrderHistoryByUser";
+export const TABLENAME_ORDERHISTORYBYUSER =
+  config.get("aws.dynamodb.tableNamePrefix") + RESOURCENAME_ORDERHISTORYBYUSER;
 
 AWS.config.update({
   region: "us-east-1"

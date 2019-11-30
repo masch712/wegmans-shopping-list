@@ -8,13 +8,15 @@ alexa:
     name: dev-wegmans-shopping-list-skill
 aws:
   dynamodb:
-    tableNames:
-      TOKENSBYCODE: devWegmansTokensByAccessCode
-      TOKENSBYACCESS: devWegmansTokensByAccessToken
-      TOKENSBYREFRESH: devWegmansTokensByRefreshToken
-      PREREFRESHEDTOKENSBYREFRESH: devWegmansPreRefreshedTokensByRefreshToken
-      ORDERHISTORYBYUSER: devWegmansOrderHistoryByUser
-      PRODUCTREQUESTHISTORY: devWegmansProductRequestHistory
+    tableNamePrefix:
+      dev
+      # TODO: delete this shit.  Put tablenames in code
+      # TOKENSBYCODE: devWegmansTokensByAccessCode
+      # TOKENSBYACCESS: devWegmansTokensByAccessToken
+      # TOKENSBYREFRESH: devWegmansTokensByRefreshToken
+      # PREREFRESHEDTOKENSBYREFRESH: devWegmansPreRefreshedTokensByRefreshToken
+      # PRODUCTREQUESTHISTORY: devWegmansProductRequestHistory
+
   lambda:
     functionNames:
       "cdk-wegmans-shopping-list": "dev-cdk-wegmans-shopping-list"
