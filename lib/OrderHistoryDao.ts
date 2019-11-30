@@ -11,16 +11,12 @@ AWS.config.update({
   region: "us-east-1"
 });
 
-const params_OrderHistoryByUser: AWS.DynamoDB.CreateTableInput = {
+export const tableOrderHistoryByUser: AWS.DynamoDB.CreateTableInput = {
   TableName: TABLENAME_ORDERHISTORYBYUSER,
   KeySchema: [
     { AttributeName: "userId", KeyType: "HASH" } // Partition key
   ],
-  AttributeDefinitions: [{ AttributeName: "userId", AttributeType: "S" }],
-  ProvisionedThroughput: {
-    ReadCapacityUnits: 10,
-    WriteCapacityUnits: 10
-  }
+  AttributeDefinitions: [{ AttributeName: "userId", AttributeType: "S" }]
 };
 
 interface OrderHistoryItem {
@@ -38,7 +34,7 @@ class OrderHistoryDao extends DynamoDao {
   }
   private static _instance: OrderHistoryDao;
 
-  tableParams: AWS.DynamoDB.CreateTableInput[] = [params_OrderHistoryByUser];
+  tableParams: AWS.DynamoDB.CreateTableInput[] = [tableOrderHistoryByUser];
 
   async delete(userId: string) {
     await this.initTables();

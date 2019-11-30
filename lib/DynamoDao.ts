@@ -23,10 +23,6 @@ export abstract class DynamoDao {
     this.docClient = new AWS.DynamoDB.DocumentClient(options);
   }
 
-  static get tableNamePrefix() {
-    return config.get("aws.dynamodb.tableNamePrefix");
-  }
-
   cancelRequests(reason = "cancelled") {
     this._canceler.cancel(reason);
   }
