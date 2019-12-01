@@ -28,16 +28,14 @@ export class WegmansService {
 
   async handleAddtoShoppingList(productQuery: string, accessToken?: string, shortCircuitMillis = 1500) {
     const startMs = new Date().valueOf();
-    const tokens = await logDuration("getTokens", this.getFreshTokensOrLogin(accessToken));
+    const tokens = await logDuration("getTokens", () => this.getFreshTokensOrLogin(accessToken));
     // Bail if we couldn't get tokens
     if (!tokens) {
       logger().error("Couldn't get tokens!");
       return "Sorry, Wedgies is having trouble logging in to Wegmans.  Please try again later.";
     }
-    logger().debug(JSON.stringify(getTokenInfo(tokens)));
+    logger().debug(JSON.stringify({ tokenInfo: getTokenInfo(tokens) }));
 
-    //TODO: the race should ONLY time the search bit.  Maybe just use bluebird?
-    //      neeed to distinguish between search-fidining-no-product and timeout
     const searchTimeoutError = {};
     let product;
     let didSearchTimeout = false;
@@ -63,6 +61,8 @@ export class WegmansService {
         logger().warn(
           new LoggedEvent("searchShortCircuit").addProperty("ms", new Date().valueOf() - searchStartTime).toString()
         );
+      } else {
+        throw err;
       }
     }
 
@@ -135,11 +135,15 @@ export class WegmansService {
     );
     let tokensPromise: Promise<AccessToken>;
     if (accessToken) {
-      tokensPromise = this._accessCodeDao.getTokensByAccess(accessToken);
+      tokensPromise = logDuration("AccessCodeDao.getTokensByAccess", () =>
+        this._accessCodeDao.getTokensByAccess(accessToken)
+      );
     } else {
       //TODO: do both these approaches work?
       logger().info(new AccessTokenNotFoundLoggedEvent().toString());
-      tokensPromise = this._wegmansDao.login(config.get("wegmans.email"), config.get("wegmans.password"));
+      tokensPromise = logDuration("WegmansDao.login", () =>
+        this._wegmansDao.login(config.get("wegmans.email"), config.get("wegmans.password"))
+      );
     }
 
     let tokens = await tokensPromise;

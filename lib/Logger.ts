@@ -62,7 +62,7 @@ export function logger() {
 /**
  * Wrapper for logging duration of a promise
  * @param eventName
- * @param promise
+ * @param promise Either a promise or an arrow function that supplies a promise.  The arrow function approach is preferable beacuse it defers execution of the promise-supplying code, allowing us to log a "starting" event before we actually start running synchronous code in the promise-supplying function.
  */
 export async function logDuration<T>(eventName: string, promise: Promise<T> | (() => Promise<T>)): Promise<T> {
   const id = uuid();
