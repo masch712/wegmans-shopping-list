@@ -65,7 +65,17 @@ export const config = convict({
         format: Boolean,
         default: false
       },
+      tableNamePrefix: {
+        doc: "Prefix for dynamo table names",
+        format: String,
+        default: ""
+      },
       tableNames: {
+        ORDERHISTORYBYUSER: {
+          doc: "table for blah",
+          format: String,
+          default: "WegmansOrderHistoryByUser"
+        },
         TOKENSBYCODE: {
           doc: "Table for blah",
           format: String,
@@ -85,11 +95,6 @@ export const config = convict({
           doc: "Table for blah",
           format: String,
           default: "WegmansPreRefreshedTokensByRefreshToken"
-        },
-        ORDERHISTORYBYUSER: {
-          doc: "Table for order history",
-          format: String,
-          default: "WegmansOrderHistoryByUser"
         },
         PRODUCTREQUESTHISTORY: {
           doc: "Table for alexa request history",
@@ -190,7 +195,7 @@ export const config = convict({
       },
       productSearchShortCircuitMillis: {
         doc: "millis to search for product before giving up",
-        default: 1500,
+        default: 750,
         format: Number,
         env: "SEARCH_SHORT_CIRCUIT_MILLIS"
       }

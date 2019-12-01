@@ -21,6 +21,10 @@ describe("wegmans dao", () => {
     storeId = getStoreIdFromTokens(tokens);
     expect(tokens).toBeDefined();
   });
+  test.only("refreshes token", async () => {
+    const freshTokens = await wegmans.refreshTokens(tokens.refresh, tokens.user);
+    expect(freshTokens.access).toBeDefined();
+  });
   test("gets shopping list id", async () => {
     const shoppingListId = await wegmans.getShoppingListId(tokens.access);
     expect(shoppingListId).toBeGreaterThan(0);

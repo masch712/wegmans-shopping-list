@@ -9,7 +9,7 @@ AWS.config.update({
   region: "us-east-1"
 });
 
-const params_ProductRequestHistory: AWS.DynamoDB.CreateTableInput = {
+export const tableProductRequestHistory: AWS.DynamoDB.CreateTableInput = {
   TableName: TABLENAME_PRODUCTREQUESTHISTORY,
   KeySchema: [
     { AttributeName: "user_query", KeyType: "HASH" } // Partition key
@@ -39,7 +39,7 @@ class ProductRequestHistoryDao extends DynamoDao {
   }
   private static _instance: ProductRequestHistoryDao;
 
-  tableParams: AWS.DynamoDB.CreateTableInput[] = [params_ProductRequestHistory];
+  tableParams: AWS.DynamoDB.CreateTableInput[] = [tableProductRequestHistory];
 
   async get(userId: string, query: string) {
     await this.initTables();

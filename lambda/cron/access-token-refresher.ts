@@ -14,10 +14,9 @@ import {
 import * as _ from "lodash";
 
 const initTablesPromise = accessCodeDao.initTables();
-const wegmansDaoPromise = Promise.all([
-  decryptionPromise,
-  initTablesPromise
-]).then(() => new WegmansDao(config.get("wegmans.apikey")));
+const wegmansDaoPromise = Promise.all([decryptionPromise, initTablesPromise]).then(
+  () => new WegmansDao(config.get("wegmans.apikey"))
+);
 
 /**
  * Every night, we pre-refresh each user's tokens via Wegmans so that when Alexa sends us a
@@ -43,19 +42,20 @@ export async function handler() {
     // NOTE: we don't need to refresh the pre-refreshed tokens; auth-server is responsible for persisting
     // pre-refreshed tokens to the primary tables when the tokens go into circulation.
     for (const tokens of tokensForUser) {
-      const freshTokens = await wegmansDao.refreshTokens(
-        tokens.refresh,
-        tokens.user
-      );
+      try {
+        const freshTokens = await wegmansDao.refreshTokens(tokens.refresh, tokens.user);
 
-      // Put the fresh tokens in the pre-refreshed table
-      await logTime(
-        "putPreRefreshedTokens",
-        accessCodeDao.putPreRefreshedTokens({
-          ...freshTokens,
-          refreshed_by: tokens.refresh
-        })
-      );
+        // Put the fresh tokens in the pre-refreshed table
+        await logTime(
+          "putPreRefreshedTokens",
+          accessCodeDao.putPreRefreshedTokens({
+            ...freshTokens,
+            refreshed_by: tokens.refresh
+          })
+        );
+      } catch (err) {
+        logger().error("failed to refresh tokens for " + username + ": " + err);
+      }
     }
   }
 }

@@ -1,13 +1,11 @@
 import { SQS } from "aws-sdk";
 import { config } from "./config";
 
-export enum WorkType {
-  AddToShoppingList = "AddToShoppingList",
-  SearchThenAddToShoppingList = "SearchThenAddToShoppingList"
+export interface WorkType {
+  name: string;
+  enqueuesTo: WorkType[];
 }
-
 export interface QueuedWork {
-  workType: WorkType;
   payload: any;
 }
 
@@ -23,7 +21,7 @@ function getEndpointFromQueueName(queueName: string) {
 
 export class BasicAsyncQueueClient<T extends QueuedWork> {
   private sqsClient: SQS;
-  constructor() {
+  constructor(private workType: WorkType) {
     this.sqsClient = new SQS();
   }
 
@@ -31,7 +29,7 @@ export class BasicAsyncQueueClient<T extends QueuedWork> {
     await this.sqsClient
       .sendMessage({
         MessageBody: JSON.stringify(work),
-        QueueUrl: getEndpointFromQueueName(work.workType.toString())
+        QueueUrl: getEndpointFromQueueName(this.workType.name)
       })
       .promise();
   }

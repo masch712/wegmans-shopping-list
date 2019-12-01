@@ -26,6 +26,12 @@ const dynamoTableConverter: Sdk2CdkConverter<CreateTableInput, dynamo.TableProps
   };
 };
 
-export function dynamoTablesFromSdk(scope: cdk.Construct, tableParams: CreateTableInput[]): dynamo.Table[] {
-  return tableParams.map(input => new dynamo.Table(scope, input.TableName, dynamoTableConverter(input)));
+export function dynamoTablesFromSdk(
+  scope: cdk.Construct,
+  tableParams: Array<{ tableParams: CreateTableInput; resourceName?: string }>
+): dynamo.Table[] {
+  return tableParams.map(
+    ({ tableParams, resourceName }) =>
+      new dynamo.Table(scope, resourceName || tableParams.TableName, dynamoTableConverter(tableParams))
+  );
 }

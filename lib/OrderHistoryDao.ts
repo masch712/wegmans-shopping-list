@@ -5,9 +5,7 @@ import { DynamoDao } from "./DynamoDao";
 import { OrderedProduct, OrderedProductForDynamo } from "../models/OrderedProduct";
 import { Product } from "../models/Product";
 import * as _ from "lodash";
-export const RESOURCENAME_ORDERHISTORYBYUSER = "WegmansOrderHistoryByUser";
-export const TABLENAME_ORDERHISTORYBYUSER =
-  config.get("aws.dynamodb.tableNamePrefix") + RESOURCENAME_ORDERHISTORYBYUSER;
+export const TABLENAME_ORDERHISTORYBYUSER = config.get("aws.dynamodb.tableNames.ORDERHISTORYBYUSER");
 
 AWS.config.update({
   region: "us-east-1"
@@ -18,7 +16,8 @@ export const tableOrderHistoryByUser: AWS.DynamoDB.CreateTableInput = {
   KeySchema: [
     { AttributeName: "userId", KeyType: "HASH" } // Partition key
   ],
-  AttributeDefinitions: [{ AttributeName: "userId", AttributeType: "S" }]
+  AttributeDefinitions: [{ AttributeName: "userId", AttributeType: "S" }],
+  BillingMode: "PAY_PER_REQUEST"
 };
 
 interface OrderHistoryItem {

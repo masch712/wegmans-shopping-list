@@ -12,8 +12,11 @@ import Fuse = require("fuse.js");
 import { ProductSearch } from "./ProductSearch";
 import { config } from "../lib/config";
 import { BasicAsyncQueueClient, WorkType } from "./BasicAsyncQueue";
-import { AddToShoppingListWork } from "../lambda/workers/AddToShoppingList";
-import { SearchThenAddToShoppingListWork } from "../lambda/workers/SearchThenAddToShoppingList";
+import { AddToShoppingListWork, getWorkType as addToShoppingListWorkType } from "../lambda/workers/AddToShoppingList";
+import {
+  SearchThenAddToShoppingListWork,
+  getWorkType as searchThenAddToShoppingListWorkType
+} from "../lambda/workers/SearchThenAddToShoppingList";
 
 interface OrderHistoryResponseItem {
   LastPurchaseDate: string;
@@ -29,8 +32,8 @@ export class WegmansDao {
   private searchThenAddToShoppingListWorkQueue: BasicAsyncQueueClient<SearchThenAddToShoppingListWork>;
   constructor(apiKey: string) {
     this.apiKey = apiKey;
-    this.addToShoppingListWorkQueue = new BasicAsyncQueueClient();
-    this.searchThenAddToShoppingListWorkQueue = new BasicAsyncQueueClient();
+    this.addToShoppingListWorkQueue = new BasicAsyncQueueClient(addToShoppingListWorkType());
+    this.searchThenAddToShoppingListWorkQueue = new BasicAsyncQueueClient(searchThenAddToShoppingListWorkType());
   }
 
   async login(email: string, password: string): Promise<AccessToken> {
@@ -76,6 +79,7 @@ export class WegmansDao {
    * @param refreshToken The refresh token
    */
   async refreshTokens(refreshToken: string, userToken: string): Promise<AccessToken> {
+    let res: any;
     try {
       const jar = request.jar();
       const refreshCookie = request.cookie(`wegmans_refresh=${refreshToken}`)!;
@@ -83,7 +87,7 @@ export class WegmansDao {
       jar.setCookie(refreshCookie, "https://www.wegmans.com");
       jar.setCookie(userCookie, "https://www.wegmans.com");
 
-      await request({
+      res = await request({
         method: "GET",
         jar,
         url: "https://www.wegmans.com/j_security_check",
@@ -146,8 +150,7 @@ export class WegmansDao {
           productQuery,
           quantity,
           accessToken
-        },
-        workType: WorkType.SearchThenAddToShoppingList
+        }
       })
     );
   }
@@ -166,8 +169,7 @@ export class WegmansDao {
           product,
           quantity,
           note
-        },
-        workType: WorkType.AddToShoppingList
+        }
       })
     );
   }

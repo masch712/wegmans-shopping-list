@@ -2,13 +2,19 @@ import { SQS } from "aws-sdk";
 import { Product } from "../../models/Product";
 import { accessCodeDao } from "../../lib/AccessCodeDao";
 import { decryptionPromise } from "../../lib/decrypt-config";
-import { WegmansDao } from "../../lib";
+import { WegmansDao } from "../../lib/WegmansDao";
 import { config } from "../../lib/config";
 import { SQSEvent } from "aws-lambda";
 import { logger } from "../../lib/Logger";
 import { decode } from "jsonwebtoken";
 import { QueuedWork, WorkType } from "../../lib/BasicAsyncQueue";
 
+export function getWorkType(): WorkType {
+  return {
+    name: "AddToShoppingList",
+    enqueuesTo: []
+  };
+}
 export interface AddToShoppingListWork extends QueuedWork {
   payload: {
     product: Product;
@@ -16,15 +22,13 @@ export interface AddToShoppingListWork extends QueuedWork {
     accessToken: string; //TODO: take all the tokens here in case we need a refresh?
     note: string;
   };
-  workType: WorkType.AddToShoppingList;
 }
 
-const initTablesPromise = accessCodeDao.initTables();
-const wegmansDaoPromise = Promise.all([decryptionPromise, initTablesPromise]).then(
-  () => new WegmansDao(config.get("wegmans.apikey"))
-);
-
 export async function handler(event: SQSEvent) {
+  const initTablesPromise = accessCodeDao.initTables();
+  const wegmansDaoPromise = Promise.all([decryptionPromise, initTablesPromise]).then(
+    () => new WegmansDao(config.get("wegmans.apikey"))
+  );
   const wegmansDao = await wegmansDaoPromise;
 
   const messageBodies = event.Records.map((r: { body: string }) => r.body);

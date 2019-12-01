@@ -8,24 +8,27 @@ import * as events from "@aws-cdk/aws-events";
 import * as events_targets from "@aws-cdk/aws-events-targets";
 import { SqsEventSource } from "@aws-cdk/aws-lambda-event-sources";
 import {
-  TABLENAME_TOKENSBYACCESS,
-  TABLENAME_TOKENSBYCODE,
-  TABLENAME_TOKENSBYREFRESH,
-  TABLENAME_PREREFRESHEDTOKENSBYREFRESH
+  tableTokensByAccessToken,
+  tableTokensByRefresh,
+  tableTokensByCode,
+  tablePreRefreshedTokensByRefresh
 } from "../lib/AccessCodeDao";
 import { PolicyStatement, Effect } from "@aws-cdk/aws-iam";
-import { TABLENAME_ORDERHISTORYBYUSER, orderHistoryDao, tableOrderHistoryByUser, RESOURCENAME_ORDERHISTORYBYUSER } from "../lib/OrderHistoryDao";
+import { tableOrderHistoryByUser } from "../lib/OrderHistoryDao";
 import { WorkType } from "../lib/BasicAsyncQueue";
 import { config } from "../lib/config";
-import { TABLENAME_PRODUCTREQUESTHISTORY } from "../lib/ProductRequestHistoryDao";
+import { TABLENAME_PRODUCTREQUESTHISTORY, tableProductRequestHistory } from "../lib/ProductRequestHistoryDao";
+import { getWorkType as addToShoppingListWorkType } from "../lambda/workers/AddToShoppingList";
+import { getWorkType as searchThenAddToShoppingListWorkType } from "../lambda/workers/SearchThenAddToShoppingList";
 import { LogGroup, RetentionDays } from "@aws-cdk/aws-logs";
 import { Duration } from "@aws-cdk/core";
 import { Schedule } from "@aws-cdk/aws-events";
 import { dynamoTablesFromSdk } from "./Sdk2CdkUtils";
 import { worker } from "cluster";
+import { addToShoppingList } from "../lambda/alexa/wegmans";
 
 const buildAsset = lambda.Code.asset("./build/build.zip");
-
+console.log(searchThenAddToShoppingListWorkType);
 export class WegmansCdkStack extends cdk.Stack {
   constructor(scope: cdk.App, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -87,51 +90,37 @@ export class WegmansCdkStack extends cdk.Stack {
     addCorsOptions(accessTokenResource);
 
     // TODO: generate schema from code?
-TODO: make this worker, follow this pattern
-    const dynamoOrderHistoryTables = dynamoTablesFromSdk(this, {
-      tableParams: orderHistoryDao.tableParams,
-      resourceName: RESOURCENAME_ORDERHISTORYBYUSER,
-    });
-    const dynamoTokensByAccess = new dynamo.Table(this, "WegmansDynamoTokensByAccessToken", {
-      partitionKey: {
-        name: "access",
-        type: dynamo.AttributeType.STRING
+    const dynamoOrderHistoryTables = dynamoTablesFromSdk(this, [
+      {
+        tableParams: tableOrderHistoryByUser,
+        resourceName: "WegmansDynamoOrderHistoryByUser" // resourcename differs from tablename for legacy resourcename support; i.e. the resource already exists with an unfortunate name and I don't want to migrate the data into a new table
+      }
+    ]);
+    const dynamoTokensTables = dynamoTablesFromSdk(this, [
+      {
+        tableParams: tableTokensByAccessToken,
+        resourceName: "WegmansDynamoTokensByAccessToken"
       },
-      billingMode: dynamo.BillingMode.PAY_PER_REQUEST,
-      tableName: TABLENAME_TOKENSBYACCESS
-    });
-    const dynamoTokensByRefresh = new dynamo.Table(this, "WegmansDynamoTokensByRefreshToken", {
-      partitionKey: {
-        name: "refresh",
-        type: dynamo.AttributeType.STRING
+      {
+        tableParams: tableTokensByRefresh,
+        resourceName: "WegmansDynamoTokensByRefreshToken"
       },
-      billingMode: dynamo.BillingMode.PAY_PER_REQUEST,
-      tableName: TABLENAME_TOKENSBYREFRESH
-    });
-    const dynamoTokensByCode = new dynamo.Table(this, "WegmansDynamoTokensByAccessCode", {
-      partitionKey: {
-        name: "access_code",
-        type: dynamo.AttributeType.STRING
+      {
+        tableParams: tableTokensByCode,
+        resourceName: "WegmansDynamoTokensByAccessCode"
       },
-      billingMode: dynamo.BillingMode.PAY_PER_REQUEST,
-      tableName: TABLENAME_TOKENSBYCODE
-    }); //TODO: delete the dynamo autoscaling alarms in cloudwatch, they cost like $3.20 a month
-    const dynamoPreRefreshedTokens = new dynamo.Table(this, "WegmansDynamoPreRefreshedTokens", {
-      partitionKey: {
-        name: "refreshed_by",
-        type: dynamo.AttributeType.STRING
-      },
-      billingMode: dynamo.BillingMode.PAY_PER_REQUEST,
-      tableName: TABLENAME_PREREFRESHEDTOKENSBYREFRESH
-    });
-    const dynamoProductRequestHistory = new dynamo.Table(this, "WegmansDynamoProductRequestHistory", {
-      partitionKey: {
-        name: "user_query",
-        type: dynamo.AttributeType.STRING
-      },
-      billingMode: dynamo.BillingMode.PAY_PER_REQUEST,
-      tableName: TABLENAME_PRODUCTREQUESTHISTORY
-    });
+      {
+        tableParams: tablePreRefreshedTokensByRefresh,
+        resourceName: "WegmansDynamoPreRefreshedTokens"
+      }
+    ]);
+    const dynamoProductRequestHistoryTables = dynamoTablesFromSdk(this, [
+      {
+        tableParams: tableProductRequestHistory,
+        resourceName: "WegmansDynamoProductRequestHistory"
+      }
+    ]);
+    //TODO: delete the dynamo autoscaling alarms in cloudwatch, they cost like $3.20 a month
 
     // TODO: more granular access policies per worker?
     const dynamoAccessPolicy = new PolicyStatement({
@@ -149,11 +138,8 @@ TODO: make this worker, follow this pattern
       ],
       resources: [
         ...dynamoOrderHistoryTables.map(t => t.tableArn),
-        dynamoTokensByAccess.tableArn,
-        dynamoTokensByCode.tableArn,
-        dynamoTokensByRefresh.tableArn,
-        dynamoPreRefreshedTokens.tableArn,
-        dynamoProductRequestHistory.tableArn
+        ...dynamoTokensTables.map(t => t.tableArn),
+        ...dynamoProductRequestHistoryTables.map(t => t.tableArn)
       ]
     });
 
@@ -167,28 +153,47 @@ TODO: make this worker, follow this pattern
     WegmansLambda.addToAllRolePolicies(kmsPolicy);
     WegmansLambda.addToAllRolePolicies(dynamoAccessPolicy);
     // TODO: better way to manage these lambda policies all in one place? Is that even a good idea (principle of least privilege)?
-
-    for (const workType of Object.keys(WorkType)) {
+    const queueAndWorkers: { [workTypeName: string]: QueueAndWorker } = {};
+    //TODO: instead of listing out workers here, have a registerWorkType() function that runs at import time (i..e at top level of worker module) and registers to some "global" exported array in the BasicAsyncQueue module
+    for (const getWorkType of [addToShoppingListWorkType, searchThenAddToShoppingListWorkType]) {
       const queueAndWorker = new QueueAndWorker(this, {
-        workType: (WorkType as any)[workType],
+        workType: getWorkType(),
         environment
       });
+      queueAndWorkers[getWorkType().name] = queueAndWorker;
 
-      const enqueuerPolicy = new PolicyStatement({
-        effect: Effect.ALLOW,
-        actions: ["sqs:SendMessage"],
-        resources: [queueAndWorker.queue.queueArn]
-      });
-
-      // Every WegmansLambda (eg. alexa handler, auth handlers) can do anything with dynamo.... :-/
-      // TODO: the workers should EXCLUSIVELY call APIs, not call directly to the database?
-      WegmansLambda.wegmansLambdas.forEach(wl => wl.addToRolePolicy(enqueuerPolicy));
-
+      // Every worker can do anything with kms, dynamo, and other workers
       queueAndWorker.worker.addToRolePolicy(kmsPolicy);
-
-      // Every worker can do anything with dynamo
       queueAndWorker.worker.addToRolePolicy(dynamoAccessPolicy);
+
+      // Workers an enqueue to the workers they declare (least privilege and whatnot)
+      console.log("******");
+      console.log(getWorkType());
+      console.log(queueAndWorkers);
+      getWorkType().enqueuesTo.length &&
+        queueAndWorker.worker.addToRolePolicy(
+          new PolicyStatement({
+            effect: Effect.ALLOW,
+            actions: ["sqs:SendMessage"],
+            resources: getWorkType()
+              .enqueuesTo.map(enqueuesToWorkType => queueAndWorkers[enqueuesToWorkType.name])
+              .map(qAndW => qAndW.queue.queueArn)
+          })
+        );
     }
+
+    const enqueuerPolicy = new PolicyStatement({
+      effect: Effect.ALLOW,
+      actions: ["sqs:SendMessage"],
+      resources: Object.keys(queueAndWorkers)
+        .sort()
+        .map(workTypeName => queueAndWorkers[workTypeName].queue.queueArn)
+    });
+
+    // Every WegmansLambda (eg. alexa handler, auth handlers) can do anything with dynamo.... :-/
+    // TODO: the workers should EXCLUSIVELY call APIs, not call directly to the database?
+    // TODO: only the alexa lambda needs to call the workers, not the auth lambdas.  least privilege dammit!
+    WegmansLambda.wegmansLambdas.forEach(wl => wl.addToRolePolicy(enqueuerPolicy));
 
     // Crons
     //TODO: some cron framework that reads all the cron files?
@@ -286,11 +291,11 @@ class QueueAndWorker {
       environment: { [key: string]: string };
     }
   ) {
-    const functionName = config.get("aws.lambda.functionNames.cdk-wegmans-worker-prefix") + props.workType;
-    const lambdaId = `WegmansWorkerLambda${props.workType}`;
+    const functionName = config.get("aws.lambda.functionNames.cdk-wegmans-worker-prefix") + props.workType.name;
+    const lambdaId = `WegmansWorkerLambda${props.workType.name}`;
 
-    this._queue = new sqs.Queue(scope, `WegmansWorkerQueue${props.workType}`, {
-      queueName: config.get("aws.sqs.queueNames.worker-queue-prefix") + props.workType
+    this._queue = new sqs.Queue(scope, `WegmansWorkerQueue${props.workType.name}`, {
+      queueName: config.get("aws.sqs.queueNames.worker-queue-prefix") + props.workType.name
     });
 
     new LogGroup(scope, lambdaId + "Logs", {
@@ -302,7 +307,7 @@ class QueueAndWorker {
       runtime: lambda.Runtime.NODEJS_10_X,
       code: buildAsset,
       functionName,
-      handler: `dist/lambda/workers/${props.workType}.handler`,
+      handler: `dist/lambda/workers/${props.workType.name}.handler`,
       timeout: Duration.seconds(30),
       environment: props.environment
     });
