@@ -1,12 +1,13 @@
 import { config } from "../lib/config";
 import _ = require("lodash");
 import { accessCodeDao } from "../lib/AccessCodeDao";
+import AWS = require("aws-sdk");
 jest.setTimeout(30000);
 
 beforeAll(async () => {
   await accessCodeDao.initTables();
 });
-
+AWS.config.logger = console;
 describe("getTokensByAccess", () => {
   const allAccessTokens: string[] = [];
   beforeAll(async () => {

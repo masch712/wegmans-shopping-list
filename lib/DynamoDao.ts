@@ -18,9 +18,15 @@ export abstract class DynamoDao {
   abstract tableParams: CreateTableInput[];
 
   constructor(endpoint: string, private _canceler: Canceler = createCanceler()) {
-    const options = endpoint ? { endpoint } : undefined;
-    this.dynamodb = new AWS.DynamoDB(options);
-    this.docClient = new AWS.DynamoDB.DocumentClient(options);
+    const options: ConstructorParameters<typeof AWS.DynamoDB.DocumentClient> = [
+      {
+        ...(endpoint ? { endpoint } : {}),
+        paramValidation: false, //TODO: IS THIS dangerous?
+        sslEnabled: false
+      }
+    ];
+    this.dynamodb = new AWS.DynamoDB(...options);
+    this.docClient = new AWS.DynamoDB.DocumentClient(...options);
   }
 
   cancelRequests(reason = "cancelled") {
