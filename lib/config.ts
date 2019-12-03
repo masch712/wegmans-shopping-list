@@ -179,6 +179,12 @@ export const config = convict({
     format: Boolean,
     env: "AWS_ENCRYPTED"
   },
+  jwtSecret: {
+    doc: "Secret string for signing our own JWT tokens",
+    default: "super duper secret!  tehe",
+    format: String,
+    env: "JWT_SECRET"
+  },
   alexa: {
     skill: {
       name: {

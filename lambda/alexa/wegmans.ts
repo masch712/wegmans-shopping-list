@@ -7,6 +7,7 @@ import { WegmansDao } from "../../lib/WegmansDao";
 import { accessCodeDao } from "../../lib/AccessCodeDao";
 import { WegmansService } from "../../lib/WegmansService";
 import { cancelAllRequests } from "../../lib/CancelAllRequestsUtils";
+import { unwrapWegmansTokens } from "../../models/AccessToken";
 
 //TODO: support adding quantities: "add 5 goat cheeses"
 
@@ -48,7 +49,7 @@ export const addToShoppingList: RequestHandler = {
      */
     const request = handlerInput.requestEnvelope.request as IntentRequest;
     const intent = request.intent;
-    const accessToken = _.get(handlerInput, "requestEnvelope.session.user.accessToken");
+    const wrappedWegmansTokens = _.get(handlerInput, "requestEnvelope.session.user.accessToken");
 
     const wegmansDao = await wegmansDaoPromise;
     const wegmansService = new WegmansService(wegmansDao, accessCodeDao);
@@ -58,7 +59,7 @@ export const addToShoppingList: RequestHandler = {
 
     const responseMessage = await wegmansService.handleAddtoShoppingList(
       productQuery,
-      accessToken,
+      unwrapWegmansTokens(wrappedWegmansTokens, config.get("jwtSecret")).access,
       config.get("alexa.skill.productSearchShortCircuitMillis")
     );
 

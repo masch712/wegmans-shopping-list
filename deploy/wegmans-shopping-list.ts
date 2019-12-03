@@ -46,7 +46,10 @@ export class WegmansCdkStack extends cdk.Stack {
       LOGICAL_ENV: config.get("logical_env"),
       //NOTE: this WEGMANS_APIKEY is encrypted by the KMS key.
       WEGMANS_APIKEY:
-        "AQICAHhEbkp592DXQD2+erIwWGqDeHoUQnAaX1Sw+4YW0087HwH8RXX/AbEVLZkJKaecLtodAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMiKCMxebwomihAFKIAgEQgDuufhAPULVlpHYsEhxt0lMSrTLLWkQ9Oo1aPWEp16Orm4kvVkGYjgiBn/LAGxpu3MELznE3cqPFDletuA=="
+        "AQICAHhEbkp592DXQD2+erIwWGqDeHoUQnAaX1Sw+4YW0087HwH8RXX/AbEVLZkJKaecLtodAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMiKCMxebwomihAFKIAgEQgDuufhAPULVlpHYsEhxt0lMSrTLLWkQ9Oo1aPWEp16Orm4kvVkGYjgiBn/LAGxpu3MELznE3cqPFDletuA==",
+      // NOTE: JWT_SECRET is also encrypted by the KMS key.
+      JWT_SECRET:
+        "AQICAHhEbkp592DXQD2+erIwWGqDeHoUQnAaX1Sw+4YW0087HwFOF1D9M1diLlRWMb1PS3XuAAAAmDCBlQYJKoZIhvcNAQcGoIGHMIGEAgEAMH8GCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMV+3jRLKnRmug6MZEAgEQgFKhpuItrd7C+MdllHuuRJGHivEJ7m1GYHyo7875PMNOWHnjVwqIPNhP/ExPXu1clT8nEXqxBFnhH5tvh/i+psRVgjN5nWPNvPo4MCMbsCYQiU0M"
     };
     if (config.get("logical_env") === "production") {
       environment.LIVE_RUN = "1";

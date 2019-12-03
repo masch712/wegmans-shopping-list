@@ -1,5 +1,3 @@
-import { decode } from "jsonwebtoken";
-
 import { logger } from "../lib/Logger";
 import * as jwt from "jsonwebtoken";
 import * as _ from "lodash";
@@ -19,6 +17,36 @@ export interface DecodedAccessToken {
   exp: Date;
   iat: Date;
   sub: string;
+}
+
+export interface WrappedWegmansTokens {
+  iss: string;
+  _access: string;
+  _user: string;
+  _refresh: string;
+}
+
+export function wrapWegmansTokens(token: AccessToken, secret: string) {
+  const wrappedToken: WrappedWegmansTokens = {
+    ...decodeAccess(token.access),
+    iss: "wedgies",
+    _access: token.access,
+    _user: token.user,
+    _refresh: token.refresh
+  };
+  return jwt.sign(JSON.stringify(wrappedToken), secret);
+}
+
+export function unwrapWegmansTokens(wrappedJwt: string, secret: string): AccessToken {
+  // For backwards compatibility, in case wrappedJwt is just the accessToken itself:
+TODO: dev more of this
+  const decodedWrappedToken = jwt.verify(wrappedJwt, secret) as WrappedWegmansTokens;
+
+  return {
+    access: decodedWrappedToken._access,
+    user: decodedWrappedToken._user,
+    refresh: decodedWrappedToken._refresh
+  };
 }
 
 export function decodeAccess(accessToken: string): DecodedAccessToken {

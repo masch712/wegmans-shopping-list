@@ -12,7 +12,7 @@ if (config.get("encrypted")) {
     "wegmans.apikey",
     "wegmans.email",
     "wegmans.password",
-    "alexa.skill.secret"
+    "alexa.skill.secret" //TODO: delete this thing?  it's never used?  wtf
   ];
   const decryptionPromises: Array<Promise<void>> = [];
   encryptedKeys.forEach(key => {
@@ -30,20 +30,17 @@ async function decryptKMS(key: string): Promise<void> {
 
     const encrypted = config.get(key);
 
-    kms.decrypt(
-      { CiphertextBlob: new Buffer(encrypted, "base64") },
-      (err, data) => {
-        if (err) {
-          // If we failed to decrypt, log and move on.  Hopefully it's already decrypted
-          logger().error(`error decrypting ${key}: ` + JSON.stringify(err));
-          resolve();
-        } else {
-          logger().silly(`decrypted ${key}`);
-          config.set(key, data.Plaintext!.toString());
-          resolve();
-        }
+    kms.decrypt({ CiphertextBlob: new Buffer(encrypted, "base64") }, (err, data) => {
+      if (err) {
+        // If we failed to decrypt, log and move on.  Hopefully it's already decrypted
+        logger().error(`error decrypting ${key}: ` + JSON.stringify(err));
+        resolve();
+      } else {
+        logger().silly(`decrypted ${key}`);
+        config.set(key, data.Plaintext!.toString());
+        resolve();
       }
-    );
+    });
   });
 }
 

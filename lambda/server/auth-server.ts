@@ -8,11 +8,9 @@ import { config } from "../../lib/config";
 import { decryptionPromise } from "../../lib/decrypt-config";
 import { logger, logDuration } from "../../lib/Logger";
 import { WegmansDao } from "../../lib/WegmansDao";
-import { AccessToken } from "../../models/AccessToken";
+import { AccessToken, wrapWegmansTokens } from "../../models/AccessToken";
 
-const wegmansDaoPromise = decryptionPromise.then(
-  () => new WegmansDao(config.get("wegmans.apikey"))
-);
+const wegmansDaoPromise = decryptionPromise.then(() => new WegmansDao(config.get("wegmans.apikey")));
 
 /**
  * Accept request from the React Login UI containing username, password
@@ -21,9 +19,7 @@ const wegmansDaoPromise = decryptionPromise.then(
  * Overwrite any code that's already in the db for the given user.
  * Respond with the code.
  */
-export const generateAccessCode: APIGatewayProxyHandler = async (
-  event
-): Promise<APIGatewayProxyResult> => {
+export const generateAccessCode: APIGatewayProxyHandler = async (event): Promise<APIGatewayProxyResult> => {
   // DO NOT LOG THE EVENT; it contains the password
   // logger().debug("Event received: " + JSON.stringify(event, null, 2));
   if (!event.body) {
@@ -80,9 +76,7 @@ export const generateAccessCode: APIGatewayProxyHandler = async (
   };
 };
 
-export const getTokens: APIGatewayProxyHandler = async (
-  event
-): Promise<APIGatewayProxyResult> => {
+export const getTokens: APIGatewayProxyHandler = async (event): Promise<APIGatewayProxyResult> => {
   if (event.httpMethod === "OPTIONS") {
     return {
       body: "",
@@ -101,10 +95,7 @@ export const getTokens: APIGatewayProxyHandler = async (
   await decryptionPromise;
 
   const parsedAuth = basic.parse(authHeader)!;
-  if (
-    parsedAuth.name !== config.get("alexa.skill.name") ||
-    parsedAuth.pass !== config.get("alexa.skill.secret")
-  ) {
+  if (parsedAuth.name !== config.get("alexa.skill.name") || parsedAuth.pass !== config.get("alexa.skill.secret")) {
     throw new Error("Alexa credentials invalid");
   }
 
@@ -115,7 +106,7 @@ export const getTokens: APIGatewayProxyHandler = async (
   let tokens: AccessToken | null = null;
   let deletePromise;
 
-  // If Alexa is sending us an access_code and waants tokens, we're finishing up account linking.
+  // If Alexa is sending us an access_code and waants tokens, that means we're finishing up account linking.
   // Get the tokens and delete the access code; don't need it again.
   // https://developer.amazon.com/docs/account-linking/configure-authorization-code-grant.html
   if (body.code) {
@@ -186,10 +177,11 @@ export const getTokens: APIGatewayProxyHandler = async (
   logger().debug("now: " + now);
   logger().debug("expires_in: " + expires_in);
 
+  const wrappedWegmansTokens = wrapWegmansTokens(tokens, config.get("jwtSecret"));
   const response: APIGatewayProxyResult = {
     body: JSON.stringify({
-      access_token: tokens.access,
-      refresh_token: tokens.refresh,
+      access_token: wrappedWegmansTokens,
+      refresh_token: wrappedWegmansTokens,
       expires_in
     }),
     statusCode: 200,
