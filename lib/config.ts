@@ -201,7 +201,7 @@ export const config = convict({
       },
       productSearchShortCircuitMillis: {
         doc: "millis to search for product before giving up",
-        default: 750,
+        default: 500,
         format: Number,
         env: "SEARCH_SHORT_CIRCUIT_MILLIS"
       }

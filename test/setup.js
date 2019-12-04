@@ -1,1 +1,1 @@
-process.env.LOGICAL_ENV = 'local';
+process.env.LOGICAL_ENV = "local";

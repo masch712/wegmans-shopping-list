@@ -103,7 +103,7 @@ export const getTokens: APIGatewayProxyHandler = async (event): Promise<APIGatew
 
   const body = querystring.parse(event.body);
   logger().debug("getting tokens");
-  let tokens: AccessToken | null = null;
+  let wegmansTokens: AccessToken | null = null;
   let deletePromise;
 
   // If Alexa is sending us an access_code and waants tokens, that means we're finishing up account linking.
@@ -111,7 +111,7 @@ export const getTokens: APIGatewayProxyHandler = async (event): Promise<APIGatew
   // https://developer.amazon.com/docs/account-linking/configure-authorization-code-grant.html
   if (body.code) {
     logger().debug("getting token by code");
-    tokens = await accessCodeDao.getTokensByCode(body.code as string);
+    wegmansTokens = await accessCodeDao.getTokensByCode(body.code as string);
 
     logger().debug("deleting access code");
     deletePromise = accessCodeDao
@@ -135,7 +135,7 @@ export const getTokens: APIGatewayProxyHandler = async (event): Promise<APIGatew
     );
     let cleanupOldPreRefreshedTokensPromise = Promise.resolve();
     if (preRefreshedTokens) {
-      tokens = {
+      wegmansTokens = {
         access: preRefreshedTokens.access,
         refresh: preRefreshedTokens.refresh,
         user: preRefreshedTokens.user
@@ -145,7 +145,7 @@ export const getTokens: APIGatewayProxyHandler = async (event): Promise<APIGatew
         accessCodeDao.deletePreRefreshedTokens(body.refresh_token as string)
       );
     } else {
-      tokens = await logDuration(
+      wegmansTokens = await logDuration(
         "refreshTokens",
         wegmansDao.refreshTokens(body.refresh_token as string, oldTokens.user)
       );
@@ -154,7 +154,7 @@ export const getTokens: APIGatewayProxyHandler = async (event): Promise<APIGatew
     await logDuration(
       "saveAndCleanupTokens",
       Promise.all([
-        accessCodeDao.put(tokens),
+        accessCodeDao.put(wegmansTokens),
         accessCodeDao.deleteRefreshCode(oldTokens.refresh),
         accessCodeDao.deleteAccess(oldTokens.access),
         cleanupOldPreRefreshedTokensPromise
@@ -162,14 +162,14 @@ export const getTokens: APIGatewayProxyHandler = async (event): Promise<APIGatew
     );
   }
 
-  if (!tokens || !tokens.access) {
+  if (!wegmansTokens || !wegmansTokens.access) {
     throw new Error("No access token found for given code");
   }
 
   logger().debug("got tokens");
 
   // tslint:disable-next-line:no-any
-  const jwt = decode(tokens.access) as { [key: string]: any };
+  const jwt = decode(wegmansTokens.access) as { [key: string]: any };
   const now = Math.floor(new Date().getTime() / 1000);
   // tslint:disable-next-line:variable-name
   const expires_in = jwt.exp - now;
@@ -177,11 +177,12 @@ export const getTokens: APIGatewayProxyHandler = async (event): Promise<APIGatew
   logger().debug("now: " + now);
   logger().debug("expires_in: " + expires_in);
 
-  const wrappedWegmansTokens = wrapWegmansTokens(tokens, config.get("jwtSecret"));
+  const wrappedWegmansTokens = wrapWegmansTokens(wegmansTokens, config.get("jwtSecret"));
   const response: APIGatewayProxyResult = {
     body: JSON.stringify({
+      // The access token is a wapped JWT containing all the Wegmans JWt tokens.  This way our alexa skill will have access to the payloads of all those tokens (eg. for the storeId value in the user token).
       access_token: wrappedWegmansTokens,
-      refresh_token: wrappedWegmansTokens,
+      refresh_token: wegmansTokens.refresh,
       expires_in
     }),
     statusCode: 200,

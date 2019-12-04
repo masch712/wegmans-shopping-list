@@ -9,6 +9,7 @@ import { QueuedWork, WorkType } from "../../lib/BasicAsyncQueue";
 import { WegmansService } from "../../lib/WegmansService";
 import { LoggedEvent } from "../../models/LoggedEvent";
 import { getWorkType as addToShoppingListWorkType } from "./AddToShoppingList";
+import { AccessToken } from "../../models/AccessToken";
 
 // Function instead of constant because the imported addToShoppingListWorkthype was evaluating as undef for some reason, probably weird import order issue.  Easy workaround is defer evaluation to runtime by making it a function!
 export function getWorkType(): WorkType {
@@ -22,7 +23,7 @@ export interface SearchThenAddToShoppingListWork extends QueuedWork {
   payload: {
     productQuery: string;
     quantity: number;
-    accessToken: string; //TODO: take all the tokens here in case we need a refresh?
+    accessToken: AccessToken;
     // TODO: stop putting fucking tokens in fucking queues, horrible idea
   };
 }

@@ -8,6 +8,7 @@ import { accessCodeDao } from "../../lib/AccessCodeDao";
 import { WegmansService } from "../../lib/WegmansService";
 import { cancelAllRequests } from "../../lib/CancelAllRequestsUtils";
 import { unwrapWegmansTokens } from "../../models/AccessToken";
+import { logDuration } from "../../lib/Logger";
 
 //TODO: support adding quantities: "add 5 goat cheeses"
 
@@ -57,9 +58,13 @@ export const addToShoppingList: RequestHandler = {
     // What did the user ask for?  Pull it out of the intent slot.
     const productQuery = intent.slots![PRODUCT_SLOT].value || "";
 
+    const wegmansTokens =
+      unwrapWegmansTokens(wrappedWegmansTokens, config.get("jwtSecret")) ||
+      (await logDuration("getTokens", wegmansService.getFreshTokensOrLogin(wrappedWegmansTokens)));
+
     const responseMessage = await wegmansService.handleAddtoShoppingList(
       productQuery,
-      unwrapWegmansTokens(wrappedWegmansTokens, config.get("jwtSecret")).access,
+      wegmansTokens,
       config.get("alexa.skill.productSearchShortCircuitMillis")
     );
 

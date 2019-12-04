@@ -142,7 +142,7 @@ export class WegmansDao {
     return shoppingListId;
   }
 
-  async enqueue_searchThenAddProductToShoppingList(accessToken: string, productQuery: string, quantity: number) {
+  async enqueue_searchThenAddProductToShoppingList(accessToken: AccessToken, productQuery: string, quantity: number) {
     await logDuration(
       "enqueue_searchAndAddProductToShoppingList",
       this.searchThenAddToShoppingListWorkQueue.enqueue({

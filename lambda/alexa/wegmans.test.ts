@@ -24,7 +24,7 @@ describe("Given a product is found", () => {
     when(spiedWegmansService.searchForProduct("raisins", fakeTokens)).thenResolve(fakeProduct);
     when(spiedWegmansService._getNoteForShoppingList("raisins")).thenReturn("some note");
 
-    await wegmansService.handleAddtoShoppingList("raisins", fakeTokens.access);
+    await wegmansService.handleAddtoShoppingList("raisins", fakeTokens);
 
     verify(spiedWegmansService.enqueue_addProductToShoppingList(fakeTokens.access, fakeProduct, 1, "some note")).once();
   });

@@ -26,9 +26,42 @@ export class WegmansService {
     return this._wegmansDao;
   }
 
-  async handleAddtoShoppingList(productQuery: string, accessToken?: string, shortCircuitMillis = 1500) {
-    const startMs = new Date().valueOf();
-    const tokens = await logDuration("getTokens", this.getFreshTokensOrLogin(accessToken));
+  async searchForProductWithTimeout(productQuery: string, tokens: AccessToken, timeout: number) {
+    let product;
+    let didSearchTimeout = false;
+    const searchStartTime = new Date().valueOf();
+    const searchTimeoutError = new Error("search timed out");
+
+    const timeoutPromise = new Promise((resolve, reject) => {
+      setTimeout(() => {
+        logger().debug(new LoggedEvent("searchShortCircuit.resolvingPromise").toString());
+        reject(searchTimeoutError);
+      }, Math.max(0, timeout));
+    }) as Promise<void>;
+
+    try {
+      product = await Promise.race([
+        // TODO: this is absolutely hideous.  async await new Promise?  wtf
+        timeoutPromise,
+        (async () => {
+          const product = await this.searchForProduct(productQuery, tokens);
+          return product;
+        })()
+      ]);
+    } catch (err) {
+      logger().debug(new LoggedEvent("searchShortCircuit.caughtError").addProperty("error", err).toString());
+      if (err === searchTimeoutError) {
+        didSearchTimeout = true;
+        logger().warn(
+          new LoggedEvent("searchShortCircuit").addProperty("ms", new Date().valueOf() - searchStartTime).toString()
+        );
+      }
+    }
+
+    return { product, didSearchTimeout };
+  }
+  async handleAddtoShoppingList(productQuery: string, tokens: AccessToken, shortCircuitMillis = 1500) {
+    logger().debug(JSON.stringify({ shortCircuitMillis }));
     // Bail if we couldn't get tokens
     if (!tokens) {
       logger().error("Couldn't get tokens!");
@@ -38,50 +71,27 @@ export class WegmansService {
 
     //TODO: the race should ONLY time the search bit.  Maybe just use bluebird?
     //      neeed to distinguish between search-fidining-no-product and timeout
-    const searchTimeoutError = {};
-    let product;
-    let didSearchTimeout = false;
     const searchStartTime = new Date().valueOf();
-    try {
-      product = await Promise.race([
-        (async () => {
-          await new Promise((_resolve, reject) => {
-            setTimeout(() => {
-              reject(searchTimeoutError);
-            }, Math.max(0, shortCircuitMillis - (new Date().valueOf() - startMs)));
-          });
-        })(),
 
-        (async () => {
-          const product = await this.searchForProduct(productQuery, tokens);
-          return product;
-        })()
-      ]);
-    } catch (err) {
-      if (err === searchTimeoutError) {
-        didSearchTimeout = true;
-        logger().warn(
-          new LoggedEvent("searchShortCircuit").addProperty("ms", new Date().valueOf() - searchStartTime).toString()
-        );
-      }
-    }
-
+    const { product, didSearchTimeout } = await this.searchForProductWithTimeout(
+      productQuery,
+      tokens,
+      shortCircuitMillis
+    );
     let msg;
     if (didSearchTimeout) {
       // Sorry about the global side effects of cancelAllRequests() but we gotta do cleanup somewhere.
       // If you have an HTTP request you don't want cancelled, you should either:
       //  A) import request-promise-native, not CancellableRequest
       //  B) Put that request promise on the critical path so that it's resolve by this point
-      process.nextTick(() => {
-        cancelAllRequests();
-      });
-      await this.enqueue_searchAndAddProductToShoppingList(tokens.access, productQuery, 1);
+      cancelAllRequests();
+      await this.enqueue_searchAndAddProductToShoppingList(tokens, productQuery, 1);
       msg = `Adding ${productQuery} to your wegmans shopping list.`;
     } else if (product) {
       logger().debug(
         new LoggedEvent("foundProduct")
           .addProperty("name", product.name)
-          .addProperty("ms", new Date().valueOf() - startMs)
+          .addProperty("ms", new Date().valueOf() - searchStartTime)
           .toString()
       );
       await this.enqueue_addProductToShoppingList(
@@ -93,7 +103,9 @@ export class WegmansService {
       const alexaFriendlyProductName = product.name.replace(/\&/g, "and");
       msg = `Added ${alexaFriendlyProductName} to your wegmans shopping list.`;
     } else {
-      logger().debug(new LoggedEvent("noProductFound").addProperty("ms", new Date().valueOf() - startMs).toString());
+      logger().debug(
+        new LoggedEvent("noProductFound").addProperty("ms", new Date().valueOf() - searchStartTime).toString()
+      );
       msg = `Sorry, Wegmans doesn't sell ${productQuery}.`;
     }
 
@@ -186,7 +198,7 @@ export class WegmansService {
     return this.wegmansDao.enqueue_addProductToShoppingList(accessToken, product, quantity, note);
   }
 
-  async enqueue_searchAndAddProductToShoppingList(accessToken: string, productQuery: string, quantity = 1) {
+  async enqueue_searchAndAddProductToShoppingList(accessToken: AccessToken, productQuery: string, quantity = 1) {
     return this.wegmansDao.enqueue_searchThenAddProductToShoppingList(accessToken, productQuery, quantity);
   }
 }

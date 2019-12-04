@@ -96,25 +96,25 @@ export class WegmansCdkStack extends cdk.Stack {
     const dynamoOrderHistoryTables = dynamoTablesFromSdk(this, [
       {
         tableParams: tableOrderHistoryByUser,
-        resourceName: "WegmansDynamoOrderHistoryByUser" // resourcename differs from tablename for legacy resourcename support; i.e. the resource already exists with an unfortunate name and I don't want to migrate the data into a new table
+        resourceName: "WegmansDynamoOrderHistoryByUser" // TODO: dont need custom resourcenames anymore because tablenames match resourcenames
       }
     ]);
     const dynamoTokensTables = dynamoTablesFromSdk(this, [
       {
         tableParams: tableTokensByAccessToken,
-        resourceName: "WegmansDynamoTokensByAccessToken"
+        resourceName: "WegmansTokensByAccessToken"
       },
       {
         tableParams: tableTokensByRefresh,
-        resourceName: "WegmansDynamoTokensByRefreshToken"
+        resourceName: "WegmansTokensByRefreshToken"
       },
       {
         tableParams: tableTokensByCode,
-        resourceName: "WegmansDynamoTokensByAccessCode"
+        resourceName: "WegmansTokensByAccessCode"
       },
       {
         tableParams: tablePreRefreshedTokensByRefresh,
-        resourceName: "WegmansDynamoPreRefreshedTokens"
+        resourceName: "WegmansPreRefreshedTokens"
       }
     ]);
     const dynamoProductRequestHistoryTables = dynamoTablesFromSdk(this, [
