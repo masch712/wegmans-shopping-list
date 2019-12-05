@@ -8,7 +8,7 @@ import { config } from "../../lib/config";
 import { decryptionPromise } from "../../lib/decrypt-config";
 import { logger, logDuration } from "../../lib/Logger";
 import { WegmansDao } from "../../lib/WegmansDao";
-import { AccessToken, wrapWegmansTokens } from "../../models/AccessToken";
+import { AccessToken, wrapWegmansTokens, isAccessTokenExpired, unwrapWegmansTokens } from "../../models/AccessToken";
 
 const wegmansDaoPromise = decryptionPromise.then(() => new WegmansDao(config.get("wegmans.apikey")));
 
@@ -123,31 +123,34 @@ export const getTokens: APIGatewayProxyHandler = async (event): Promise<APIGatew
   //TODO: what can we performance-optimize here?  Beware cognitive load and dependency hell with access-token-refresher.
   if (body.refresh_token) {
     const wegmansDao = await wegmansDaoPromise;
-    const oldTokens = await logDuration(
-      "getTokensByRefresh",
-      accessCodeDao.getTokensByRefresh(body.refresh_token as string)
-    );
-
-    // First try gettting tokens from the pre-refreshed tokens table
-    const preRefreshedTokens = await logDuration(
-      "getPreRefreshedToken",
-      accessCodeDao.getPreRefreshedToken(body.refresh_token as string)
-    );
     let cleanupOldPreRefreshedTokensPromise = Promise.resolve();
-    if (preRefreshedTokens) {
-      wegmansTokens = {
-        access: preRefreshedTokens.access,
-        refresh: preRefreshedTokens.refresh,
-        user: preRefreshedTokens.user
-      };
-      cleanupOldPreRefreshedTokensPromise = logDuration(
-        "cleanupOldPreRefreshedTokens",
-        accessCodeDao.deletePreRefreshedTokens(body.refresh_token as string)
+    const oldWegmansTokens =
+      unwrapWegmansTokens(body.refresh_token as string, config.get("jwtSecret")) ||
+      (await logDuration("getTokensByRefresh", accessCodeDao.getTokensByRefresh(body.refresh_token as string)));
+    if (config.get("preRefreshTokens")) {
+      // First try gettting wegmans tokens from the pre-refreshed tokens table
+      const preRefreshedTokens = await logDuration(
+        "getPreRefreshedToken",
+        accessCodeDao.getPreRefreshedToken(body.refresh_token as string)
       );
-    } else {
+      if (preRefreshedTokens) {
+        if (!isAccessTokenExpired(preRefreshedTokens)) {
+          wegmansTokens = {
+            access: preRefreshedTokens.access,
+            refresh: preRefreshedTokens.refresh,
+            user: preRefreshedTokens.user
+          };
+        }
+        cleanupOldPreRefreshedTokensPromise = logDuration(
+          "cleanupOldPreRefreshedTokens",
+          accessCodeDao.deletePreRefreshedTokens(body.refresh_token as string)
+        );
+      }
+    }
+    if (!wegmansTokens) {
       wegmansTokens = await logDuration(
         "refreshTokens",
-        wegmansDao.refreshTokens(body.refresh_token as string, oldTokens.user)
+        wegmansDao.refreshTokens(oldWegmansTokens.refresh, oldWegmansTokens.user)
       );
     }
 
@@ -155,8 +158,8 @@ export const getTokens: APIGatewayProxyHandler = async (event): Promise<APIGatew
       "saveAndCleanupTokens",
       Promise.all([
         accessCodeDao.put(wegmansTokens),
-        accessCodeDao.deleteRefreshCode(oldTokens.refresh),
-        accessCodeDao.deleteAccess(oldTokens.access),
+        accessCodeDao.deleteRefreshCode(oldWegmansTokens.refresh),
+        accessCodeDao.deleteAccess(oldWegmansTokens.access),
         cleanupOldPreRefreshedTokensPromise
       ])
     );
@@ -172,7 +175,7 @@ export const getTokens: APIGatewayProxyHandler = async (event): Promise<APIGatew
   const jwt = decode(wegmansTokens.access) as { [key: string]: any };
   const now = Math.floor(new Date().getTime() / 1000);
   // tslint:disable-next-line:variable-name
-  const expires_in = jwt.exp - now;
+  const expires_in = config.get("jwtOverrideExpiresInSeconds") || jwt.exp - now;
   logger().debug("jwt.exp: " + jwt.exp);
   logger().debug("now: " + now);
   logger().debug("expires_in: " + expires_in);
@@ -182,7 +185,7 @@ export const getTokens: APIGatewayProxyHandler = async (event): Promise<APIGatew
     body: JSON.stringify({
       // The access token is a wapped JWT containing all the Wegmans JWt tokens.  This way our alexa skill will have access to the payloads of all those tokens (eg. for the storeId value in the user token).
       access_token: wrappedWegmansTokens,
-      refresh_token: wegmansTokens.refresh,
+      refresh_token: wrappedWegmansTokens,
       expires_in
     }),
     statusCode: 200,

@@ -185,6 +185,19 @@ export const config = convict({
     format: String,
     env: "JWT_SECRET"
   },
+  jwtOverrideExpiresInSeconds: {
+    doc:
+      "Set the number of seconds until our wrapped JWT expires.  Normally we just use the exp value of the wegmans access token.",
+    default: 0,
+    format: Number,
+    env: "JWT_OVERRIDE_EXPIRES_IN_SECS"
+  },
+  preRefreshTokens: {
+    doc: "Should we pre-refresh wegmans auth tokens?",
+    default: false,
+    format: Boolean,
+    env: "PREREFRESH_TOKENS"
+  },
   alexa: {
     skill: {
       name: {

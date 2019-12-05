@@ -1,6 +1,7 @@
 import { logger } from "../lib/Logger";
 import * as jwt from "jsonwebtoken";
 import * as _ from "lodash";
+import { config } from "../lib/config";
 
 export interface AccessToken {
   access: string;
@@ -33,13 +34,14 @@ export function wrapWegmansTokens(token: AccessToken, secret: string) {
   const decodedWegmansAccessToken = decodeAccess(token.access);
   const wrappedToken: WrappedWegmansTokens = {
     ...decodedWegmansAccessToken,
-    exp: decodedWegmansAccessToken.exp.valueOf() / 1000,
+    exp: config.get("jwtOverrideExpiresInSeconds") || decodedWegmansAccessToken.exp.valueOf() / 1000,
     iat: decodedWegmansAccessToken.iat.valueOf() / 1000,
     iss: "wedgies",
     _access: token.access,
     _user: token.user,
     _refresh: token.refresh
   };
+
   return jwt.sign(JSON.stringify(wrappedToken), secret);
 }
 
@@ -53,7 +55,10 @@ export function unwrapWegmansTokens(wrappedJwt: string, secret: string): AccessT
     decodedWrappedToken = jwt.verify(wrappedJwt, secret) as WrappedWegmansTokens;
   } catch (err) {
     logger().error(err.message);
-    if (err.message === "invalid signature") {
+    if (err.message === "invalid signature" || err.message === "jwt malformed") {
+      // If we try to unwrap a wegmans access token (valid JWT but signed by wegmans, not wedgies), we get 'invalid signature';
+      // if we try to unwrap a refresh token (not a valid jwt) we get 'jwt malformed'
+      // Either way, return null and let the requestor move on.
       //TODO: write contract tests against jsonwebtoken library asserting these error messages are accurate
     } else if (err.message === "jwt expired") {
       // We don't care if it's expired here; let downstream function deal with that.
