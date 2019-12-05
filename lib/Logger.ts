@@ -1,7 +1,7 @@
 import * as winston from "winston";
 import { config } from "./config";
 import { LoggedEvent } from "../models/LoggedEvent";
-
+import { serializeError } from "serialize-error";
 import * as uuid from "uuid/v4";
 
 // TODO: winston v3 @types
@@ -65,26 +65,43 @@ export function logger() {
  * @param promise
  */
 export async function logDuration<T>(eventName: string, promise: Promise<T> | (() => Promise<T>)): Promise<T> {
-  const id = uuid();
+  const logger = exports.logger; // for testability: https://medium.com/@DavideRama/mock-spy-exported-functions-within-a-single-module-in-jest-cdf2b61af642
+
   logger().debug(new LoggedEvent("starting").addProperty("eventName", eventName).toString());
   const startTime = new Date().getTime();
 
-  let result;
+  let resolution: any;
+  let rejection: any;
   if (promise instanceof Promise) {
-    result = await promise;
+    try {
+      resolution = await promise;
+    } catch (err) {
+      rejection = err;
+    }
   } else {
-    result = await promise();
+    try {
+      resolution = await promise();
+    } catch (err) {
+      rejection = err;
+    }
   }
   const endTime = new Date().getTime();
-  const loggedEvent = new LoggedEvent("finished")
+  const eventType = rejection ? "rejected" : "resolved";
+  const loggedEvent = new LoggedEvent(eventType)
     .addProperty("eventName", eventName)
     .addProperty("durationMillis", endTime - startTime);
 
   if (config.get("logging.logDuration.logResolveValue")) {
-    loggedEvent.addProperty("result", result);
+    loggedEvent.addProperty("result", resolution);
+  }
+  if (rejection) {
+    loggedEvent.addProperty("rejection", serializeError(rejection));
   }
 
   logger().debug(loggedEvent.toString());
 
-  return result;
+  if (rejection) {
+    throw rejection;
+  }
+  return resolution!;
 }

@@ -47,20 +47,27 @@ export function unwrapWegmansTokens(wrappedJwt: string, secret: string): AccessT
   // For backwards compatibility, in case wrappedJwt is just the accessToken itself, return null.
   // TODO: delete this once everyone's wegmans tokens are refreshed with wedgies tokens
   let wegmansTokens: AccessToken | null = null;
+  let decodedWrappedToken: WrappedWegmansTokens | null = null;
+
   try {
-    const decodedWrappedToken = jwt.verify(wrappedJwt, secret) as WrappedWegmansTokens;
-    wegmansTokens = {
-      access: decodedWrappedToken._access,
-      refresh: decodedWrappedToken._refresh,
-      user: decodedWrappedToken._user
-    };
+    decodedWrappedToken = jwt.verify(wrappedJwt, secret) as WrappedWegmansTokens;
   } catch (err) {
+    logger().error(err.message);
     if (err.message === "invalid signature") {
-      wegmansTokens = null;
+      //TODO: write contract tests against jsonwebtoken library asserting these error messages are accurate
+    } else if (err.message === "jwt expired") {
+      // We don't care if it's expired here; let downstream function deal with that.
+      decodedWrappedToken = jwt.decode(wrappedJwt) as WrappedWegmansTokens;
     } else {
       throw err;
     }
   }
+
+  wegmansTokens = decodedWrappedToken && {
+    access: decodedWrappedToken._access,
+    refresh: decodedWrappedToken._refresh,
+    user: decodedWrappedToken._user
+  };
   return wegmansTokens;
 }
 
