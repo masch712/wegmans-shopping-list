@@ -24,8 +24,6 @@ import { LogGroup, RetentionDays } from "@aws-cdk/aws-logs";
 import { Duration } from "@aws-cdk/core";
 import { Schedule } from "@aws-cdk/aws-events";
 import { dynamoTablesFromSdk } from "./Sdk2CdkUtils";
-import { worker } from "cluster";
-import { addToShoppingList } from "../lambda/alexa/wegmans";
 
 const buildAsset = lambda.Code.asset("./build/build.zip");
 console.log(searchThenAddToShoppingListWorkType);
@@ -226,6 +224,13 @@ export class WegmansCdkStack extends cdk.Stack {
       ruleName: config.get("aws.lambda.functionNames.cdk-wegmans-cron-access-token-refresher"),
       schedule: Schedule.expression("cron(30 4,12,16 * * ? *)"), // Run the refresher every 8 hours
       targets: [new events_targets.LambdaFunction(lambdaTokenRefresher)]
+    });
+
+    new cdk.CfnOutput(this, "TestSkillCli", {
+      value: `ask simulate --skill-id ${config.get("alexa.skill.id")} --locale en-US --text "ask ${config.get(
+        "alexa.skill.utterance"
+      )} for some bananas"`,
+      description: "Command to run to test the skill"
     });
   }
 }

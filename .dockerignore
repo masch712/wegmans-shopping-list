@@ -2,3 +2,4 @@ dist
 node_modules
 Dockerfile
 .dockerignore
+cdk.out

@@ -19,7 +19,7 @@ COPY ./ /usr/src/app
 RUN \
   npx tsc \
   && rm -rf ./node_modules \
-  && npm install --production \
+  && npm prune --production \
   && \find ./ -type f -exec chmod 644 {} \; \
   && find ./ -type d -exec chmod 755 {} \; \
   && zip -q -r build.zip ./node_modules ./config ./dist

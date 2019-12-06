@@ -5,7 +5,9 @@ logging:
 alexa:
   skill:
     # Client ID and Secret set up in Alexa Skill Console -> Account Linking
+    id: amzn1.ask.skill.c3bd314f-e4c0-40f5-af97-468b9272240a
     name: dev-wegmans-shopping-list-skill
+    utterance: devwedgies
 aws:
   dynamodb:
     tableNamePrefix: dev

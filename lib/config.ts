@@ -192,14 +192,27 @@ export const config = convict({
     format: Number,
     env: "JWT_OVERRIDE_EXPIRES_IN_SECS"
   },
-  preRefreshTokens: {
-    doc: "Should we pre-refresh wegmans auth tokens?",
-    default: false,
+  usePreRefreshedTokens: {
+    doc:
+      "Should we use pre-refreshed wegmans auth tokens when available?  If false,, we refresh via wegmans auth API any time we need a refresh.",
+    default: true,
     format: Boolean,
-    env: "PREREFRESH_TOKENS"
+    env: "PREREFRESHED_TOKENS"
   },
   alexa: {
     skill: {
+      id: {
+        doc: "Alexa skill id.",
+        default: "",
+        format: String,
+        env: "ALEXA_SKILL_ID"
+      },
+      utterance: {
+        doc: "Alexa invocation utterance word(s)",
+        default: "",
+        format: String,
+        env: "ALEXA_SKILL_UTTERANCE"
+      },
       name: {
         doc: "Name of the alexa skill.  Used for authenticating access token request.",
         default: "",

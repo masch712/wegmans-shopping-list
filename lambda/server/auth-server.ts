@@ -127,11 +127,11 @@ export const getTokens: APIGatewayProxyHandler = async (event): Promise<APIGatew
     const oldWegmansTokens =
       unwrapWegmansTokens(body.refresh_token as string, config.get("jwtSecret")) ||
       (await logDuration("getTokensByRefresh", accessCodeDao.getTokensByRefresh(body.refresh_token as string)));
-    if (config.get("preRefreshTokens")) {
+    if (config.get("usePreRefreshedTokens")) {
       // First try gettting wegmans tokens from the pre-refreshed tokens table
       const preRefreshedTokens = await logDuration(
         "getPreRefreshedToken",
-        accessCodeDao.getPreRefreshedToken(body.refresh_token as string)
+        accessCodeDao.getPreRefreshedToken(oldWegmansTokens.refresh)
       );
       if (preRefreshedTokens) {
         if (!isAccessTokenExpired(preRefreshedTokens)) {
@@ -143,7 +143,7 @@ export const getTokens: APIGatewayProxyHandler = async (event): Promise<APIGatew
         }
         cleanupOldPreRefreshedTokensPromise = logDuration(
           "cleanupOldPreRefreshedTokens",
-          accessCodeDao.deletePreRefreshedTokens(body.refresh_token as string)
+          accessCodeDao.deletePreRefreshedTokens(oldWegmansTokens.refresh)
         );
       }
     }

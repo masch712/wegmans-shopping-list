@@ -2,5 +2,7 @@ logging:
   level: debug
 alexa:
   skill:
-  # Client ID and Secret set up in Alexa Skill Console -> Account Linking
+    # Client ID and Secret set up in Alexa Skill Console -> Account Linking
+    id: amzn1.ask.skill.ee768e33-44df-48f8-8fcd-1a187d502b75
     name: wegmans-shopping-list-skill
+    utterance: wedgies
