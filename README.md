@@ -2,6 +2,10 @@
 
 ## What it do
 
+### Prereqs
+
+Install ask-cli
+
 ### Alexa skill
 
 This is a AWS Lambda endpoint that handles requests from alexa.

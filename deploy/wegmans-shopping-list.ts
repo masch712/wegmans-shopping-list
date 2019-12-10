@@ -56,6 +56,7 @@ export class WegmansCdkStack extends cdk.Stack {
     new WegmansLambda(this, "AlexaLambdaWegmansShoppingList", {
       handler: "dist/lambda/alexa/index.handler",
       functionName: config.get("aws.lambda.functionNames.cdk-wegmans-shopping-list"),
+      memorySize: 384,
       environment
     });
 
@@ -246,6 +247,7 @@ class WegmansLambda extends lambda.Function {
       handler: string;
       functionName: string;
       environment?: { [key: string]: string }; // NOTE: FunctionProps.environment can supposedly have 'any' values, but cdk deploy fails if you give non-string values
+      memorySize?: number;
       timeout?: number;
     }
   ) {
@@ -255,7 +257,8 @@ class WegmansLambda extends lambda.Function {
       code: buildAsset,
       functionName: props.functionName,
       environment: props.environment || {},
-      timeout: Duration.seconds(props.timeout || 30)
+      timeout: Duration.seconds(props.timeout || 30),
+      memorySize: props.memorySize || 128
     });
     WegmansLambda.rolePolicyStatements.forEach(statement => {
       this.addToRolePolicy(statement);
