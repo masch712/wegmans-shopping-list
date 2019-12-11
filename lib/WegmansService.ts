@@ -19,7 +19,7 @@ import { decode } from "jsonwebtoken";
 import { LoggedEvent } from "../models/LoggedEvent";
 import { Product } from "../models/Product";
 import { cancelAllRequests } from "./CancelAllRequestsUtils";
-
+import { DateTime } from "luxon";
 export class WegmansService {
   constructor(
     private _wegmansDao: WegmansDao,
@@ -98,11 +98,12 @@ export class WegmansService {
           .addProperty("ms", new Date().valueOf() - searchStartTime)
           .toString()
       );
+      const timezone = await this._timezonePromise;
       await this.enqueue_addProductToShoppingList(
         tokens.access,
         product,
         1,
-        this._getNoteForShoppingList(productQuery)
+        this._getNoteForShoppingList(productQuery, timezone)
       );
       const alexaFriendlyProductName = product.name.replace(/\&/g, "and");
       msg = `Added ${alexaFriendlyProductName} to your wegmans shopping list.`;
@@ -193,8 +194,10 @@ export class WegmansService {
     return tokens;
   }
 
-  _getNoteForShoppingList(productQuery: string) {
-    return `"${productQuery}" [added by wedgies on ${new Date().toLocaleString()}]`;
+  _getNoteForShoppingList(productQuery: string, timezone = "America/New_York") {
+    return `"${productQuery}" [added by wedgies on ${DateTime.utc()
+      .setZone(timezone)
+      .toLocaleString({ ...DateTime.DATETIME_SHORT, timeZoneName: "short" })}]`;
   }
 
   // TODO: typescript passthrough method? args, etc?

@@ -17,12 +17,12 @@ describe("Given a product is found", () => {
 
     const fakeWegmansDao = instance(mockWegmansDao);
     const fakeAccessCodeDao = instance(mockAccessCodeDao);
-    const wegmansService = new WegmansService(fakeWegmansDao, fakeAccessCodeDao);
+    const wegmansService = new WegmansService(fakeWegmansDao, fakeAccessCodeDao, Promise.resolve("tz"));
     const spiedWegmansService = spy(wegmansService);
 
     when(spiedWegmansService.getFreshTokensOrLogin(fakeTokens.access)).thenResolve(fakeTokens);
     when(spiedWegmansService.searchForProduct("raisins", fakeTokens)).thenResolve(fakeProduct);
-    when(spiedWegmansService._getNoteForShoppingList("raisins")).thenReturn("some note");
+    when(spiedWegmansService._getNoteForShoppingList("raisins", anyString())).thenReturn("some note");
 
     await wegmansService.handleAddtoShoppingList("raisins", fakeTokens);
 

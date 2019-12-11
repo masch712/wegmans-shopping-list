@@ -49,9 +49,12 @@ export const addToShoppingList: RequestHandler = {
      * Try to keep this wraper razor-thin because it's hard to write tests for it.
      */
     //TODO: find a way to get this shit into the token?  Or otherwise cache it?
-    const timezonePromise = handlerInput.serviceClientFactory
-      ?.getUpsServiceClient()
-      .getSystemTimeZone(handlerInput.context.System.device.deviceId);
+    const timezonePromise = logDuration(
+      "alexaSettingsApi.getSystemTimeZone",
+      handlerInput
+        .serviceClientFactory!.getUpsServiceClient()
+        .getSystemTimeZone(handlerInput.requestEnvelope.context.System!.device!.deviceId)
+    );
 
     const request = handlerInput.requestEnvelope.request as IntentRequest;
     const intent = request.intent;

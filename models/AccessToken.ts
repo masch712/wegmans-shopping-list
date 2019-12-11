@@ -37,6 +37,7 @@ export function wrapWegmansTokens(token: AccessToken, secret: string) {
     exp: config.get("jwtOverrideExpiresInSeconds") || decodedWegmansAccessToken.exp.valueOf() / 1000,
     iat: decodedWegmansAccessToken.iat.valueOf() / 1000,
     iss: "wedgies",
+    sub: getUsernameFromToken(token),
     _access: token.access,
     _user: token.user,
     _refresh: token.refresh
