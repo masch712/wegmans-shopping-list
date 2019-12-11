@@ -48,12 +48,17 @@ export const addToShoppingList: RequestHandler = {
     /**
      * Try to keep this wraper razor-thin because it's hard to write tests for it.
      */
+    //TODO: find a way to get this shit into the token?  Or otherwise cache it?
+    const timezonePromise = handlerInput.serviceClientFactory
+      ?.getUpsServiceClient()
+      .getSystemTimeZone(handlerInput.context.System.device.deviceId);
+
     const request = handlerInput.requestEnvelope.request as IntentRequest;
     const intent = request.intent;
     const wrappedWegmansTokens = _.get(handlerInput, "requestEnvelope.session.user.accessToken");
 
     const wegmansDao = await wegmansDaoPromise;
-    const wegmansService = new WegmansService(wegmansDao, accessCodeDao);
+    const wegmansService = new WegmansService(wegmansDao, accessCodeDao, timezonePromise);
 
     // What did the user ask for?  Pull it out of the intent slot.
     const productQuery = intent.slots![PRODUCT_SLOT].value || "";

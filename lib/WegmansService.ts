@@ -21,7 +21,11 @@ import { Product } from "../models/Product";
 import { cancelAllRequests } from "./CancelAllRequestsUtils";
 
 export class WegmansService {
-  constructor(private _wegmansDao: WegmansDao, private _accessCodeDao: AccessCodeDao) {}
+  constructor(
+    private _wegmansDao: WegmansDao,
+    private _accessCodeDao: AccessCodeDao,
+    private _timezonePromise?: Promise<string>
+  ) {}
   get wegmansDao() {
     return this._wegmansDao;
   }
