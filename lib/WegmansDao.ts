@@ -17,12 +17,15 @@ import {
   SearchThenAddToShoppingListWork,
   getWorkType as searchThenAddToShoppingListWorkType
 } from "../lambda/workers/SearchThenAddToShoppingList";
-
+import jsdom = require("jsdom");
+import jqueryBase = require("jquery");
 interface OrderHistoryResponseItem {
   LastPurchaseDate: string;
   Quantity: number;
   Sku: number;
 }
+
+const CLIENT_ID = "7c0edc2c-5aa9-4a85-9ab0-ae11c5bb251e"; //This appears to be statically set in wegmans JS static content
 
 export class WegmansDao {
   private apiKey: string;
@@ -37,35 +40,72 @@ export class WegmansDao {
   }
 
   async login(email: string, password: string): Promise<AccessToken> {
-    let tokens: AccessToken | null = null;
-    try {
-      await request({
-        method: "POST",
-        url: "https://www.wegmans.com/j_security_check",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "Cache-Control": "no-cache"
-        },
-        form: {
-          j_username: email,
-          j_password: password,
-          j_staysigned: "on"
-        }
-      });
-    } catch (err) {
-      // We get a redirect response, which `request` considers an error.  whotevs
-      const access = WegmansDao.getCookie(err.response, "wegmans_access");
-      const refresh = WegmansDao.getCookie(err.response, "wegmans_refresh");
-      const user = WegmansDao.getCookie(err.response, "wegmans_user");
-      if (!access || !refresh || !user) {
-        // BEWARE: might contain  password; do not log
-        // logger().debug(JSON.stringify(err, null, 2));
-        throw new Error("No access tokens in response; bad login credentials?");
-      }
-      tokens = { access, refresh, user };
-      logger().debug("Logged in and got access token of length " + access.length);
-    }
+    // 1. Request a login page (oath2/v2.0/authorize)
+    // 2. Scrape out the needful codes from the response (jquery )
+    // 3. Build a login request
+    // 4. Capture the token
 
+    // 1.
+    let tokens: AccessToken | null = null;
+    const cookieJar = request.jar();
+    const oauthRes = await request({
+      method: "GET",
+      url: "https://myaccount.wegmans.com/wegmansonline.onmicrosoft.com/oauth2/v2.0/authorize",
+      qs: {
+        client_id: CLIENT_ID,
+        p: "B2C_1A_signup_signin",
+        state: "B2C_1A_signup_signin",
+        redirect_uri: "https://shop.wegmans.com/social-redirect/wegmans_idp",
+        response_type: "code",
+        scope: `${CLIENT_ID} offline_access`
+      },
+      headers: { pragma: "no-cache", "cache-control": "no-cache" },
+      jar: cookieJar
+    });
+    // We gotta execute some js in the response page in order to the the "tx" query param for the next step
+    const jquery = jqueryBase(new jsdom.JSDOM(oauthRes).window);
+    const jsDataContainer = jquery.find("head script[data-container]")[0].text;
+    const settings = eval("'use strict'; " + jsDataContainer + " SETTINGS;");
+    const tx = settings.transId;
+
+    const csrfCookie = cookieJar
+      .getCookies("https://myaccount.wegmans.com")
+      .find(cookie => cookie.key === "x-ms-cpim-csrf")?.value;
+    const loginRes = await request({
+      method: "POST",
+      url: "https://myaccount.wegmans.com/wegmansonline.onmicrosoft.com/B2C_1A_signup_signin/SelfAsserted",
+      qs: {
+        tx,
+        p: "B2C_1A_signup_signin"
+      },
+      headers: {
+        "X-CSRF-TOKEN": csrfCookie
+      },
+      form: {
+        request_type: "RESPONSE",
+        signInName: email,
+        password
+      },
+      jar: cookieJar
+    });
+
+    const getRedirect = await request({
+      method: "GET",
+      url:
+        "https://myaccount.wegmans.com/wegmansonline.onmicrosoft.com/B2C_1A_signup_signin/api/CombinedSigninAndSignup/confirmed",
+      qs: {
+        rememberMe: false,
+        csrf_token: csrfCookie,
+        tx,
+        p: "B2C_1A_signup_signin"
+      },
+      jar: cookieJar,
+      followRedirect: false,
+      simple: false,
+      resolveWithFullResponse: true
+    });
+
+    const redirectLocation = getRedirect.headers.location;
     if (!tokens) {
       throw new Error("Expected tokens by now; where they at?");
     }
