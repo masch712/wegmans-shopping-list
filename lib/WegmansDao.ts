@@ -15,7 +15,7 @@ import { BasicAsyncQueueClient, WorkType } from "./BasicAsyncQueue";
 import { AddToShoppingListWork, getWorkType as addToShoppingListWorkType } from "../lambda/workers/AddToShoppingList";
 import {
   SearchThenAddToShoppingListWork,
-  getWorkType as searchThenAddToShoppingListWorkType
+  getWorkType as searchThenAddToShoppingListWorkType,
 } from "../lambda/workers/SearchThenAddToShoppingList";
 import jsdom = require("jsdom");
 import jqueryBase = require("jquery");
@@ -57,12 +57,12 @@ export class WegmansDao {
         state: "B2C_1A_signup_signin",
         redirect_uri: "https://shop.wegmans.com/social-redirect/wegmans_idp",
         response_type: "code",
-        scope: `${CLIENT_ID} offline_access`
+        scope: `${CLIENT_ID} offline_access`,
       },
       headers: { pragma: "no-cache", "cache-control": "no-cache" },
-      jar: cookieJar
+      jar: cookieJar,
     });
-    // We gotta execute some js in the response page in order to the the "tx" query param for the next step
+    // We gotta execute some js in the response page in order to get the "tx" query param for the next step
     const jquery = jqueryBase(new jsdom.JSDOM(oauthRes).window);
     const jsDataContainer = jquery.find("head script[data-container]")[0].text;
     const settings = eval("'use strict'; " + jsDataContainer + " SETTINGS;");
@@ -70,23 +70,23 @@ export class WegmansDao {
 
     const csrfCookie = cookieJar
       .getCookies("https://myaccount.wegmans.com")
-      .find(cookie => cookie.key === "x-ms-cpim-csrf")?.value;
+      .find((cookie) => cookie.key === "x-ms-cpim-csrf")?.value;
     const loginRes = await request({
       method: "POST",
       url: "https://myaccount.wegmans.com/wegmansonline.onmicrosoft.com/B2C_1A_signup_signin/SelfAsserted",
       qs: {
         tx,
-        p: "B2C_1A_signup_signin"
+        p: "B2C_1A_signup_signin",
       },
       headers: {
-        "X-CSRF-TOKEN": csrfCookie
+        "X-CSRF-TOKEN": csrfCookie,
       },
       form: {
         request_type: "RESPONSE",
         signInName: email,
-        password
+        password,
       },
-      jar: cookieJar
+      jar: cookieJar,
     });
 
     const getRedirect = await request({
@@ -97,15 +97,21 @@ export class WegmansDao {
         rememberMe: false,
         csrf_token: csrfCookie,
         tx,
-        p: "B2C_1A_signup_signin"
+        p: "B2C_1A_signup_signin",
       },
       jar: cookieJar,
       followRedirect: false,
       simple: false,
-      resolveWithFullResponse: true
+      resolveWithFullResponse: true,
     });
 
     const redirectLocation = getRedirect.headers.location;
+    // Sick.  If I browse to this redirectLocation in an incognito browser, it brings me to my wegmans account.
+    // Time to extract the tokens I need for the wegmans API...
+    // Making some guesses here on the requests I need to make to stack my shop.wegmans.com cookies so I can make API requests:
+    // 1. https://shop.wegmans.com/api/v2/facts/frontend_configs
+    // 2. https://shop.wegmans.com/api/v2/user_sessions
+    // 3.
     if (!tokens) {
       throw new Error("Expected tokens by now; where they at?");
     }
@@ -133,8 +139,8 @@ export class WegmansDao {
         url: "https://www.wegmans.com/j_security_check",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
-          "Cache-Control": "no-cache"
-        }
+          "Cache-Control": "no-cache",
+        },
       });
     } catch (err) {
       // We get a redirect response, which `request` considers an error.  whotevs
@@ -171,9 +177,9 @@ export class WegmansDao {
     const response = await request.get("https://wegapi.azure-api.net/shoppinglists/all/?api-version=1.0", {
       headers: {
         Authorization: accessToken,
-        "Ocp-Apim-Subscription-Key": this.apiKey
+        "Ocp-Apim-Subscription-Key": this.apiKey,
       },
-      json: true
+      json: true,
     });
 
     const shoppingListId = response[0].Id;
@@ -189,8 +195,8 @@ export class WegmansDao {
         payload: {
           productQuery,
           quantity,
-          accessToken
-        }
+          accessToken,
+        },
       })
     );
   }
@@ -208,8 +214,8 @@ export class WegmansDao {
           accessToken,
           product,
           quantity,
-          note
-        }
+          note,
+        },
       })
     );
   }
@@ -222,17 +228,17 @@ export class WegmansDao {
       headers: {
         "Content-Type": "application/json",
         "Ocp-Apim-Subscription-Key": this.apiKey,
-        Authorization: accessToken
+        Authorization: accessToken,
       },
       body: JSON.stringify([
         {
           ShoppingListId: shoppingListId,
           Quantity: quantity,
           Sku: product.sku,
-          Note: note
-        }
+          Note: note,
+        },
       ]),
-      resolveWithFullResponse: true
+      resolveWithFullResponse: true,
     });
 
     logger().debug("addProducttoShoppingList response status: " + response.statusCode);
@@ -267,42 +273,40 @@ export class WegmansDao {
           qs: {
             offset: 0,
             records: 1000,
-            start: DateTime.local()
-              .plus({ days: -120 })
-              .toFormat("MM/dd/yyyy"),
+            start: DateTime.local().plus({ days: -120 }).toFormat("MM/dd/yyyy"),
             end: DateTime.local().toFormat("MM/dd/yyyy"),
             onlineshopping: "False",
             sortBy: "popularity",
             sortOrder: "desc",
-            "api-version": "1.0"
+            "api-version": "1.0",
           },
           headers: {
             "Ocp-Apim-Subscription-Key": this.apiKey,
             Authorization: accessToken,
-            Accept: "application/json"
-          }
+            Accept: "application/json",
+          },
         }).then(_.identity())
       ); //TODO: wtf is up with ts and this _.identity business?  return type undefined?
 
       const body = JSON.parse(response) as OrderHistoryResponseItem[];
-      orderedProducts = body.map(item => {
+      orderedProducts = body.map((item) => {
         const epochStr = item.LastPurchaseDate.substring(6, 19);
         const epoch = Number.parseInt(epochStr, 10);
         const orderedProduct: OrderedProduct = {
           sku: item.Sku,
           purchaseMsSinceEpoch: epoch,
-          quantity: item.Quantity
+          quantity: item.Quantity,
         };
         return orderedProduct;
       });
 
       // Get the actual products.  These are useful later for in-memory fuzzy search
-      const skus = orderedProducts.map(orderedProduct => orderedProduct.sku);
+      const skus = orderedProducts.map((orderedProduct) => orderedProduct.sku);
       //TODO: this seems....slow
       const productsBySku = await logDuration(
         "map_getProductBySku",
         ProductSearch.getProductBySku(
-          skus.map(sku => `SKU_${sku}`),
+          skus.map((sku) => `SKU_${sku}`),
           storeId
         )
       );
@@ -331,7 +335,7 @@ export class WegmansDao {
 
     return {
       orderedProducts: sortedOrderedProducts,
-      cacheUpdatePromise: updateCachePromise
+      cacheUpdatePromise: updateCachePromise,
     };
   }
 }
