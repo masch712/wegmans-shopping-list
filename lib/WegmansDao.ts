@@ -109,9 +109,68 @@ export class WegmansDao {
     // Sick.  If I browse to this redirectLocation in an incognito browser, it brings me to my wegmans account.
     // Time to extract the tokens I need for the wegmans API...
     // Making some guesses here on the requests I need to make to stack my shop.wegmans.com cookies so I can make API requests:
-    // 1. https://shop.wegmans.com/api/v2/facts/frontend_configs
+    // 1. (?) https://shop.wegmans.com/api/v2/facts/frontend_configs
     // 2. https://shop.wegmans.com/api/v2/user_sessions
     // 3.
+
+    //TODO: need to send User-Context header in these requests?
+    const frontendConfigs = await request({
+      method: "GET",
+      url: "https://shop.wegmans.com/api/v2/facts/frontend_configs",
+      jar: cookieJar,
+      followRedirect: false,
+      simple: false,
+      resolveWithFullResponse: true,
+    });
+
+    const userSessions = await request({
+      method: "POST",
+      url: "https://shop.wegmans.com/api/v2/user_sessions",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0",
+      },
+      body: JSON.stringify({
+        binary: "web-ecom",
+        binary_version: "2.27.244",
+        is_retina: false,
+        os_version: "Linux x86_64",
+        pixel_density: "1.0",
+        push_token: "",
+        screen_height: 1080,
+        screen_width: 1920,
+      }),
+
+      jar: cookieJar,
+      followRedirect: false,
+      simple: false,
+      resolveWithFullResponse: true,
+    });
+
+    // it's normal for userSessions.body.session_token JWT to have a null user_id at this point
+
+    const users = await request({
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      url: "https://shop.wegmans.com/api/v2/users",
+      body: JSON.stringify({}),
+      jar: cookieJar,
+      followRedirect: false,
+      simple: false,
+      resolveWithFullResponse: true,
+    });
+
+    const somethingelse = await request({
+      method: "POST",
+      url: "https://shop.wegmans.com/api/v2/auth/external",
+      body: JSON.stringify({}),
+      jar: cookieJar,
+      followRedirect: false,
+      simple: false,
+      resolveWithFullResponse: true,
+    });
     if (!tokens) {
       throw new Error("Expected tokens by now; where they at?");
     }
