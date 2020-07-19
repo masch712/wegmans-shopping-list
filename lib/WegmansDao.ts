@@ -114,14 +114,15 @@ export class WegmansDao {
     // 3.
 
     //TODO: need to send User-Context header in these requests?
-    const frontendConfigs = await request({
-      method: "GET",
-      url: "https://shop.wegmans.com/api/v2/facts/frontend_configs",
-      jar: cookieJar,
-      followRedirect: false,
-      simple: false,
-      resolveWithFullResponse: true,
-    });
+
+    // const frontendConfigs = await request({
+    //   method: "GET",
+    //   url: "https://shop.wegmans.com/api/v2/facts/frontend_configs",
+    //   jar: cookieJar,
+    //   followRedirect: false,
+    //   simple: false,
+    //   resolveWithFullResponse: true,
+    // });
 
     const userSessions = await request({
       method: "POST",
@@ -147,7 +148,7 @@ export class WegmansDao {
       resolveWithFullResponse: true,
     });
 
-    // it's normal for userSessions.body.session_token JWT to have a null user_id at this point
+    // // it's normal for userSessions.body.session_token JWT to have a null user_id at this point
 
     const users = await request({
       method: "POST",
@@ -162,10 +163,18 @@ export class WegmansDao {
       resolveWithFullResponse: true,
     });
 
-    const somethingelse = await request({
+    const auth = await request({
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
       url: "https://shop.wegmans.com/api/v2/auth/external",
-      body: JSON.stringify({}),
+      body: JSON.stringify({
+        identifier_polytype: "wegmans_idp",
+        identifier_data: {
+          redirect_response: redirectLocation,
+        },
+      }),
       jar: cookieJar,
       followRedirect: false,
       simple: false,
