@@ -180,6 +180,18 @@ export class WegmansDao {
       simple: false,
       resolveWithFullResponse: true,
     });
+
+    const user = await request({
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      url: "https://shop.wegmans.com/api/v2/user",
+      jar: cookieJar,
+      followRedirect: false,
+      simple: false,
+      resolveWithFullResponse: true,
+    });
     if (!tokens) {
       throw new Error("Expected tokens by now; where they at?");
     }
