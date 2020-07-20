@@ -19,6 +19,7 @@ import {
 } from "../lambda/workers/SearchThenAddToShoppingList";
 import jsdom = require("jsdom");
 import jqueryBase = require("jquery");
+import { BrowserLoginTokens } from "../models/BrowserLoginTokens";
 interface OrderHistoryResponseItem {
   LastPurchaseDate: string;
   Quantity: number;
@@ -39,14 +40,13 @@ export class WegmansDao {
     this.searchThenAddToShoppingListWorkQueue = new BasicAsyncQueueClient(searchThenAddToShoppingListWorkType());
   }
 
-  async login(email: string, password: string): Promise<AccessToken> {
+  async login(email: string, password: string): Promise<BrowserLoginTokens> {
     // 1. Request a login page (oath2/v2.0/authorize)
     // 2. Scrape out the needful codes from the response (jquery )
     // 3. Build a login request
     // 4. Capture the token
 
     // 1.
-    let tokens: AccessToken | null = null;
     const cookieJar = request.jar();
     const oauthRes = await request({
       method: "GET",
@@ -115,16 +115,7 @@ export class WegmansDao {
 
     //TODO: need to send User-Context header in these requests?
 
-    // const frontendConfigs = await request({
-    //   method: "GET",
-    //   url: "https://shop.wegmans.com/api/v2/facts/frontend_configs",
-    //   jar: cookieJar,
-    //   followRedirect: false,
-    //   simple: false,
-    //   resolveWithFullResponse: true,
-    // });
-
-    const userSessions = await request({
+    await request({
       method: "POST",
       url: "https://shop.wegmans.com/api/v2/user_sessions",
       headers: {
@@ -181,12 +172,53 @@ export class WegmansDao {
       resolveWithFullResponse: true,
     });
 
+    // OOOOOHH this is returning the right shit! we fuckin did it!
     const user = await request({
       method: "GET",
       headers: {
         "Content-Type": "application/json",
       },
       url: "https://shop.wegmans.com/api/v2/user",
+      jar: cookieJar,
+      followRedirect: false,
+      simple: false,
+      resolveWithFullResponse: true,
+    });
+
+    const userSessions = await request({
+      method: "POST",
+      url: "https://shop.wegmans.com/api/v2/user_sessions",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0",
+      },
+      body: JSON.stringify({
+        binary: "web-ecom",
+        binary_version: "2.27.244",
+        is_retina: false,
+        os_version: "Linux x86_64",
+        pixel_density: "1.0",
+        push_token: "",
+        screen_height: 1080,
+        screen_width: 1920,
+      }),
+
+      jar: cookieJar,
+      followRedirect: false,
+      simple: false,
+      resolveWithFullResponse: true,
+    });
+
+    const tokens: BrowserLoginTokens = {
+      session_token: JSON.parse(userSessions.body).session_token,
+      session_prd_weg: cookieJar.getCookies("https://shop.wegmans.com")[0].value,
+    };
+    const cart = await request({
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      url: "https://shop.wegmans.com/api/v2/cart",
       jar: cookieJar,
       followRedirect: false,
       simple: false,

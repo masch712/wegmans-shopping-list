@@ -7,7 +7,7 @@ import {
   AccessToken,
   getStoreIdFromTokens,
   isAccessTokenExpired,
-  getTokenInfo
+  getTokenInfo,
 } from "../models/AccessToken";
 
 import { WegmansDao } from "./WegmansDao";
@@ -50,7 +50,7 @@ export class WegmansService {
         (async () => {
           const product = await this.searchForProduct(productQuery, tokens);
           return product;
-        })()
+        })(),
       ]);
     } catch (err) {
       logger().debug(new LoggedEvent("searchShortCircuit.caughtError").addProperty("error", err).toString());
@@ -126,7 +126,7 @@ export class WegmansService {
       logDuration(
         "productRequestHistoryDao.get",
         productRequestHistoryDao.get(getUsernameFromToken(tokens), productQuery)
-      )
+      ),
     ]);
     const { orderedProducts, cacheUpdatePromise } = orderHistoryResult || {};
     const product =
@@ -156,10 +156,10 @@ export class WegmansService {
     } else {
       //TODO: do both these approaches work?
       logger().info(new AccessTokenNotFoundLoggedEvent().toString());
-      tokensPromise = this._wegmansDao.login(config.get("wegmans.email"), config.get("wegmans.password"));
+      // tokensPromise = this._wegmansDao.login(config.get("wegmans.email"), config.get("wegmans.password"));
     }
 
-    let tokens = await tokensPromise;
+    let tokens: AccessToken = { access: "fda", refresh: "asf", user: "asdf" }; //await tokensPromise;
 
     // HACK / TEMPORARY: If the token is expired, grab the pre-refreshed token
     // This shouldn't normally happen, because alexa should be refreshing tokens on its own by calling our auth-server lambda.
@@ -183,7 +183,7 @@ export class WegmansService {
           "putPreRefreshedTokens",
           this._accessCodeDao.putPreRefreshedTokens({
             refreshed_by: tokens.refresh,
-            ...freshTokens
+            ...freshTokens,
           })
         );
         tokens = freshTokens;
