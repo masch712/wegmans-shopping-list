@@ -213,17 +213,18 @@ export class WegmansDao {
       session_token: JSON.parse(userSessions.body).session_token,
       session_prd_weg: cookieJar.getCookies("https://shop.wegmans.com")[0].value,
     };
-    const cart = await request({
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      url: "https://shop.wegmans.com/api/v2/cart",
-      jar: cookieJar,
-      followRedirect: false,
-      simple: false,
-      resolveWithFullResponse: true,
-    });
+    // example:
+    // const cart = await request({
+    //   method: "GET",
+    //   headers: {
+    //     "Content-Type": "application/json",
+    //   },
+    //   url: "https://shop.wegmans.com/api/v2/cart",
+    //   jar: cookieJar,
+    //   followRedirect: false,
+    //   simple: false,
+    //   resolveWithFullResponse: true,
+    // });
     if (!tokens) {
       throw new Error("Expected tokens by now; where they at?");
     }

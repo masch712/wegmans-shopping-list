@@ -21,13 +21,20 @@ export class ProductSearch {
   static async wegmansSearchForProduct(query: string, storeId: number): Promise<Product[]> {
     // Sanitize the query because the search service doesnt like hyphens (eg. "extra-virgin olive oil")
     const sanitizedQuery = query.replace(/-/g, " ");
-    const response = await request.get("https://sp1004f27d.guided.ss-omtrdc.net", {
-      strictSSL: false, //TODO: there's an expired cert in the chain at the moment.  Remove this when they renew their cert.
+    const res = await request.get(
+      "https://shop.wegmans.com/api/v2/store_products?limit=60&offset=0&search_term=strawberries&sort=rank"
+    );
+    const response = await request("https://shop.wegmans.com/api/v2/store_products", {
+      method: "GET",
+      // headers: {
+      //   "Content-Type": "application/json",
+      // },
       qs: {
-        q: sanitizedQuery,
-        rank: "rank-wegmans",
-        storeNumber: storeId // TODO: break this out into config
-      }
+        limit: 60,
+        offset: 0,
+        search_term: query,
+        sort: "rank",
+      },
     });
     const body = JSON.parse(response);
 
@@ -38,12 +45,12 @@ export class ProductSearch {
     const firstResult = body.results[0] as ProductSearchResultItem;
     const product: Product = {
       ...firstResult,
-      sku: Number.parseInt(firstResult.sku, 10)
+      sku: Number.parseInt(firstResult.sku, 10),
     };
 
-    return ((body.results || []) as ProductSearchResultItem[]).map(result => ({
+    return ((body.results || []) as ProductSearchResultItem[]).map((result) => ({
       ...result,
-      sku: Number.parseInt(result.sku, 10)
+      sku: Number.parseInt(result.sku, 10),
     }));
   }
 
@@ -61,8 +68,8 @@ export class ProductSearch {
         sp_n: "1",
         sp_x_20: "id",
         storeNumber: storeId, //TODO: get storeNumber from JWT?
-        sp_q_exact_20: skus.join("|")
-      }
+        sp_q_exact_20: skus.join("|"),
+      },
     });
     logger().debug("getting products for skus");
     const response = await responsePromise;
@@ -70,10 +77,10 @@ export class ProductSearch {
 
     const body = JSON.parse(response);
 
-    const products = (body.results as ProductSearchResultItem[]).map(result => {
+    const products = (body.results as ProductSearchResultItem[]).map((result) => {
       return {
         ...result,
-        sku: Number.parseInt(result.sku)
+        sku: Number.parseInt(result.sku),
       };
     });
 
@@ -81,7 +88,7 @@ export class ProductSearch {
   }
 
   static async wegmansSearchSkus(skus: number[], query: string, storeId: number): Promise<Product | null> {
-    const skuStrings = skus.map(sku => `SKU_${sku}`).join("|");
+    const skuStrings = skus.map((sku) => `SKU_${sku}`).join("|");
     const postForm = {
       do: "prod-search",
       i: "1",
@@ -91,19 +98,19 @@ export class ProductSearch {
       sp_n: "1",
       sp_x_20: "id",
       storeNumber: storeId, //TODO: get storeNumber from JWT?
-      sp_q_exact_20: skuStrings
+      sp_q_exact_20: skuStrings,
     };
     logger().silly(new LoggedEvent("wegmansSearchSkus").addProperty("form", postForm).toString());
     const responsePromise = request({
       method: "POST",
       url: "https://sp1004f27d.guided.ss-omtrdc.net/",
       strictSSL: false, //TODO: there's an expired cert in the chain at the moment.  Remove this when they renew their cert.
-      form: postForm
+      form: postForm,
     }).then(_.identity());
 
     const skuHash: { [sku: number]: number } = {};
     let skuIndex = 0;
-    skus.forEach(sku => {
+    skus.forEach((sku) => {
       skuHash[sku] = skuIndex++;
     });
 
@@ -114,7 +121,7 @@ export class ProductSearch {
     // Find the result with the highest skuIndex (i.e. it was purchased most recently)
     const bestResult = _.maxBy(
       body.results as ProductSearchResultItem[],
-      result => skuHash[Number.parseInt(result.sku)]
+      (result) => skuHash[Number.parseInt(result.sku)]
     );
 
     if (!bestResult) {
@@ -123,7 +130,7 @@ export class ProductSearch {
 
     const product: Product = {
       ...bestResult,
-      sku: Number.parseInt(bestResult.sku)
+      sku: Number.parseInt(bestResult.sku),
     };
 
     return product;
@@ -143,9 +150,9 @@ export class ProductSearch {
         "product.name",
         "product.category",
         "product.subcategory",
-        "product.brand"
+        "product.brand",
         // "product.details",
-      ] as unknown) as Array<keyof OrderedProduct> // coerce type to keyof OrderedProducts because typescript doesn't like nested object keys
+      ] as unknown) as Array<keyof OrderedProduct>, // coerce type to keyof OrderedProducts because typescript doesn't like nested object keys
     });
 
     const searchResults = fuse.search(query) as Array<{
@@ -153,7 +160,7 @@ export class ProductSearch {
       score: number;
     }>;
 
-    const bestProduct = searchResults[0] && _.maxBy(searchResults, result => result.item.purchaseMsSinceEpoch);
+    const bestProduct = searchResults[0] && _.maxBy(searchResults, (result) => result.item.purchaseMsSinceEpoch);
     return bestProduct ? bestProduct.item.product || null : null;
   }
 
@@ -167,7 +174,7 @@ export class ProductSearch {
       distance: 100,
       maxPatternLength: 32,
       minMatchCharLength: 1,
-      keys: ["name", "category", "subcategory", "brand", "details", "productLine"]
+      keys: ["name", "category", "subcategory", "brand", "details", "productLine"],
     });
 
     const searchResults = fuse.search(query);
@@ -183,8 +190,8 @@ export class ProductSearch {
   }
 
   static getMostCommonProductBySku(products: Product[], minOccurrences?: number): Product | null {
-    const productsBySku = _.groupBy(products, product => product.sku);
-    const modeProducts = _.maxBy(Object.values(productsBySku), skuProducts => skuProducts.length);
+    const productsBySku = _.groupBy(products, (product) => product.sku);
+    const modeProducts = _.maxBy(Object.values(productsBySku), (skuProducts) => skuProducts.length);
     if (modeProducts && modeProducts.length >= (minOccurrences || 2)) {
       return modeProducts[0];
     }
@@ -203,7 +210,7 @@ export class ProductSearch {
       logDuration(
         "wegmansHistorySearch",
         ProductSearch.wegmansSearchSkus(
-          orderedProducts.map(op => op.sku),
+          orderedProducts.map((op) => op.sku),
           query,
           storeId
         )
@@ -211,10 +218,10 @@ export class ProductSearch {
       logDuration("fuseHistorySearch", (async () => ProductSearch.fuseSearchOrderedProducts(orderedProducts, query))()),
       logDuration(
         "wegmansProductSearch",
-        ProductSearch.wegmansSearchForProduct(query, storeId).then(results =>
+        ProductSearch.wegmansSearchForProduct(query, storeId).then((results) =>
           results.slice(0, maxWegmansProductSearchResults)
         )
-      )
+      ),
     ]);
 
     logger().info("search query: " + query);

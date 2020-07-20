@@ -40,7 +40,7 @@ export function wrapWegmansTokens(token: AccessToken, secret: string) {
     sub: getUsernameFromToken(token),
     _access: token.access,
     _user: token.user,
-    _refresh: token.refresh
+    _refresh: token.refresh,
   };
 
   return jwt.sign(JSON.stringify(wrappedToken), secret);
@@ -72,7 +72,7 @@ export function unwrapWegmansTokens(wrappedJwt: string, secret: string): AccessT
   wegmansTokens = decodedWrappedToken && {
     access: decodedWrappedToken._access,
     refresh: decodedWrappedToken._refresh,
-    user: decodedWrappedToken._user
+    user: decodedWrappedToken._user,
   };
   return wegmansTokens;
 }
@@ -82,7 +82,7 @@ export function decodeAccess(accessToken: string): DecodedAccessToken {
   return {
     exp: new Date(decoded.exp * 1000),
     iat: new Date(decoded.iat * 1000),
-    sub: decoded.sub
+    sub: decoded.sub,
   };
 }
 
@@ -102,7 +102,7 @@ export function getTokenInfo(token: AccessToken) {
   const accessToken = jwt.decode(token.access) as { [key: string]: number }; // TODO: make a real JWT type?
   return {
     expiration: new Date(accessToken.exp * 1000),
-    issued: new Date(accessToken.iat * 1000)
+    issued: new Date(accessToken.iat * 1000),
   };
 }
 
