@@ -4,6 +4,7 @@ import { orderHistoryDao } from "../lib/OrderHistoryDao";
 import { AccessToken, getStoreIdFromTokens, getUsernameFromToken } from "../models/AccessToken";
 import { ProductSearch } from "../lib/ProductSearch";
 import { BrowserLoginTokens } from "../models/BrowserLoginTokens";
+import request = require("request");
 jest.setTimeout(3000000);
 
 /***************************************************************
@@ -15,17 +16,30 @@ jest.setTimeout(3000000);
 //Skip these normally; dont wanna spam wegmans
 describe("wegmans dao", () => {
   const wegmans = new WegmansDao(config.get("wegmans.apikey"));
+  const cookieJar = request.jar();
   let tokens: BrowserLoginTokens;
   let storeId: number;
   beforeAll(async () => {
-    tokens = await wegmans.login(config.get("wegmans.email"), config.get("wegmans.password"));
+    tokens = await wegmans.login(cookieJar, config.get("wegmans.email"), config.get("wegmans.password"));
     expect(tokens).toBeDefined();
     expect(tokens.session_token).toBeTruthy();
     expect(tokens.session_prd_weg).toBeTruthy();
     // storeId = getStoreIdFromTokens(tokens);
   });
-  test.only("todo", async () => {
+  test("todo", async () => {
     await 1;
+  });
+  describe("search products", () => {
+    test("strawberries", async () => {
+      const products = await wegmans.searchProducts(cookieJar, "strawberries", 10);
+      expect(products).toBeTruthy();
+    });
+  });
+  describe("search products purchased", () => {
+    test.only("olive oil", async () => {
+      const products = await wegmans.searchProductsPurchased(cookieJar, "olive oil", 10);
+      expect(products).toBeTruthy();
+    });
   });
   // test.only("refreshes token", async () => {
   //   const freshTokens = await wegmans.refreshTokens(tokens.refresh, tokens.user);

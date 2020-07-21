@@ -3,7 +3,7 @@ import * as request from "./CancellableRequest";
 import { AccessToken } from "../models/AccessToken";
 import { Product } from "../models/Product";
 import { logger, logDuration } from "./Logger";
-import { Response } from "request";
+import { Response, CookieJar } from "request";
 import { OrderedProduct } from "../models/OrderedProduct";
 import { DateTime } from "luxon";
 import { orderHistoryDao } from "./OrderHistoryDao";
@@ -26,6 +26,23 @@ interface OrderHistoryResponseItem {
   Sku: number;
 }
 
+interface StoreProductSearchResult {
+  item_count: number;
+  items: StoreProductItem[];
+}
+
+interface StoreProductItem {
+  id: string;
+  name: string;
+  reco_rating: number;
+  product_rating: {
+    average_rating: number;
+    user_count: number;
+  };
+  fulfillment_types: string[];
+  tags: string[];
+}
+
 const CLIENT_ID = "7c0edc2c-5aa9-4a85-9ab0-ae11c5bb251e"; //This appears to be statically set in wegmans JS static content
 
 export class WegmansDao {
@@ -40,14 +57,13 @@ export class WegmansDao {
     this.searchThenAddToShoppingListWorkQueue = new BasicAsyncQueueClient(searchThenAddToShoppingListWorkType());
   }
 
-  async login(email: string, password: string): Promise<BrowserLoginTokens> {
+  async login(cookieJar: CookieJar, email: string, password: string): Promise<BrowserLoginTokens> {
     // 1. Request a login page (oath2/v2.0/authorize)
     // 2. Scrape out the needful codes from the response (jquery )
     // 3. Build a login request
     // 4. Capture the token
 
     // 1.
-    const cookieJar = request.jar();
     const oauthRes = await request({
       method: "GET",
       url: "https://myaccount.wegmans.com/wegmansonline.onmicrosoft.com/oauth2/v2.0/authorize",
@@ -115,29 +131,7 @@ export class WegmansDao {
 
     //TODO: need to send User-Context header in these requests?
 
-    await request({
-      method: "POST",
-      url: "https://shop.wegmans.com/api/v2/user_sessions",
-      headers: {
-        "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0",
-      },
-      body: JSON.stringify({
-        binary: "web-ecom",
-        binary_version: "2.27.244",
-        is_retina: false,
-        os_version: "Linux x86_64",
-        pixel_density: "1.0",
-        push_token: "",
-        screen_height: 1080,
-        screen_width: 1920,
-      }),
-
-      jar: cookieJar,
-      followRedirect: false,
-      simple: false,
-      resolveWithFullResponse: true,
-    });
+    await this.createUserSession(cookieJar);
 
     // // it's normal for userSessions.body.session_token JWT to have a null user_id at this point
 
@@ -185,29 +179,7 @@ export class WegmansDao {
       resolveWithFullResponse: true,
     });
 
-    const userSessions = await request({
-      method: "POST",
-      url: "https://shop.wegmans.com/api/v2/user_sessions",
-      headers: {
-        "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0",
-      },
-      body: JSON.stringify({
-        binary: "web-ecom",
-        binary_version: "2.27.244",
-        is_retina: false,
-        os_version: "Linux x86_64",
-        pixel_density: "1.0",
-        push_token: "",
-        screen_height: 1080,
-        screen_width: 1920,
-      }),
-
-      jar: cookieJar,
-      followRedirect: false,
-      simple: false,
-      resolveWithFullResponse: true,
-    });
+    const userSessions = await this.createUserSession(cookieJar);
 
     const tokens: BrowserLoginTokens = {
       session_token: JSON.parse(userSessions.body).session_token,
@@ -230,6 +202,80 @@ export class WegmansDao {
     }
 
     return tokens;
+  }
+
+  public async searchProducts(cookieJar: CookieJar, productQuery: string, limit = 60, offset = 0) {
+    const response = await request({
+      method: "GET",
+      url: "https://shop.wegmans.com/api/v2/store_products",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      qs: {
+        search_term: productQuery,
+        limit,
+        offset,
+        sort: "rank",
+      },
+      jar: cookieJar,
+    });
+
+    // TODO: handle error responses?
+    const storeProductSearchResult = JSON.parse(response) as StoreProductSearchResult;
+
+    return storeProductSearchResult.items;
+  }
+
+  public async searchProductsPurchased(cookieJar: CookieJar, productQuery: string, limit = 60, offset = 0) {
+    const response = await request({
+      method: "GET",
+      url: "https://shop.wegmans.com/api/v2/store_products",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      qs: {
+        search_term: productQuery,
+        limit,
+        offset,
+        sort: "rank",
+        tags: "purchased",
+      },
+      jar: cookieJar,
+    });
+
+    // TODO: handle error responses?
+    const storeProductSearchResult = JSON.parse(response) as StoreProductSearchResult;
+
+    return storeProductSearchResult.items;
+  }
+
+  /**
+   * Sets a session-prd-weg cookie on the given cookie jar.
+   * @param cookieJar
+   */
+  private async createUserSession(cookieJar: CookieJar) {
+    return await request({
+      method: "POST",
+      url: "https://shop.wegmans.com/api/v2/user_sessions",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0",
+      },
+      body: JSON.stringify({
+        binary: "web-ecom",
+        binary_version: "2.27.244",
+        is_retina: false,
+        os_version: "Linux x86_64",
+        pixel_density: "1.0",
+        push_token: "",
+        screen_height: 1080,
+        screen_width: 1920,
+      }),
+      jar: cookieJar,
+      followRedirect: false,
+      simple: false,
+      resolveWithFullResponse: true,
+    });
   }
 
   // TODO: pull out auth shit into AcccessCodeDao and rename it to AuthDao
