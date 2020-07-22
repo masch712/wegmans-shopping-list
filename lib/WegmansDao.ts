@@ -20,6 +20,7 @@ import {
 import jsdom = require("jsdom");
 import jqueryBase = require("jquery");
 import { BrowserLoginTokens } from "../models/BrowserLoginTokens";
+import { deprecate } from "util";
 interface OrderHistoryResponseItem {
   LastPurchaseDate: string;
   Quantity: number;
@@ -377,6 +378,27 @@ export class WegmansDao {
         },
       })
     );
+  }
+
+  async putProductToCart(cookieJar: CookieJar, product: StoreProductItem) {
+    const response = await request({
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      url: "https://shop.wegmans.com/api/v2/cart",
+      body: JSON.stringify({
+        items: [
+          {
+            id: product.id,
+            quantity: 1,
+            store_product: product,
+            item_type: "store_product",
+          },
+        ],
+      }),
+    });
+    return;
   }
 
   async addProductToShoppingList(accessToken: string, product: Product, quantity = 1, note: string): Promise<void> {
