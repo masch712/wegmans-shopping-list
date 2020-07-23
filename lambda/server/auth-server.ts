@@ -9,6 +9,8 @@ import { decryptionPromise } from "../../lib/decrypt-config";
 import { logger, logDuration } from "../../lib/Logger";
 import { WegmansDao } from "../../lib/WegmansDao";
 import { AccessToken, wrapWegmansTokens, isAccessTokenExpired, unwrapWegmansTokens } from "../../models/AccessToken";
+import { BrowserLoginTokens } from "../../models/BrowserLoginTokens";
+import request = require("request");
 
 const wegmansDaoPromise = decryptionPromise.then(() => new WegmansDao(config.get("wegmans.apikey")));
 
@@ -29,7 +31,7 @@ export const generateAccessCode: APIGatewayProxyHandler = async (event): Promise
     return {
       body: "",
       headers: corsHeaders,
-      statusCode: 200
+      statusCode: 200,
     };
   }
 
@@ -37,21 +39,21 @@ export const generateAccessCode: APIGatewayProxyHandler = async (event): Promise
   const body = JSON.parse(event.body);
   const username = body.username;
   const password = body.password;
+  const cookieJar = request.jar();
   const wegmansDao = await wegmansDaoPromise;
   logger().debug("Got wegmans DAO.  Logging in");
 
-  let tokens: AccessToken;
+  let tokens: BrowserLoginTokens;
 
   // short-circuit for test user
   if (username === "test") {
     logger().debug("Test login found");
     tokens = {
-      access: "access_test" + uuid(),
-      refresh: "refresh_test" + uuid(),
-      user: "user_test" + uuid()
+      session_prd_weg: "session_prd_weg" + uuid(),
+      session_token: "session_token" + uuid(),
     };
   } else {
-    tokens = await wegmansDao.login(username, password);
+    tokens = await wegmansDao.login(cookieJar, username, password);
   }
   logger().debug("Login resolved");
   const accessCodeTableItem: AccessToken = {
@@ -59,7 +61,7 @@ export const generateAccessCode: APIGatewayProxyHandler = async (event): Promise
 
     access: tokens.access,
     refresh: tokens.refresh,
-    user: tokens.user
+    user: tokens.user,
   };
 
   await accessCodeDao.initTables();
@@ -69,10 +71,10 @@ export const generateAccessCode: APIGatewayProxyHandler = async (event): Promise
 
   return {
     body: JSON.stringify({
-      code
+      code,
     }),
     headers: corsHeaders,
-    statusCode: 200
+    statusCode: 200,
   };
 };
 
@@ -81,7 +83,7 @@ export const getTokens: APIGatewayProxyHandler = async (event): Promise<APIGatew
     return {
       body: "",
       headers: corsHeaders,
-      statusCode: 200
+      statusCode: 200,
     };
   }
 
@@ -138,7 +140,7 @@ export const getTokens: APIGatewayProxyHandler = async (event): Promise<APIGatew
           wegmansTokens = {
             access: preRefreshedTokens.access,
             refresh: preRefreshedTokens.refresh,
-            user: preRefreshedTokens.user
+            user: preRefreshedTokens.user,
           };
         }
         cleanupOldPreRefreshedTokensPromise = logDuration(
@@ -160,7 +162,7 @@ export const getTokens: APIGatewayProxyHandler = async (event): Promise<APIGatew
         accessCodeDao.put(wegmansTokens),
         accessCodeDao.deleteRefreshCode(oldWegmansTokens.refresh),
         accessCodeDao.deleteAccess(oldWegmansTokens.access),
-        cleanupOldPreRefreshedTokensPromise
+        cleanupOldPreRefreshedTokensPromise,
       ])
     );
   }
@@ -186,10 +188,10 @@ export const getTokens: APIGatewayProxyHandler = async (event): Promise<APIGatew
       // The access token is a wapped JWT containing all the Wegmans JWt tokens.  This way our alexa skill will have access to the payloads of all those tokens (eg. for the storeId value in the user token).
       access_token: wrappedWegmansTokens,
       refresh_token: wrappedWegmansTokens,
-      expires_in
+      expires_in,
     }),
     statusCode: 200,
-    headers: corsHeaders
+    headers: corsHeaders,
   };
 
   await deletePromise;
@@ -200,5 +202,5 @@ const corsHeaders = Object.freeze({
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent",
-  "Access-Control-Allow-Methods": "OPTIONS,GET,POST"
+  "Access-Control-Allow-Methods": "OPTIONS,GET,POST",
 });

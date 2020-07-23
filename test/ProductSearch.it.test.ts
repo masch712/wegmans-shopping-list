@@ -25,10 +25,6 @@ beforeAll(async () => {
     fail(err);
   }
 });
-test("strawberries", async () => {
-  const product = await ProductSearch.wegmansSearchForProduct("strawberries", 57);
-  expect(product).toBeTruthy();
-});
 // test("search products get olive oil", async () => {
 //   const product = await ProductSearch.searchForProductPreferHistory(
 //     orderHistory.orderedProducts,

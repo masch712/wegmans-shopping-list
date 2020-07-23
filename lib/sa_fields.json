@@ -1,0 +1,35 @@
+{
+  "remoteResource": "https://endpoint-epuu2vetpkye6.azureedge.net/signin-signup-kmsi/signin-signup-kmsi-content.html",
+  "retryLimit": 3,
+  "trimSpacesInPassword": true,
+  "api": "CombinedSigninAndSignup",
+  "csrf": "MlNyV2N0UDdHMERWaWRma2xFV1dRNXh4OWtMVGVjanRKeGRQOXFpcEczUlJROXZHb2U0bjAyRGR5dXg2T2ZnUDEzRnRwQWF3aU9ZclRFVEV2cTI2bnc9PTsyMDIwLTAzLTA4VDE3OjA4OjM1LjEwMjQ3MzVaOzJEWnJpSzVuaFhEQzhVQVdTbGxTNWc9PTt7Ik9yY2hlc3RyYXRpb25TdGVwIjoxfQ==",
+  "transId": "StateProperties=eyJUSUQiOiIyZjlhY2U5Mi0xNTE1LTQ5ZmEtOTczNS05NmU4M2JiYmJiNWUifQ",
+  "pageViewId": "490071c4-6782-4a96-a41b-9cdd921a7329",
+  "suppressElementCss": false,
+  "isPageViewIdSentWithHeader": false,
+  "allowAutoFocusOnPasswordField": true,
+  "pageMode": 1,
+  "config": {
+    "showSignupLink": "True",
+    "operatingMode": "Email",
+    "sendHintOnSignup": "False",
+    "forgotPasswordLinkLocation": "AfterLabel",
+    "includePasswordRequirements": "true",
+    "enableRememberMe": "true",
+    "announceVerCompleteMsg": "True"
+  },
+  "hosts": {
+    "tenant": "/wegmansonline.onmicrosoft.com/B2C_1A_signup_signin",
+    "policy": "B2C_1A_signup_signin",
+    "static": "https://myaccount.wegmans.com/static/"
+  },
+  "locale": { "lang": "en" },
+  "xhrSettings": {
+    "retryEnabled": true,
+    "retryMaxAttempts": 3,
+    "retryDelay": 200,
+    "retryExponent": 2,
+    "retryOn": ["error", "timeout"]
+  }
+}

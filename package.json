@@ -11,11 +11,11 @@
     "convict": "^4.2.0",
     "dotenv": "^8.0.0",
     "fuse.js": "^3.4.2",
-    "jquery": "^3.4.1",
+    "jquery": "^3.5.1",
     "js-yaml": "^3.13.1",
-    "jsdom": "^16.2.0",
+    "jsdom": "^16.3.0",
     "jsonwebtoken": "^8.3.0",
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.19",
     "luxon": "^1.21.3",
     "querystring": "^0.2.0",
     "request": "^2.87.0",
@@ -65,7 +65,7 @@
     "ts-mockito": "^2.5.0",
     "ts-node": "^6.2.0",
     "tslint": "^5.18.0",
-    "typescript": "^3.7"
+    "typescript": "^3.9.7"
   },
   "scripts": {
     "test:jest": "jest --runInBand --detectOpenHandles",

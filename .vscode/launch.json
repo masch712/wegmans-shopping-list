@@ -6,6 +6,7 @@
   "configurations": [
     {
       "type": "node",
+      "runtimeVersion": "10.21.0",
       "name": "Jest file",
       "request": "launch",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest",
@@ -17,6 +18,7 @@
     },
     {
       "type": "node",
+      "runtimeVersion": "10.21.0",
       "request": "launch",
       "name": "Launch Program",
       "args": ["${relativeFile}"],
@@ -26,6 +28,7 @@
     },
     {
       "type": "node",
+      "runtimeVersion": "10.21.0",
       "name": "vscode-jest-tests",
       "request": "launch",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest",

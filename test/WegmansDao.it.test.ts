@@ -1,8 +1,5 @@
 import { config } from "../lib/config";
 import { WegmansDao } from "../lib/WegmansDao";
-import { orderHistoryDao } from "../lib/OrderHistoryDao";
-import { AccessToken, getStoreIdFromTokens, getUsernameFromToken } from "../models/AccessToken";
-import { ProductSearch } from "../lib/ProductSearch";
 import { BrowserLoginTokens } from "../models/BrowserLoginTokens";
 import request = require("request");
 jest.setTimeout(3000000);
