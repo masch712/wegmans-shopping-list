@@ -1,6 +1,6 @@
 import { APIGatewayProxyHandler, APIGatewayProxyResult } from "aws-lambda";
 import * as basic from "basic-auth";
-import { decode } from "jsonwebtoken";
+import { decode, sign } from "jsonwebtoken";
 import * as querystring from "querystring";
 import * as uuid from "uuid/v4";
 import { accessCodeDao } from "../../lib/AccessCodeDao";
@@ -43,25 +43,46 @@ export const generateAccessCode: APIGatewayProxyHandler = async (event): Promise
   const wegmansDao = await wegmansDaoPromise;
   logger().debug("Got wegmans DAO.  Logging in");
 
-  let tokens: BrowserLoginTokens;
+  let wegmansTokens: BrowserLoginTokens;
 
   // short-circuit for test user
   if (username === "test") {
     logger().debug("Test login found");
-    tokens = {
-      session_prd_weg: "session_prd_weg" + uuid(),
+    wegmansTokens = {
+      cookies: ["session_prd_weg" + uuid()],
       session_token: "session_token" + uuid(),
     };
   } else {
-    tokens = await wegmansDao.login(cookieJar, username, password);
+    wegmansTokens = await wegmansDao.login(cookieJar, username, password);
   }
+
+  const now = Math.floor(new Date().getTime() / 1000);
+  // tslint:disable-next-line:variable-name
+  const expires_in = config.get("jwtOverrideExpiresInSeconds") || jwt.exp - now;
+  logger().debug("jwt.exp: " + jwt.exp);
+  logger().debug("now: " + now);
+  logger().debug("expires_in: " + expires_in);
+
+  const wedgiesTokens: AccessToken = {
+    access_code: code,
+    access: sign({
+      exp: config.get("jwtOverrideExpiresInSeconds") || decodedWegmansAccessToken.exp.valueOf() / 1000,
+      iat: decodedWegmansAccessToken.iat.valueOf() / 1000,
+      iss: "wedgies",
+      sub: getUsernameFromToken(token),
+      _access: token.access,
+      _user: token.user,
+      _refresh: token.refresh,
+    }),
+  };
+
   logger().debug("Login resolved");
   const accessCodeTableItem: AccessToken = {
     access_code: code,
 
-    access: tokens.access,
-    refresh: tokens.refresh,
-    user: tokens.user,
+    access: wegmansTokens.access,
+    refresh: wegmansTokens.refresh,
+    user: wegmansTokens.user,
   };
 
   await accessCodeDao.initTables();
