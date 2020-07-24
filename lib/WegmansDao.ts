@@ -18,7 +18,7 @@ import {
 } from "../lambda/workers/SearchThenAddToShoppingList";
 import jsdom = require("jsdom");
 import jqueryBase = require("jquery");
-import { BrowserLoginTokens } from "../models/BrowserLoginTokens";
+import { BrowserLoginTokens, toCookieJar } from "../models/BrowserLoginTokens";
 import { deprecate } from "util";
 interface OrderHistoryResponseItem {
   LastPurchaseDate: string;
@@ -193,8 +193,7 @@ export class WegmansDao {
 
   // seems like we can refresh tokens by sending a GET to /user which sets a new session-prd-weg
   public async refreshTokens(tokens: BrowserLoginTokens): Promise<BrowserLoginTokens> {
-    const cookieJar = request.jar();
-    tokens.cookies.forEach((c) => cookieJar.setCookie(c, "https://shop.wegmans.com"));
+    const cookieJar = toCookieJar(tokens);
 
     await this.getUser(cookieJar);
 

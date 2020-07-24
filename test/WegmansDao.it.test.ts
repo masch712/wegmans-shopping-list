@@ -1,6 +1,6 @@
 import { config } from "../lib/config";
 import { WegmansDao } from "../lib/WegmansDao";
-import { BrowserLoginTokens } from "../models/BrowserLoginTokens";
+import { BrowserLoginTokens, toCookieJar } from "../models/BrowserLoginTokens";
 import request = require("request");
 import { Cookie } from "tough-cookie";
 jest.setTimeout(3000000);
@@ -16,7 +16,6 @@ describe("wegmans dao", () => {
   const wegmans = new WegmansDao(config.get("wegmans.apikey"));
   const cookieJar = request.jar();
   let tokens: BrowserLoginTokens;
-  let storeId: number;
   beforeAll(async () => {
     tokens = await wegmans.login(cookieJar, config.get("wegmans.email"), config.get("wegmans.password"));
     expect(tokens).toBeDefined();
@@ -30,12 +29,17 @@ describe("wegmans dao", () => {
   });
 
   test.only("deserialized serialized cookie is usable", async () => {
-    const freshCookies = request.jar();
-    expect(freshCookies.getCookies("https://shop.wegmans.com").length).toEqual(0);
+    const deserializedCookies = toCookieJar(tokens);
 
-    tokens.cookies.forEach((c) => freshCookies.setCookie(c, "https://shop.wegmans.com"));
+    const products = await wegmans.searchProducts(deserializedCookies, "strawberries", 10);
+    expect(products).toBeTruthy();
+  });
 
-    const products = await wegmans.searchProducts(freshCookies, "strawberries", 10);
+  test.only("refreshed cookie is usable", async () => {
+    const freshTokens = await wegmans.refreshTokens(tokens);
+    expect(freshTokens).not.toEqual(tokens);
+    const freshCookieJar = toCookieJar(freshTokens);
+    const products = await wegmans.searchProducts(freshCookieJar, "strawberries", 10);
     expect(products).toBeTruthy();
   });
 
