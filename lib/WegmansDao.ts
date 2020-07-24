@@ -182,13 +182,29 @@ export class WegmansDao {
 
     const tokens: BrowserLoginTokens = {
       session_token: JSON.parse(userSessions.body).session_token,
-      session_prd_weg: cookieJar.getCookies("https://shop.wegmans.com")[0].value,
+      cookies: cookieJar.getCookies("https://shop.wegmans.com").map((c) => c.toString()),
     };
     if (!tokens) {
       throw new Error("Expected tokens by now; where they at?");
     }
 
     return tokens;
+  }
+
+  // seems like we can refresh tokens by sending a GET to /user which sets a new session-prd-weg
+  public async refreshTokens(tokens: BrowserLoginTokens): Promise<BrowserLoginTokens> {
+    const cookieJar = request.jar();
+    tokens.cookies.forEach((c) => cookieJar.setCookie(c, "https://shop.wegmans.com"));
+
+    await this.getUser(cookieJar);
+
+    // Do I actually need to get this new session_token here?  Who knows.
+    const userSessions = await this.createUserSession(cookieJar);
+
+    return {
+      session_token: JSON.parse(userSessions.body).session_token,
+      cookies: cookieJar.getCookies("https://shop.wegmans.com").map((c) => c.toString()),
+    };
   }
 
   public async searchProducts(cookieJar: CookieJar, productQuery: string, limit = 60, offset = 0) {
@@ -236,6 +252,20 @@ export class WegmansDao {
     return storeProductSearchResult.items;
   }
 
+  private async getUser(cookieJar: CookieJar) {
+    return await request({
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      url: "https://shop.wegmans.com/api/v2/user",
+      jar: cookieJar,
+      followRedirect: false,
+      simple: false,
+      resolveWithFullResponse: true,
+    });
+  }
+
   /**
    * Sets a session-prd-weg cookie on the given cookie jar.
    * @param cookieJar
@@ -270,40 +300,40 @@ export class WegmansDao {
    * Send a refresh token to Wegmans and get back fresh access and user tokens.
    * @param refreshToken The refresh token
    */
-  async refreshTokens(refreshToken: string, userToken: string): Promise<AccessToken> {
-    let res: any;
-    try {
-      const jar = request.jar();
-      const refreshCookie = request.cookie(`wegmans_refresh=${refreshToken}`)!;
-      const userCookie = request.cookie(`wegmans_user=${userToken}`)!;
-      jar.setCookie(refreshCookie, "https://www.wegmans.com");
-      jar.setCookie(userCookie, "https://www.wegmans.com");
+  // async refreshTokens(refreshToken: string, userToken: string): Promise<AccessToken> {
+  //   let res: any;
+  //   try {
+  //     const jar = request.jar();
+  //     const refreshCookie = request.cookie(`wegmans_refresh=${refreshToken}`)!;
+  //     const userCookie = request.cookie(`wegmans_user=${userToken}`)!;
+  //     jar.setCookie(refreshCookie, "https://www.wegmans.com");
+  //     jar.setCookie(userCookie, "https://www.wegmans.com");
 
-      res = await request({
-        method: "GET",
-        jar,
-        url: "https://www.wegmans.com/j_security_check",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "Cache-Control": "no-cache",
-        },
-      });
-    } catch (err) {
-      // We get a redirect response, which `request` considers an error.  whotevs
-      const access = WegmansDao.getCookie(err.response, "wegmans_access");
-      const refresh = WegmansDao.getCookie(err.response, "wegmans_refresh");
-      const user = WegmansDao.getCookie(err.response, "wegmans_user");
-      if (!access || !refresh || !user) {
-        logger().debug(JSON.stringify(err, null, 2));
-        throw new Error("No access tokens in response; bad login credentials?");
-      }
-      const tokens: AccessToken = { access, refresh, user };
-      logger().debug("Logged in and got access token of length " + access.length);
-      return tokens;
-    }
+  //     res = await request({
+  //       method: "GET",
+  //       jar,
+  //       url: "https://www.wegmans.com/j_security_check",
+  //       headers: {
+  //         "Content-Type": "application/x-www-form-urlencoded",
+  //         "Cache-Control": "no-cache",
+  //       },
+  //     });
+  //   } catch (err) {
+  //     // We get a redirect response, which `request` considers an error.  whotevs
+  //     const access = WegmansDao.getCookie(err.response, "wegmans_access");
+  //     const refresh = WegmansDao.getCookie(err.response, "wegmans_refresh");
+  //     const user = WegmansDao.getCookie(err.response, "wegmans_user");
+  //     if (!access || !refresh || !user) {
+  //       logger().debug(JSON.stringify(err, null, 2));
+  //       throw new Error("No access tokens in response; bad login credentials?");
+  //     }
+  //     const tokens: AccessToken = { access, refresh, user };
+  //     logger().debug("Logged in and got access token of length " + access.length);
+  //     return tokens;
+  //   }
 
-    throw new Error("Unable to refresh access token");
-  }
+  //   throw new Error("Unable to refresh access token");
+  // }
 
   static getCookie(response: Response, cookieKey: string) {
     const cookie = _.find<string>(response.headers["set-cookie"], (cookie: string) => !!cookie.match(`${cookieKey}=`));

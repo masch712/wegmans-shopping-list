@@ -2,6 +2,7 @@ import { config } from "../lib/config";
 import { WegmansDao } from "../lib/WegmansDao";
 import { BrowserLoginTokens } from "../models/BrowserLoginTokens";
 import request = require("request");
+import { Cookie } from "tough-cookie";
 jest.setTimeout(3000000);
 
 /***************************************************************
@@ -20,12 +21,24 @@ describe("wegmans dao", () => {
     tokens = await wegmans.login(cookieJar, config.get("wegmans.email"), config.get("wegmans.password"));
     expect(tokens).toBeDefined();
     expect(tokens.session_token).toBeTruthy();
-    expect(tokens.session_prd_weg).toBeTruthy();
+    expect(tokens.cookies).toBeTruthy();
     // storeId = getStoreIdFromTokens(tokens);
   });
-  test("todo", async () => {
+
+  test("search requires auth, booo", async () => {
     await 1;
   });
+
+  test.only("deserialized serialized cookie is usable", async () => {
+    const freshCookies = request.jar();
+    expect(freshCookies.getCookies("https://shop.wegmans.com").length).toEqual(0);
+
+    tokens.cookies.forEach((c) => freshCookies.setCookie(c, "https://shop.wegmans.com"));
+
+    const products = await wegmans.searchProducts(freshCookies, "strawberries", 10);
+    expect(products).toBeTruthy();
+  });
+
   describe("search products", () => {
     test("strawberries", async () => {
       const products = await wegmans.searchProducts(cookieJar, "strawberries", 10);
@@ -33,11 +46,13 @@ describe("wegmans dao", () => {
     });
   });
   describe("search products purchased", () => {
-    test.only("olive oil", async () => {
+    test("olive oil", async () => {
       const products = await wegmans.searchProductsPurchased(cookieJar, "olive oil", 10);
       expect(products).toBeTruthy();
     });
   });
+  //TODO: revive the product search regression suite for the new API
+
   // test.only("refreshes token", async () => {
   //   const freshTokens = await wegmans.refreshTokens(tokens.refresh, tokens.user);
   //   expect(freshTokens.access).toBeDefined();
