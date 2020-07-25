@@ -43,7 +43,7 @@ export function wrapWegmansTokens(wegmansTokens: BrowserLoginTokens, jwtSecret: 
         exp: expiryEpochSecs,
         iat: nowEpochSecs,
         iss: "wedgies",
-        sub: 
+        sub: getUserIdFromWegmansToken(wegmansTokens),
         ...wegmansTokens,
       },
       jwtSecret
@@ -117,6 +117,7 @@ export function getStoreIdFromuserToken(userFromJwt: string) {
 export function getTokenInfo(token: WedgiesOAuthToken) {
   const accessToken = jwt.decode(token.access) as { [key: string]: number }; // TODO: make a real JWT type?
   return {
+    // TODO: are these dates still right?
     expiration: new Date(accessToken.exp * 1000),
     issued: new Date(accessToken.iat * 1000),
   };

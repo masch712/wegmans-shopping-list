@@ -11,14 +11,14 @@ import {
   tableTokensByAccessToken,
   tableTokensByRefresh,
   tableTokensByCode,
-  tablePreRefreshedTokensByRefresh
+  tablePreRefreshedTokensByRefresh,
 } from "../lib/AccessCodeDao";
 import { PolicyStatement, Effect } from "@aws-cdk/aws-iam";
 import { tableOrderHistoryByUser } from "../lib/OrderHistoryDao";
 import { WorkType } from "../lib/BasicAsyncQueue";
 import { config } from "../lib/config";
 import { TABLENAME_PRODUCTREQUESTHISTORY, tableProductRequestHistory } from "../lib/ProductRequestHistoryDao";
-import { getWorkType as addToShoppingListWorkType } from "../lambda/workers/AddToShoppingList";
+import { getWorkType as addToShoppingListWorkType } from "../lambda/workers/PutToShoppingCart";
 import { getWorkType as searchThenAddToShoppingListWorkType } from "../lambda/workers/SearchThenAddToShoppingList";
 import { LogGroup, RetentionDays } from "@aws-cdk/aws-logs";
 import { Duration } from "@aws-cdk/core";
@@ -47,7 +47,7 @@ export class WegmansCdkStack extends cdk.Stack {
         "AQICAHhEbkp592DXQD2+erIwWGqDeHoUQnAaX1Sw+4YW0087HwH8RXX/AbEVLZkJKaecLtodAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMiKCMxebwomihAFKIAgEQgDuufhAPULVlpHYsEhxt0lMSrTLLWkQ9Oo1aPWEp16Orm4kvVkGYjgiBn/LAGxpu3MELznE3cqPFDletuA==",
       // NOTE: JWT_SECRET is also encrypted by the KMS key.
       JWT_SECRET:
-        "AQICAHhEbkp592DXQD2+erIwWGqDeHoUQnAaX1Sw+4YW0087HwFOF1D9M1diLlRWMb1PS3XuAAAAmDCBlQYJKoZIhvcNAQcGoIGHMIGEAgEAMH8GCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMV+3jRLKnRmug6MZEAgEQgFKhpuItrd7C+MdllHuuRJGHivEJ7m1GYHyo7875PMNOWHnjVwqIPNhP/ExPXu1clT8nEXqxBFnhH5tvh/i+psRVgjN5nWPNvPo4MCMbsCYQiU0M"
+        "AQICAHhEbkp592DXQD2+erIwWGqDeHoUQnAaX1Sw+4YW0087HwFOF1D9M1diLlRWMb1PS3XuAAAAmDCBlQYJKoZIhvcNAQcGoIGHMIGEAgEAMH8GCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQMV+3jRLKnRmug6MZEAgEQgFKhpuItrd7C+MdllHuuRJGHivEJ7m1GYHyo7875PMNOWHnjVwqIPNhP/ExPXu1clT8nEXqxBFnhH5tvh/i+psRVgjN5nWPNvPo4MCMbsCYQiU0M",
     };
     if (config.get("logical_env") === "production") {
       environment.LIVE_RUN = "1";
@@ -57,13 +57,13 @@ export class WegmansCdkStack extends cdk.Stack {
       handler: "dist/lambda/alexa/index.handler",
       functionName: config.get("aws.lambda.functionNames.cdk-wegmans-shopping-list"),
       memorySize: 384,
-      environment
+      environment,
     });
 
     const authServerLambdaGenerateAccessCode = new WegmansLambda(this, "LambdaWegmansAuthServerGenerateAccessCode", {
       handler: "dist/lambda/server/auth-server.generateAccessCode",
       functionName: config.get("aws.lambda.functionNames.cdk-wegmans-generate-access-code"),
-      environment
+      environment,
     });
 
     const authServerLambdaGetTokens = new WegmansLambda(this, "LambdaWegmansAuthServerGetTokens", {
@@ -72,16 +72,16 @@ export class WegmansCdkStack extends cdk.Stack {
       environment: {
         ...environment,
         ALEXA_SKILL_NAME: config.get("alexa.skill.name"),
-        ALEXA_SKILL_SECRET: config.get("alexa.skill.secret")
+        ALEXA_SKILL_SECRET: config.get("alexa.skill.secret"),
         //TODO: put all these env vars in config files?
-      }
+      },
     });
 
     const authServerApi = new apigw.RestApi(this, "WegmansAuthServerAPI", {
       deployOptions: {
-        dataTraceEnabled: false
+        dataTraceEnabled: false,
         // loggingLevel: apigw.MethodLoggingLevel.Info,
-      }
+      },
     });
     const wegmansAuthResource = authServerApi.root.addResource("wegmans-auth");
     const accessCodeRsource = wegmansAuthResource.addResource("access-code");
@@ -95,32 +95,32 @@ export class WegmansCdkStack extends cdk.Stack {
     const dynamoOrderHistoryTables = dynamoTablesFromSdk(this, [
       {
         tableParams: tableOrderHistoryByUser,
-        resourceName: "WegmansDynamoOrderHistoryByUser" // TODO: dont need custom resourcenames anymore because tablenames match resourcenames
-      }
+        resourceName: "WegmansDynamoOrderHistoryByUser", // TODO: dont need custom resourcenames anymore because tablenames match resourcenames
+      },
     ]);
     const dynamoTokensTables = dynamoTablesFromSdk(this, [
       {
         tableParams: tableTokensByAccessToken,
-        resourceName: "WegmansTokensByAccessToken"
+        resourceName: "WegmansTokensByAccessToken",
       },
       {
         tableParams: tableTokensByRefresh,
-        resourceName: "WegmansTokensByRefreshToken"
+        resourceName: "WegmansTokensByRefreshToken",
       },
       {
         tableParams: tableTokensByCode,
-        resourceName: "WegmansTokensByAccessCode"
+        resourceName: "WegmansTokensByAccessCode",
       },
       {
         tableParams: tablePreRefreshedTokensByRefresh,
-        resourceName: "WegmansPreRefreshedTokens"
-      }
+        resourceName: "WegmansPreRefreshedTokens",
+      },
     ]);
     const dynamoProductRequestHistoryTables = dynamoTablesFromSdk(this, [
       {
         tableParams: tableProductRequestHistory,
-        resourceName: "WegmansDynamoProductRequestHistory"
-      }
+        resourceName: "WegmansDynamoProductRequestHistory",
+      },
     ]);
     //TODO: delete the dynamo autoscaling alarms in cloudwatch, they cost like $3.20 a month
 
@@ -136,19 +136,19 @@ export class WegmansCdkStack extends cdk.Stack {
         "dynamodb:PutItem",
         "dynamodb:Query",
         "dynamodb:Scan",
-        "dynamodb:UpdateItem"
+        "dynamodb:UpdateItem",
       ],
       resources: [
-        ...dynamoOrderHistoryTables.map(t => t.tableArn),
-        ...dynamoTokensTables.map(t => t.tableArn),
-        ...dynamoProductRequestHistoryTables.map(t => t.tableArn)
-      ]
+        ...dynamoOrderHistoryTables.map((t) => t.tableArn),
+        ...dynamoTokensTables.map((t) => t.tableArn),
+        ...dynamoProductRequestHistoryTables.map((t) => t.tableArn),
+      ],
     });
 
     const kmsPolicy = new PolicyStatement({
       effect: Effect.ALLOW,
       actions: ["kms:Decrypt", "kms:Encrypt"],
-      resources: [`arn:aws:kms:us-east-1:${config.get("aws.account.number")}:key/1df4d245-9e29-492e-9ee4-93969cad1309`]
+      resources: [`arn:aws:kms:us-east-1:${config.get("aws.account.number")}:key/1df4d245-9e29-492e-9ee4-93969cad1309`],
     });
 
     // Update lambda policies
@@ -160,7 +160,7 @@ export class WegmansCdkStack extends cdk.Stack {
     for (const getWorkType of [addToShoppingListWorkType, searchThenAddToShoppingListWorkType]) {
       const queueAndWorker = new QueueAndWorker(this, {
         workType: getWorkType(),
-        environment
+        environment,
       });
       queueAndWorkers[getWorkType().name] = queueAndWorker;
 
@@ -178,8 +178,8 @@ export class WegmansCdkStack extends cdk.Stack {
             effect: Effect.ALLOW,
             actions: ["sqs:SendMessage"],
             resources: getWorkType()
-              .enqueuesTo.map(enqueuesToWorkType => queueAndWorkers[enqueuesToWorkType.name])
-              .map(qAndW => qAndW.queue.queueArn)
+              .enqueuesTo.map((enqueuesToWorkType) => queueAndWorkers[enqueuesToWorkType.name])
+              .map((qAndW) => qAndW.queue.queueArn),
           })
         );
     }
@@ -189,13 +189,13 @@ export class WegmansCdkStack extends cdk.Stack {
       actions: ["sqs:SendMessage"],
       resources: Object.keys(queueAndWorkers)
         .sort()
-        .map(workTypeName => queueAndWorkers[workTypeName].queue.queueArn)
+        .map((workTypeName) => queueAndWorkers[workTypeName].queue.queueArn),
     });
 
     // Every WegmansLambda (eg. alexa handler, auth handlers) can do anything with dynamo.... :-/
     // TODO: the workers should EXCLUSIVELY call APIs, not call directly to the database?
     // TODO: only the alexa lambda needs to call the workers, not the auth lambdas.  least privilege dammit!
-    WegmansLambda.wegmansLambdas.forEach(wl => wl.addToRolePolicy(enqueuerPolicy));
+    WegmansLambda.wegmansLambdas.forEach((wl) => wl.addToRolePolicy(enqueuerPolicy));
 
     // Crons
     //TODO: some cron framework that reads all the cron files?
@@ -203,35 +203,35 @@ export class WegmansCdkStack extends cdk.Stack {
       environment,
       functionName: config.get("aws.lambda.functionNames.cdk-wegmans-cron-order-history-updater"),
       handler: "dist/lambda/cron/order-history-updater.handler",
-      timeout: 180 //TODO: alerting for these lambdas (response / error spikes?)
+      timeout: 180, //TODO: alerting for these lambdas (response / error spikes?)
     });
 
     new events.Rule(this, "EventWegmansOrderHistoryUpdater", {
       description: "Cron trigger for wegmans order history updater",
       ruleName: config.get("aws.lambda.functionNames.cdk-wegmans-cron-order-history-updater"),
       schedule: Schedule.expression("cron(0 4 * * ? *)"),
-      targets: [new events_targets.LambdaFunction(lambdaOrderHistoryUpdater)]
+      targets: [new events_targets.LambdaFunction(lambdaOrderHistoryUpdater)],
     });
 
     const lambdaTokenRefresher = new WegmansLambda(this, "LambdaWegmansTokenRefresher", {
       environment,
       functionName: config.get("aws.lambda.functionNames.cdk-wegmans-cron-access-token-refresher"),
       handler: "dist/lambda/cron/access-token-refresher.handler",
-      timeout: 180 //TODO: alerting for these lambdas (response / error spikes?)
+      timeout: 180, //TODO: alerting for these lambdas (response / error spikes?)
     });
 
     new events.Rule(this, "EventWegmansTokenRefresher", {
       description: "Cron trigger for wegmans token refresher",
       ruleName: config.get("aws.lambda.functionNames.cdk-wegmans-cron-access-token-refresher"),
       schedule: Schedule.expression("cron(30 4,12,16 * * ? *)"), // Run the refresher every 8 hours
-      targets: [new events_targets.LambdaFunction(lambdaTokenRefresher)]
+      targets: [new events_targets.LambdaFunction(lambdaTokenRefresher)],
     });
 
     new cdk.CfnOutput(this, "TestSkillCli", {
       value: `ask simulate --skill-id ${config.get("alexa.skill.id")} --locale en-US --text "ask ${config.get(
         "alexa.skill.utterance"
       )} for some bananas"`,
-      description: "Command to run to test the skill"
+      description: "Command to run to test the skill",
     });
   }
 }
@@ -258,15 +258,15 @@ class WegmansLambda extends lambda.Function {
       functionName: props.functionName,
       environment: props.environment || {},
       timeout: Duration.seconds(props.timeout || 30),
-      memorySize: props.memorySize || 128
+      memorySize: props.memorySize || 128,
     });
-    WegmansLambda.rolePolicyStatements.forEach(statement => {
+    WegmansLambda.rolePolicyStatements.forEach((statement) => {
       this.addToRolePolicy(statement);
     });
     WegmansLambda.wegmansLambdas.push(this);
     new LogGroup(scope, id + "Logs", {
       logGroupName: `/aws/lambda/${this.functionName}`,
-      retention: 7
+      retention: 7,
     });
   }
 
@@ -278,7 +278,7 @@ class WegmansLambda extends lambda.Function {
     // TODO: validate that it's not already in there
     WegmansLambda.rolePolicyStatements.push(statement);
 
-    WegmansLambda.wegmansLambdas.forEach(element => {
+    WegmansLambda.wegmansLambdas.forEach((element) => {
       element.addToRolePolicy(statement);
     });
   }
@@ -306,12 +306,12 @@ class QueueAndWorker {
     const lambdaId = `WegmansWorkerLambda${props.workType.name}`;
 
     this._queue = new sqs.Queue(scope, `WegmansWorkerQueue${props.workType.name}`, {
-      queueName: config.get("aws.sqs.queueNames.worker-queue-prefix") + props.workType.name
+      queueName: config.get("aws.sqs.queueNames.worker-queue-prefix") + props.workType.name,
     });
 
     new LogGroup(scope, lambdaId + "Logs", {
       logGroupName: `/aws/lambda/${functionName}`,
-      retention: RetentionDays.ONE_WEEK
+      retention: RetentionDays.ONE_WEEK,
     });
 
     this._worker = new lambda.Function(scope, lambdaId, {
@@ -320,7 +320,7 @@ class QueueAndWorker {
       functionName,
       handler: `dist/lambda/workers/${props.workType.name}.handler`,
       timeout: Duration.seconds(30),
-      environment: props.environment
+      environment: props.environment,
     });
     this._worker.addEventSource(new SqsEventSource(this._queue));
   }
@@ -338,14 +338,14 @@ export function addCorsOptions(apiResource: apigw.IResource) {
               "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
             "method.response.header.Access-Control-Allow-Origin": "'*'",
             "method.response.header.Access-Control-Allow-Credentials": "'false'",
-            "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE'"
-          }
-        }
+            "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE'",
+          },
+        },
       ],
       passthroughBehavior: apigw.PassthroughBehavior.NEVER,
       requestTemplates: {
-        "application/json": '{"statusCode": 200}'
-      }
+        "application/json": '{"statusCode": 200}',
+      },
     }),
     {
       methodResponses: [
@@ -355,10 +355,10 @@ export function addCorsOptions(apiResource: apigw.IResource) {
             "method.response.header.Access-Control-Allow-Headers": true,
             "method.response.header.Access-Control-Allow-Methods": true,
             "method.response.header.Access-Control-Allow-Credentials": true,
-            "method.response.header.Access-Control-Allow-Origin": true
-          }
-        }
-      ]
+            "method.response.header.Access-Control-Allow-Origin": true,
+          },
+        },
+      ],
     }
   );
 }

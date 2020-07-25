@@ -17,7 +17,7 @@ describe("wegmans dao", () => {
   const cookieJar = request.jar();
   let tokens: BrowserLoginTokens;
   beforeAll(async () => {
-    tokens = await wegmans.login(cookieJar, config.get("wegmans.email"), config.get("wegmans.password"));
+    tokens = await wegmans.login(config.get("wegmans.email"), config.get("wegmans.password"));
     expect(tokens).toBeDefined();
     expect(tokens.session_token).toBeTruthy();
     expect(tokens.cookies).toBeTruthy();

@@ -6,20 +6,22 @@ import { WegmansDao } from "../../lib/WegmansDao";
 import { config } from "../../lib/config";
 import { SQSEvent } from "aws-lambda";
 import { logger } from "../../lib/Logger";
-import { decode } from "jsonwebtoken";
 import { QueuedWork, WorkType } from "../../lib/BasicAsyncQueue";
+import { StoreProductItem } from "../../models/StoreProductItem";
+import { toCookieJar, BrowserLoginTokens } from "../../models/BrowserLoginTokens";
+import { getUserIdFromWegmansToken } from "../../models/AccessToken";
 
 export function getWorkType(): WorkType {
   return {
-    name: "AddToShoppingList",
-    enqueuesTo: []
+    name: "PutItemToCart",
+    enqueuesTo: [],
   };
 }
-export interface AddToShoppingListWork extends QueuedWork {
+export interface PutItemToCartWork extends QueuedWork {
   payload: {
-    product: Product;
+    product: StoreProductItem;
     quantity: number;
-    accessToken: string; //TODO: take all the tokens here in case we need a refresh?
+    wegmansTokens: BrowserLoginTokens; //TODO: take all the tokens here in case we need a refresh?
     note: string;
   };
 }
@@ -34,14 +36,9 @@ export async function handler(event: SQSEvent) {
   const messageBodies = event.Records.map((r: { body: string }) => r.body);
 
   for (const body of messageBodies) {
-    const message = JSON.parse(body) as AddToShoppingListWork;
-    const username = decode(message.payload.accessToken)!.sub;
-    logger().debug("adding " + message.payload.product.sku + " for " + username);
-    await wegmansDao.addProductToShoppingList(
-      message.payload.accessToken,
-      message.payload.product,
-      message.payload.quantity,
-      message.payload.note
-    );
+    const message = JSON.parse(body) as PutItemToCartWork;
+    const userId = getUserIdFromWegmansToken(message.payload.wegmansTokens);
+    logger().debug("adding " + message.payload.product.id + " for " + userId);
+    await wegmansDao.putProductToCart(toCookieJar(message.payload.wegmansTokens), message.payload.product);
   }
 }

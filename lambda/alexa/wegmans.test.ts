@@ -6,13 +6,14 @@ import { Response } from "ask-sdk-model";
 import { tokenFactory, productFactory } from "../../test/TestDataFactory";
 import { WegmansDao } from "../../lib";
 import { AccessCodeDao } from "../../lib/AccessCodeDao";
+import { wrapWegmansTokens } from "../../models/AccessToken";
 
 const mockWegmansDao = mock(WegmansDao);
 const mockAccessCodeDao = mock(AccessCodeDao);
 
 describe("Given a product is found", () => {
   it("adds to shopping list via queue", async () => {
-    const fakeTokens = tokenFactory.build();
+    const fakeWegmansTokens = tokenFactory.build();
     const fakeProduct = productFactory.build({ name: "raisins" });
 
     const fakeWegmansDao = instance(mockWegmansDao);
@@ -20,12 +21,13 @@ describe("Given a product is found", () => {
     const wegmansService = new WegmansService(fakeWegmansDao, fakeAccessCodeDao, Promise.resolve("tz"));
     const spiedWegmansService = spy(wegmansService);
 
-    when(spiedWegmansService.getFreshTokensOrLogin(fakeTokens.access)).thenResolve(fakeTokens);
-    when(spiedWegmansService.searchForProduct("raisins", fakeTokens)).thenResolve(fakeProduct);
+    const fakeWedgiesTokens = wrapWegmansTokens(fakeWegmansTokens, "test");
+    when(spiedWegmansService.getFreshTokensOrLogin(fakeWedgiesTokens)).thenResolve(fakeWedgiesTokens);
+    when(spiedWegmansService.searchForProduct("raisins", fakeWegmansTokens)).thenResolve(fakeProduct);
     when(spiedWegmansService._getNoteForShoppingList("raisins", anyString())).thenReturn("some note");
 
-    await wegmansService.handleAddtoShoppingList("raisins", fakeTokens);
+    await wegmansService.handleAddtoShoppingList("raisins", fakeWegmansTokens);
 
-    verify(spiedWegmansService.enqueue_addProductToShoppingList(fakeTokens.access, fakeProduct, 1, "some note")).once();
+    verify(spiedWegmansService.enqueue_putItemToCart(fakeWegmansTokens, fakeProduct, 1, "some note")).once();
   });
 });

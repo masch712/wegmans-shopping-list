@@ -11,15 +11,16 @@ import * as jwt from "jsonwebtoken";
 import Fuse = require("fuse.js");
 import { config } from "../lib/config";
 import { BasicAsyncQueueClient, WorkType } from "./BasicAsyncQueue";
-import { AddToShoppingListWork, getWorkType as addToShoppingListWorkType } from "../lambda/workers/AddToShoppingList";
+import { PutItemToCartWork, getWorkType as addToShoppingListWorkType } from "../lambda/workers/PutToShoppingCart";
 import {
-  SearchThenAddToShoppingListWork,
+  SearchThenPutItemToCartWork,
   getWorkType as searchThenAddToShoppingListWorkType,
 } from "../lambda/workers/SearchThenAddToShoppingList";
 import jsdom = require("jsdom");
 import jqueryBase = require("jquery");
 import { BrowserLoginTokens, toCookieJar, CookieStringByKey } from "../models/BrowserLoginTokens";
 import { deprecate } from "util";
+import { StoreProductItem } from "../models/StoreProductItem";
 interface OrderHistoryResponseItem {
   LastPurchaseDate: string;
   Quantity: number;
@@ -31,30 +32,18 @@ interface StoreProductSearchResult {
   items: StoreProductItem[];
 }
 
-interface StoreProductItem {
-  id: string;
-  name: string;
-  reco_rating: number;
-  product_rating: {
-    average_rating: number;
-    user_count: number;
-  };
-  fulfillment_types: string[];
-  tags: string[];
-}
-
 const CLIENT_ID = "7c0edc2c-5aa9-4a85-9ab0-ae11c5bb251e"; //This appears to be statically set in wegmans JS static content
 
 export class WegmansDao {
   private apiKey: string;
   private shoppingListId: number | undefined;
 
-  private addToShoppingListWorkQueue: BasicAsyncQueueClient<AddToShoppingListWork>;
-  private searchThenAddToShoppingListWorkQueue: BasicAsyncQueueClient<SearchThenAddToShoppingListWork>;
+  private putItemToCardWorkQueue: BasicAsyncQueueClient<PutItemToCartWork>;
+  private searchThenPutItemToCartWorkQueue: BasicAsyncQueueClient<SearchThenPutItemToCartWork>;
   constructor(apiKey: string) {
     this.apiKey = apiKey;
-    this.addToShoppingListWorkQueue = new BasicAsyncQueueClient(addToShoppingListWorkType());
-    this.searchThenAddToShoppingListWorkQueue = new BasicAsyncQueueClient(searchThenAddToShoppingListWorkType());
+    this.putItemToCardWorkQueue = new BasicAsyncQueueClient(addToShoppingListWorkType());
+    this.searchThenPutItemToCartWorkQueue = new BasicAsyncQueueClient(searchThenAddToShoppingListWorkType());
   }
 
   async login(email: string, password: string): Promise<BrowserLoginTokens> {
@@ -371,34 +360,30 @@ export class WegmansDao {
     return shoppingListId;
   }
 
-  async enqueue_searchThenAddProductToShoppingList(
-    accessToken: WedgiesOAuthToken,
-    productQuery: string,
-    quantity: number
-  ) {
+  async searchThenPutItemToCart(wegmansTokens: BrowserLoginTokens, productQuery: string, quantity: number) {
     await logDuration(
-      "enqueue_searchAndAddProductToShoppingList",
-      this.searchThenAddToShoppingListWorkQueue.enqueue({
+      "enqueue_searchThenPutItemToCartWorkQueue",
+      this.searchThenPutItemToCartWorkQueue.enqueue({
         payload: {
           productQuery,
           quantity,
-          accessToken,
+          wegmansTokens,
         },
       })
     );
   }
 
-  async enqueue_addProductToShoppingList(
-    accessToken: string,
-    product: Product,
+  async enqueue_putItemToCart(
+    wegmansTokens: BrowserLoginTokens,
+    product: StoreProductItem,
     quantity = 1,
     note: string
   ): Promise<void> {
     await logDuration(
-      "enqueue_addProductToShoppingList",
-      this.addToShoppingListWorkQueue.enqueue({
+      "enqueue_putItemToCart",
+      this.putItemToCardWorkQueue.enqueue({
         payload: {
-          accessToken,
+          wegmansTokens,
           product,
           quantity,
           note,
@@ -425,32 +410,6 @@ export class WegmansDao {
         ],
       }),
     });
-    return;
-  }
-
-  async addProductToShoppingList(accessToken: string, product: Product, quantity = 1, note: string): Promise<void> {
-    const shoppingListId = await this.getShoppingListId(accessToken);
-    const response = await request("https://wegapi.azure-api.net/shoppinglists/shoppinglistitem/my/?api-version=1.1", {
-      method: "POST",
-      qs: { "api-version": "1.1" },
-      headers: {
-        "Content-Type": "application/json",
-        "Ocp-Apim-Subscription-Key": this.apiKey,
-        Authorization: accessToken,
-      },
-      body: JSON.stringify([
-        {
-          ShoppingListId: shoppingListId,
-          Quantity: quantity,
-          Sku: product.sku,
-          Note: note,
-        },
-      ]),
-      resolveWithFullResponse: true,
-    });
-
-    logger().debug("addProducttoShoppingList response status: " + response.statusCode);
-
     return;
   }
 

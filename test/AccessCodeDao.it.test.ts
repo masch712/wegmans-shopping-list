@@ -1,6 +1,6 @@
 import { config } from "../lib/config";
 import { accessCodeDao, TABLENAME_TOKENSBYCODE } from "../lib/AccessCodeDao";
-import { AccessToken } from "../models/AccessToken";
+import { WedgiesOAuthToken } from "../models/AccessToken";
 jest.setTimeout(30000);
 
 beforeAll(async () => {
@@ -10,19 +10,17 @@ beforeAll(async () => {
 describe("getAllCurrentAccessTokens", () => {
   test("gets all current access tokens", async () => {
     // Add some tokens to the db first
-    const tokens: AccessToken[] = [
+    const tokens: WedgiesOAuthToken[] = [
       {
         access: "niner",
         refresh: "fiver",
-        user: "johnson"
       },
       {
         access: "niner2",
         refresh: "fiver2",
-        user: "johnson2"
-      }
+      },
     ];
-    await Promise.all(tokens.map(token => accessCodeDao.put(token)));
+    await Promise.all(tokens.map((token) => accessCodeDao.put(token)));
     const actualResult = await accessCodeDao.getAllAccessTokens();
     expect(actualResult).toContainEqual(tokens[0]);
     expect(actualResult).toContainEqual(tokens[1]);
@@ -32,7 +30,7 @@ describe("getAllCurrentAccessTokens", () => {
 describe("login", () => {
   beforeEach(async () => {
     try {
-      await accessCodeDao.dropTables(accessCodeDao.tableParams.map(tp => tp.TableName));
+      await accessCodeDao.dropTables(accessCodeDao.tableParams.map((tp) => tp.TableName));
     } catch (err) {
       // console.warn(err);
     }
@@ -48,12 +46,12 @@ describe("login", () => {
     const token = {
       access: "123",
       refresh: "456",
-      user: "789"
+      user: "789",
     };
 
     const tokenWithCode = {
       access_code: "niner",
-      ...token
+      ...token,
     };
 
     await accessCodeDao.put(tokenWithCode);
@@ -69,7 +67,7 @@ describe("login", () => {
     const token = {
       access: "123",
       refresh: "456",
-      user: "789"
+      user: "789",
     };
 
     await accessCodeDao.put(token);
@@ -84,7 +82,7 @@ describe("login", () => {
       access: "123",
       refresh: "456",
       user: "789",
-      access_code: "43214321"
+      access_code: "43214321",
     };
 
     await accessCodeDao.put(token);
@@ -97,21 +95,20 @@ describe("login", () => {
 
 describe("pre-refresh workflow", () => {
   const refreshed_by = "the old refresh token";
-  const tokens: AccessToken = {
+  const tokens: WedgiesOAuthToken = {
     access: "access token",
     refresh: "refresh token",
-    user: "user token"
   };
 
   test("put and get the pre-refreshed token", async () => {
     const preRefreshedToken = {
       refreshed_by,
-      ...tokens
+      ...tokens,
     };
 
     await accessCodeDao.putPreRefreshedTokens({
       refreshed_by,
-      ...tokens
+      ...tokens,
     });
     const retrievedTokens = await accessCodeDao.getPreRefreshedToken(refreshed_by);
     expect(retrievedTokens).toEqual(preRefreshedToken);
