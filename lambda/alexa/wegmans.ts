@@ -7,7 +7,7 @@ import { WegmansDao } from "../../lib/WegmansDao";
 import { accessCodeDao } from "../../lib/AccessCodeDao";
 import { WegmansService } from "../../lib/WegmansService";
 import { cancelAllRequests } from "../../lib/CancelAllRequestsUtils";
-import { unwrapWegmansTokens } from "../../models/AccessToken";
+import { unwrapWedgiesToken } from "../../models/AccessToken";
 import { logDuration } from "../../lib/Logger";
 
 //TODO: support adding quantities: "add 5 goat cheeses"
@@ -35,7 +35,7 @@ export const splashResponse: RequestHandler = {
     return Promise.resolve(
       handlerInput.responseBuilder.speak("To use the skill, ask wedgies to add something to your list.").getResponse()
     );
-  }
+  },
 };
 
 export const addToShoppingList: RequestHandler = {
@@ -67,7 +67,7 @@ export const addToShoppingList: RequestHandler = {
     const productQuery = intent.slots![PRODUCT_SLOT].value || "";
 
     const wegmansTokens =
-      unwrapWegmansTokens(wrappedWegmansTokens, config.get("jwtSecret")) ||
+      unwrapWedgiesToken(wrappedWegmansTokens, config.get("jwtSecret")) ||
       (await logDuration("getTokens", wegmansService.getFreshTokensOrLogin(wrappedWegmansTokens)));
 
     const responseMessage = await wegmansService.handleAddtoShoppingList(
@@ -77,7 +77,7 @@ export const addToShoppingList: RequestHandler = {
     );
 
     return handlerInput.responseBuilder.speak(responseMessage).getResponse();
-  }
+  },
 };
 
 export const testAuth: RequestHandler = {
@@ -88,10 +88,7 @@ export const testAuth: RequestHandler = {
   },
   async handle(handlerInput: HandlerInput): Promise<Response> {
     return Promise.resolve(
-      handlerInput.responseBuilder
-        .speak(`Auth yoself please`)
-        .withLinkAccountCard()
-        .getResponse()
+      handlerInput.responseBuilder.speak(`Auth yoself please`).withLinkAccountCard().getResponse()
     );
-  }
+  },
 };

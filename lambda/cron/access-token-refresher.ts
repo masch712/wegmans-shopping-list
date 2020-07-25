@@ -4,12 +4,13 @@ import { WegmansDao } from "../../lib/WegmansDao";
 import { config } from "../../lib/config";
 import { logger, logDuration as logTime } from "../../lib/Logger";
 import {
-  getStoreIdFromTokens,
   isAccessTokenExpired,
-  getUsernameFromToken,
+  getUserIdFromToken,
   decodeAccess,
-  AccessToken,
-  getMostRecentlyIssuedToken
+  WedgiesOAuthToken,
+  getMostRecentlyIssuedToken,
+  unwrapWedgiesToken,
+  wrapWegmansTokens,
 } from "../../models/AccessToken";
 import * as _ from "lodash";
 
@@ -33,24 +34,27 @@ export async function handler() {
   const wegmansDao = await wegmansDaoPromise;
   logger().debug("getAllAccessTokens");
   const allTokens = await accessCodeDao.getAllAccessTokens();
-  const tokensByUsername = _.groupBy(allTokens, getUsernameFromToken);
+  const tokensByUsername = _.groupBy(allTokens, getUserIdFromToken);
 
   for (const username of _.keys(tokensByUsername)) {
-    const tokensForUser = tokensByUsername[username] as AccessToken[];
+    const tokensForUser = tokensByUsername[username] as WedgiesOAuthToken[];
 
     // For each set of tokens in the primary table, pre-refresh them into the pre-refreshed table
     // NOTE: we don't need to refresh the pre-refreshed tokens; auth-server is responsible for persisting
     // pre-refreshed tokens to the primary tables when the tokens go into circulation.
     for (const tokens of tokensForUser) {
       try {
-        const freshTokens = await wegmansDao.refreshTokens(tokens.refresh, tokens.user);
+        const jwtSecret = config.get("jwtSecret");
+        const wedgiesTokens = unwrapWedgiesToken(tokens.access, jwtSecret);
+        const freshWegmansTokens = await wegmansDao.refreshTokens(wedgiesTokens);
+        const freshWedgiesTokens = wrapWegmansTokens(freshWegmansTokens, jwtSecret);
 
         // Put the fresh tokens in the pre-refreshed table
         await logTime(
           "putPreRefreshedTokens",
           accessCodeDao.putPreRefreshedTokens({
-            ...freshTokens,
-            refreshed_by: tokens.refresh
+            ...freshWedgiesTokens,
+            refreshed_by: tokens.refresh,
           })
         );
       } catch (err) {

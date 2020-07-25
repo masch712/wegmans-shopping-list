@@ -1,6 +1,6 @@
 import * as _ from "lodash";
 import * as request from "./CancellableRequest";
-import { AccessToken } from "../models/AccessToken";
+import { WedgiesOAuthToken } from "../models/AccessToken";
 import { Product } from "../models/Product";
 import { logger, logDuration } from "./Logger";
 import { Response, CookieJar } from "request";
@@ -18,7 +18,7 @@ import {
 } from "../lambda/workers/SearchThenAddToShoppingList";
 import jsdom = require("jsdom");
 import jqueryBase = require("jquery");
-import { BrowserLoginTokens, toCookieJar } from "../models/BrowserLoginTokens";
+import { BrowserLoginTokens, toCookieJar, CookieStringByKey } from "../models/BrowserLoginTokens";
 import { deprecate } from "util";
 interface OrderHistoryResponseItem {
   LastPurchaseDate: string;
@@ -57,13 +57,14 @@ export class WegmansDao {
     this.searchThenAddToShoppingListWorkQueue = new BasicAsyncQueueClient(searchThenAddToShoppingListWorkType());
   }
 
-  async login(cookieJar: CookieJar, email: string, password: string): Promise<BrowserLoginTokens> {
+  async login(email: string, password: string): Promise<BrowserLoginTokens> {
     // 1. Request a login page (oath2/v2.0/authorize)
     // 2. Scrape out the needful codes from the response (jquery )
     // 3. Build a login request
     // 4. Capture the token
 
     // 1.
+    const cookieJar = request.jar();
     const oauthRes = await request({
       method: "GET",
       url: "https://myaccount.wegmans.com/wegmansonline.onmicrosoft.com/oauth2/v2.0/authorize",
@@ -182,13 +183,20 @@ export class WegmansDao {
 
     const tokens: BrowserLoginTokens = {
       session_token: JSON.parse(userSessions.body).session_token,
-      cookies: cookieJar.getCookies("https://shop.wegmans.com").map((c) => c.toString()),
+      cookies: this.serializeCookieJar(cookieJar),
     };
     if (!tokens) {
       throw new Error("Expected tokens by now; where they at?");
     }
 
     return tokens;
+  }
+
+  private serializeCookieJar(cookieJar: CookieJar): CookieStringByKey {
+    return cookieJar.getCookies("https://shop.wegmans.com").reduce<CookieStringByKey>((prev, curr) => {
+      prev[curr.key] = curr.toString();
+      return prev;
+    }, {});
   }
 
   // seems like we can refresh tokens by sending a GET to /user which sets a new session-prd-weg
@@ -202,7 +210,7 @@ export class WegmansDao {
 
     return {
       session_token: JSON.parse(userSessions.body).session_token,
-      cookies: cookieJar.getCookies("https://shop.wegmans.com").map((c) => c.toString()),
+      cookies: this.serializeCookieJar(cookieJar),
     };
   }
 
@@ -363,7 +371,11 @@ export class WegmansDao {
     return shoppingListId;
   }
 
-  async enqueue_searchThenAddProductToShoppingList(accessToken: AccessToken, productQuery: string, quantity: number) {
+  async enqueue_searchThenAddProductToShoppingList(
+    accessToken: WedgiesOAuthToken,
+    productQuery: string,
+    quantity: number
+  ) {
     await logDuration(
       "enqueue_searchAndAddProductToShoppingList",
       this.searchThenAddToShoppingListWorkQueue.enqueue({

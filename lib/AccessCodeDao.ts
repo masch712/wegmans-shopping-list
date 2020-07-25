@@ -1,5 +1,5 @@
 import * as AWS from "aws-sdk";
-import { AccessToken, PreRefreshedAccessToken } from "../models/AccessToken";
+import { WedgiesOAuthToken, PreRefreshedAccessToken } from "../models/AccessToken";
 import { config } from "./config";
 import { DynamoDao } from "./DynamoDao";
 export const TABLENAME_TOKENSBYCODE = config.get("aws.dynamodb.tableNames.TOKENSBYCODE");
@@ -8,7 +8,7 @@ export const TABLENAME_TOKENSBYREFRESH = config.get("aws.dynamodb.tableNames.TOK
 export const TABLENAME_PREREFRESHEDTOKENSBYREFRESH = config.get("aws.dynamodb.tableNames.PREREFRESHEDTOKENSBYREFRESH");
 
 AWS.config.update({
-  region: "us-east-1"
+  region: "us-east-1",
 });
 
 //TODO: clean out tables periodically
@@ -16,66 +16,66 @@ AWS.config.update({
 export const tableTokensByCode: AWS.DynamoDB.CreateTableInput = {
   TableName: TABLENAME_TOKENSBYCODE,
   KeySchema: [
-    { AttributeName: "access_code", KeyType: "HASH" } // Partition key
+    { AttributeName: "access_code", KeyType: "HASH" }, // Partition key
   ],
   AttributeDefinitions: [{ AttributeName: "access_code", AttributeType: "S" }],
   ProvisionedThroughput: {
     ReadCapacityUnits: 10,
-    WriteCapacityUnits: 10
-  }
+    WriteCapacityUnits: 10,
+  },
 };
 
 export const tableTokensByRefresh: AWS.DynamoDB.CreateTableInput = {
   TableName: TABLENAME_TOKENSBYREFRESH,
   KeySchema: [
-    { AttributeName: "refresh", KeyType: "HASH" } // Partition key
+    { AttributeName: "refresh", KeyType: "HASH" }, // Partition key
   ],
   AttributeDefinitions: [{ AttributeName: "refresh", AttributeType: "S" }],
   ProvisionedThroughput: {
     ReadCapacityUnits: 10,
-    WriteCapacityUnits: 10
-  }
+    WriteCapacityUnits: 10,
+  },
 };
 
 export const tableTokensByAccessToken: AWS.DynamoDB.CreateTableInput = {
   TableName: TABLENAME_TOKENSBYACCESS,
   KeySchema: [
-    { AttributeName: "access", KeyType: "HASH" } // Partition key
+    { AttributeName: "access", KeyType: "HASH" }, // Partition key
   ],
   AttributeDefinitions: [{ AttributeName: "access", AttributeType: "S" }],
   ProvisionedThroughput: {
     ReadCapacityUnits: 10,
-    WriteCapacityUnits: 10
-  }
+    WriteCapacityUnits: 10,
+  },
 };
 
 export const tablePreRefreshedTokensByRefresh: AWS.DynamoDB.CreateTableInput = {
   TableName: TABLENAME_PREREFRESHEDTOKENSBYREFRESH,
   KeySchema: [
-    { AttributeName: "refreshed_by", KeyType: "HASH" } // Partition key; the refresh token that was used to generate these tokens.
+    { AttributeName: "refreshed_by", KeyType: "HASH" }, // Partition key; the refresh token that was used to generate these tokens.
   ],
   AttributeDefinitions: [{ AttributeName: "refreshed_by", AttributeType: "S" }],
   ProvisionedThroughput: {
     ReadCapacityUnits: 10,
-    WriteCapacityUnits: 10
-  }
+    WriteCapacityUnits: 10,
+  },
 };
 
 export class AccessCodeDao extends DynamoDao {
-  async getAllAccessTokens(): Promise<AccessToken[]> {
+  async getAllAccessTokens(): Promise<WedgiesOAuthToken[]> {
     const dbTokens = await this.docClient
       .scan({
-        TableName: TABLENAME_TOKENSBYACCESS
+        TableName: TABLENAME_TOKENSBYACCESS,
       })
       .promise();
-    return dbTokens.Items as AccessToken[];
+    return dbTokens.Items as WedgiesOAuthToken[];
   }
 
   async deleteRefreshCode(refresh: string): Promise<void> {
     await this.docClient
       .delete({
         TableName: TABLENAME_TOKENSBYREFRESH,
-        Key: { refresh }
+        Key: { refresh },
       })
       .promise();
   }
@@ -84,7 +84,7 @@ export class AccessCodeDao extends DynamoDao {
     await this.docClient
       .delete({
         TableName: TABLENAME_TOKENSBYACCESS,
-        Key: { access }
+        Key: { access },
       })
       .promise();
   }
@@ -101,53 +101,53 @@ export class AccessCodeDao extends DynamoDao {
     tableTokensByCode,
     tableTokensByRefresh,
     tableTokensByAccessToken,
-    tablePreRefreshedTokensByRefresh
+    tablePreRefreshedTokensByRefresh,
   ];
 
-  async getTokensByCode(code: string): Promise<AccessToken> {
+  async getTokensByCode(code: string): Promise<WedgiesOAuthToken> {
     const dbTokens = await this.docClient
       .get({
         Key: {
-          access_code: code
+          access_code: code,
         },
-        TableName: TABLENAME_TOKENSBYCODE
+        TableName: TABLENAME_TOKENSBYCODE,
       })
       .promise();
 
-    return Promise.resolve(dbTokens.Item as AccessToken);
+    return Promise.resolve(dbTokens.Item as WedgiesOAuthToken);
   }
 
-  async getTokensByAccess(access: string): Promise<AccessToken> {
+  async getTokensByAccess(access: string): Promise<WedgiesOAuthToken> {
     const dbTokens = await this.docClient
       .get({
         Key: { access },
-        TableName: TABLENAME_TOKENSBYACCESS
+        TableName: TABLENAME_TOKENSBYACCESS,
       })
       .promise();
 
-    return Promise.resolve(dbTokens.Item as AccessToken);
+    return Promise.resolve(dbTokens.Item as WedgiesOAuthToken);
   }
 
-  async getTokensByRefresh(refreshToken: string): Promise<AccessToken> {
+  async getTokensByRefresh(refreshToken: string): Promise<WedgiesOAuthToken> {
     const dbTokens = await this.docClient
       .get({
         Key: {
-          refresh: refreshToken
+          refresh: refreshToken,
         },
-        TableName: TABLENAME_TOKENSBYREFRESH
+        TableName: TABLENAME_TOKENSBYREFRESH,
       })
       .promise();
 
-    return Promise.resolve(dbTokens.Item as AccessToken);
+    return Promise.resolve(dbTokens.Item as WedgiesOAuthToken);
   }
 
   async getPreRefreshedToken(refreshedByRefreshToken: string) {
     const dbTokens = await this.docClient
       .get({
         Key: {
-          refreshed_by: refreshedByRefreshToken
+          refreshed_by: refreshedByRefreshToken,
         },
-        TableName: TABLENAME_PREREFRESHEDTOKENSBYREFRESH
+        TableName: TABLENAME_PREREFRESHEDTOKENSBYREFRESH,
       })
       .promise();
     //TODO: what if no token?  what do we get back from dynamo? what do we return?
@@ -158,17 +158,17 @@ export class AccessCodeDao extends DynamoDao {
     await this.docClient
       .put({
         Item: item,
-        TableName: TABLENAME_PREREFRESHEDTOKENSBYREFRESH
+        TableName: TABLENAME_PREREFRESHEDTOKENSBYREFRESH,
       })
       .promise();
   }
 
-  async put(item: AccessToken): Promise<void> {
+  async put(item: WedgiesOAuthToken): Promise<void> {
     const tokensByCodePromise = item.access_code
       ? this.docClient
           .put({
             Item: item,
-            TableName: TABLENAME_TOKENSBYCODE
+            TableName: TABLENAME_TOKENSBYCODE,
           })
           .promise()
           .then(() => {})
@@ -177,14 +177,14 @@ export class AccessCodeDao extends DynamoDao {
     const tokensByRefreshTokenPromise = this.docClient
       .put({
         Item: item,
-        TableName: TABLENAME_TOKENSBYREFRESH
+        TableName: TABLENAME_TOKENSBYREFRESH,
       })
       .promise();
 
     const tokensByAccessTokenPromise = this.docClient
       .put({
         Item: item,
-        TableName: TABLENAME_TOKENSBYACCESS
+        TableName: TABLENAME_TOKENSBYACCESS,
       })
       .promise();
 
@@ -195,7 +195,7 @@ export class AccessCodeDao extends DynamoDao {
     const result = await this.docClient
       .delete({
         TableName: TABLENAME_TOKENSBYCODE,
-        Key: { access_code }
+        Key: { access_code },
       })
       .promise();
 
@@ -206,7 +206,7 @@ export class AccessCodeDao extends DynamoDao {
     await this.docClient
       .delete({
         TableName: TABLENAME_PREREFRESHEDTOKENSBYREFRESH,
-        Key: { refreshed_by }
+        Key: { refreshed_by },
       })
       .promise();
 

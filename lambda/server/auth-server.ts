@@ -8,9 +8,16 @@ import { config } from "../../lib/config";
 import { decryptionPromise } from "../../lib/decrypt-config";
 import { logger, logDuration } from "../../lib/Logger";
 import { WegmansDao } from "../../lib/WegmansDao";
-import { AccessToken, wrapWegmansTokens, isAccessTokenExpired, unwrapWegmansTokens } from "../../models/AccessToken";
+import {
+  WedgiesOAuthToken,
+  isAccessTokenExpired,
+  unwrapWedgiesToken as unwrapWedgiesTokens,
+  wrapWegmansTokens,
+  secondsTilExpiry,
+} from "../../models/AccessToken";
 import { BrowserLoginTokens } from "../../models/BrowserLoginTokens";
 import request = require("request");
+import { Cookie } from "tough-cookie";
 
 const wegmansDaoPromise = decryptionPromise.then(() => new WegmansDao(config.get("wegmans.apikey")));
 
@@ -37,9 +44,9 @@ export const generateAccessCode: APIGatewayProxyHandler = async (event): Promise
 
   const code = uuid();
   const body = JSON.parse(event.body);
+  const jwtSecret = config.get("jwtSecret");
   const username = body.username;
   const password = body.password;
-  const cookieJar = request.jar();
   const wegmansDao = await wegmansDaoPromise;
   logger().debug("Got wegmans DAO.  Logging in");
 
@@ -49,46 +56,21 @@ export const generateAccessCode: APIGatewayProxyHandler = async (event): Promise
   if (username === "test") {
     logger().debug("Test login found");
     wegmansTokens = {
-      cookies: ["session_prd_weg" + uuid()],
+      cookies: { session_prd_weg: "session_prd_weg" + uuid() },
       session_token: "session_token" + uuid(),
     };
   } else {
-    wegmansTokens = await wegmansDao.login(cookieJar, username, password);
+    wegmansTokens = await wegmansDao.login(username, password);
   }
 
-  const now = Math.floor(new Date().getTime() / 1000);
-  // tslint:disable-next-line:variable-name
-  const expires_in = config.get("jwtOverrideExpiresInSeconds") || jwt.exp - now;
-  logger().debug("jwt.exp: " + jwt.exp);
-  logger().debug("now: " + now);
-  logger().debug("expires_in: " + expires_in);
-
-  const wedgiesTokens: AccessToken = {
-    access_code: code,
-    access: sign({
-      exp: config.get("jwtOverrideExpiresInSeconds") || decodedWegmansAccessToken.exp.valueOf() / 1000,
-      iat: decodedWegmansAccessToken.iat.valueOf() / 1000,
-      iss: "wedgies",
-      sub: getUsernameFromToken(token),
-      _access: token.access,
-      _user: token.user,
-      _refresh: token.refresh,
-    }),
-  };
+  const wedgiesTokens = wrapWegmansTokens(wegmansTokens, jwtSecret);
 
   logger().debug("Login resolved");
-  const accessCodeTableItem: AccessToken = {
-    access_code: code,
-
-    access: wegmansTokens.access,
-    refresh: wegmansTokens.refresh,
-    user: wegmansTokens.user,
-  };
 
   await accessCodeDao.initTables();
 
-  logger().debug("Putting accesscodetableitem");
-  await accessCodeDao.put(accessCodeTableItem);
+  logger().debug("Putting wedgiesTokens to db");
+  await accessCodeDao.put(wedgiesTokens);
 
   return {
     body: JSON.stringify({
@@ -126,15 +108,16 @@ export const getTokens: APIGatewayProxyHandler = async (event): Promise<APIGatew
 
   const body = querystring.parse(event.body);
   logger().debug("getting tokens");
-  let wegmansTokens: AccessToken | null = null;
+  let freshWedgiesTokens: WedgiesOAuthToken | null = null;
   let deletePromise;
+  const jwtSecret = config.get("jwtSecret");
 
   // If Alexa is sending us an access_code and waants tokens, that means we're finishing up account linking.
   // Get the tokens and delete the access code; don't need it again.
   // https://developer.amazon.com/docs/account-linking/configure-authorization-code-grant.html
   if (body.code) {
     logger().debug("getting token by code");
-    wegmansTokens = await accessCodeDao.getTokensByCode(body.code as string);
+    freshWedgiesTokens = await accessCodeDao.getTokensByCode(body.code as string);
 
     logger().debug("deleting access code");
     deletePromise = accessCodeDao
@@ -147,68 +130,61 @@ export const getTokens: APIGatewayProxyHandler = async (event): Promise<APIGatew
   if (body.refresh_token) {
     const wegmansDao = await wegmansDaoPromise;
     let cleanupOldPreRefreshedTokensPromise = Promise.resolve();
-    const oldWegmansTokens =
-      unwrapWegmansTokens(body.refresh_token as string, config.get("jwtSecret")) ||
-      (await logDuration("getTokensByRefresh", accessCodeDao.getTokensByRefresh(body.refresh_token as string)));
+    // Wedgies tokens should refresh in sync with wegmans tokens
+    const oldWedgiesTokens = await logDuration(
+      "getTokensByRefresh",
+      accessCodeDao.getTokensByRefresh(body.refresh_token as string)
+    );
+
     if (config.get("usePreRefreshedTokens")) {
       // First try gettting wegmans tokens from the pre-refreshed tokens table
       const preRefreshedTokens = await logDuration(
         "getPreRefreshedToken",
-        accessCodeDao.getPreRefreshedToken(oldWegmansTokens.refresh)
+        accessCodeDao.getPreRefreshedToken(oldWedgiesTokens.refresh)
       );
       if (preRefreshedTokens) {
         if (!isAccessTokenExpired(preRefreshedTokens)) {
-          wegmansTokens = {
+          freshWedgiesTokens = {
             access: preRefreshedTokens.access,
             refresh: preRefreshedTokens.refresh,
-            user: preRefreshedTokens.user,
           };
         }
         cleanupOldPreRefreshedTokensPromise = logDuration(
           "cleanupOldPreRefreshedTokens",
-          accessCodeDao.deletePreRefreshedTokens(oldWegmansTokens.refresh)
+          accessCodeDao.deletePreRefreshedTokens(oldWedgiesTokens.refresh)
         );
       }
     }
-    if (!wegmansTokens) {
-      wegmansTokens = await logDuration(
-        "refreshTokens",
-        wegmansDao.refreshTokens(oldWegmansTokens.refresh, oldWegmansTokens.user)
+
+    if (!freshWedgiesTokens) {
+      const oldWegmansTokens = unwrapWedgiesTokens(oldWedgiesTokens.access, jwtSecret);
+      const freshWegmansTokens = await logDuration("refreshTokens", wegmansDao.refreshTokens(oldWegmansTokens));
+
+      freshWedgiesTokens = wrapWegmansTokens(freshWegmansTokens, jwtSecret);
+      await logDuration(
+        "saveAndCleanupTokens",
+        Promise.all([
+          accessCodeDao.put(freshWedgiesTokens),
+          accessCodeDao.deleteRefreshCode(oldWedgiesTokens.refresh),
+          accessCodeDao.deleteAccess(oldWedgiesTokens.access),
+          cleanupOldPreRefreshedTokensPromise,
+        ])
       );
     }
-
-    await logDuration(
-      "saveAndCleanupTokens",
-      Promise.all([
-        accessCodeDao.put(wegmansTokens),
-        accessCodeDao.deleteRefreshCode(oldWegmansTokens.refresh),
-        accessCodeDao.deleteAccess(oldWegmansTokens.access),
-        cleanupOldPreRefreshedTokensPromise,
-      ])
-    );
   }
 
-  if (!wegmansTokens || !wegmansTokens.access) {
+  if (!freshWedgiesTokens || !freshWedgiesTokens.access) {
     throw new Error("No access token found for given code");
   }
 
   logger().debug("got tokens");
+  const expires_in =
+    config.get("jwtOverrideExpiresInSeconds") || secondsTilExpiry(freshWedgiesTokens.access, jwtSecret);
 
-  // tslint:disable-next-line:no-any
-  const jwt = decode(wegmansTokens.access) as { [key: string]: any };
-  const now = Math.floor(new Date().getTime() / 1000);
-  // tslint:disable-next-line:variable-name
-  const expires_in = config.get("jwtOverrideExpiresInSeconds") || jwt.exp - now;
-  logger().debug("jwt.exp: " + jwt.exp);
-  logger().debug("now: " + now);
-  logger().debug("expires_in: " + expires_in);
-
-  const wrappedWegmansTokens = wrapWegmansTokens(wegmansTokens, config.get("jwtSecret"));
   const response: APIGatewayProxyResult = {
     body: JSON.stringify({
-      // The access token is a wapped JWT containing all the Wegmans JWt tokens.  This way our alexa skill will have access to the payloads of all those tokens (eg. for the storeId value in the user token).
-      access_token: wrappedWegmansTokens,
-      refresh_token: wrappedWegmansTokens,
+      access_token: freshWedgiesTokens.access,
+      refresh_token: freshWedgiesTokens.refresh,
       expires_in,
     }),
     statusCode: 200,

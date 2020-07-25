@@ -2,15 +2,17 @@ import { logger } from "../lib/Logger";
 import * as jwt from "jsonwebtoken";
 import * as _ from "lodash";
 import { config } from "../lib/config";
+import { BrowserLoginTokens } from "./BrowserLoginTokens";
+import { decode } from "punycode";
+import { Cookie } from "tough-cookie";
 
-export interface AccessToken {
+export interface WedgiesOAuthToken {
   access: string;
   refresh: string;
-  user: string;
   access_code?: string;
 }
 
-export interface PreRefreshedAccessToken extends AccessToken {
+export interface PreRefreshedAccessToken extends WedgiesOAuthToken {
   refreshed_by: string;
 }
 
@@ -20,48 +22,61 @@ export interface DecodedAccessToken {
   sub: string;
 }
 
-export interface WrappedWegmansTokens {
+export interface WrappedWegmansTokens extends BrowserLoginTokens {
   iss: string;
   exp: number;
   iat: number;
   sub: string;
-  _access: string;
-  _user: string;
-  _refresh: string;
 }
 
-export function wrapWegmansTokens(token: AccessToken, secret: string) {
-  const decodedWegmansAccessToken = decodeAccess(token.access);
-  const wrappedToken: WrappedWegmansTokens = {
-    ...decodedWegmansAccessToken,
-    exp: config.get("jwtOverrideExpiresInSeconds") || decodedWegmansAccessToken.exp.valueOf() / 1000,
-    iat: decodedWegmansAccessToken.iat.valueOf() / 1000,
-    iss: "wedgies",
-    sub: getUsernameFromToken(token),
-    _access: token.access,
-    _user: token.user,
-    _refresh: token.refresh,
+export function wrapWegmansTokens(wegmansTokens: BrowserLoginTokens, jwtSecret: string): WedgiesOAuthToken {
+  const nowEpochSecs = Math.floor(new Date().getTime() / 1000);
+  const expiryEpochSecs = (Cookie.parse(wegmansTokens.cookies.session_prd_weg)?.expiryTime() || 0) / 1000;
+  // tslint:disable-next-line:variable-name
+  logger().debug("expiryEpochSecs: " + expiryEpochSecs);
+  logger().debug("nowEpochSecs: " + nowEpochSecs);
+
+  return {
+    access: jwt.sign(
+      //TODO: make a type outta this and use it in getExpiresInSecondsFromAccessToken
+      {
+        exp: expiryEpochSecs,
+        iat: nowEpochSecs,
+        iss: "wedgies",
+        sub: 
+        ...wegmansTokens,
+      },
+      jwtSecret
+    ),
+    refresh: jwt.sign(
+      {
+        ...wegmansTokens,
+      },
+      jwtSecret
+    ),
   };
-
-  return jwt.sign(JSON.stringify(wrappedToken), secret);
 }
 
-export function unwrapWegmansTokens(wrappedJwt: string, secret: string): AccessToken | null {
-  // For backwards compatibility, in case wrappedJwt is just the accessToken itself, return null.
-  // TODO: delete this once everyone's wegmans tokens are refreshed with wedgies tokens
-  let wegmansTokens: AccessToken | null = null;
+export function secondsTilExpiry(accessToken: string, jwtSecret: string) {
+  const { exp, iat } = jwt.verify(accessToken, jwtSecret) as any;
+  return exp - iat;
+}
+
+export function unwrapWedgiesToken(wrappedJwt: string, secret: string): BrowserLoginTokens {
   let decodedWrappedToken: WrappedWegmansTokens | null = null;
 
   try {
     decodedWrappedToken = jwt.verify(wrappedJwt, secret) as WrappedWegmansTokens;
   } catch (err) {
     logger().error(err.message);
-    if (err.message === "invalid signature" || err.message === "jwt malformed") {
+    //TODO: do i need this shit??
+    /*if (err.message === "invalid signature" || err.message === "jwt malformed") {
       // If we try to unwrap a wegmans access token (valid JWT but signed by wegmans, not wedgies), we get 'invalid signature';
       // if we try to unwrap a refresh token (not a valid jwt) we get 'jwt malformed'
       // Either way, return null and let the requestor move on.
       //TODO: write contract tests against jsonwebtoken library asserting these error messages are accurate
-    } else if (err.message === "jwt expired") {
+    } else*/
+    if (err.message === "jwt expired") {
       // We don't care if it's expired here; let downstream function deal with that.
       decodedWrappedToken = jwt.decode(wrappedJwt) as WrappedWegmansTokens;
     } else {
@@ -69,12 +84,10 @@ export function unwrapWegmansTokens(wrappedJwt: string, secret: string): AccessT
     }
   }
 
-  wegmansTokens = decodedWrappedToken && {
-    access: decodedWrappedToken._access,
-    refresh: decodedWrappedToken._refresh,
-    user: decodedWrappedToken._user,
+  return {
+    cookies: decodedWrappedToken?.cookies,
+    session_token: decodedWrappedToken?.session_token,
   };
-  return wegmansTokens;
 }
 
 export function decodeAccess(accessToken: string): DecodedAccessToken {
@@ -86,8 +99,11 @@ export function decodeAccess(accessToken: string): DecodedAccessToken {
   };
 }
 
-export function getMostRecentlyIssuedToken(tokens: AccessToken[]) {
-  const sortedTokensForUser = _.sortBy(tokens, (token: AccessToken) => decodeAccess(token.access).iat.valueOf() * -1);
+export function getMostRecentlyIssuedToken(tokens: WedgiesOAuthToken[]) {
+  const sortedTokensForUser = _.sortBy(
+    tokens,
+    (token: WedgiesOAuthToken) => decodeAccess(token.access).iat.valueOf() * -1
+  );
 
   return sortedTokensForUser[0];
 }
@@ -98,7 +114,7 @@ export function getStoreIdFromuserToken(userFromJwt: string) {
   return Number.parseInt(storeId, 10);
 }
 
-export function getTokenInfo(token: AccessToken) {
+export function getTokenInfo(token: WedgiesOAuthToken) {
   const accessToken = jwt.decode(token.access) as { [key: string]: number }; // TODO: make a real JWT type?
   return {
     expiration: new Date(accessToken.exp * 1000),
@@ -106,16 +122,14 @@ export function getTokenInfo(token: AccessToken) {
   };
 }
 
-export function isAccessTokenExpired(token: AccessToken): boolean {
+export function isAccessTokenExpired(token: WedgiesOAuthToken): boolean {
   return getTokenInfo(token).expiration.valueOf() < new Date().valueOf();
 }
 
-export function getUsernameFromToken(token: AccessToken) {
+export function getUserIdFromToken(token: WedgiesOAuthToken) {
   return (jwt.decode(token.access) as any).sub;
 }
 
-export function getStoreIdFromTokens(token: AccessToken): number {
-  const userToken = jwt.decode(token.user) as { [key: string]: number }; // TODO: make a real JWT type?
-  const storeId = userToken!["wfm_profile_store"];
-  return storeId;
+export function getUserIdFromWegmansToken(token: BrowserLoginTokens) {
+  return (jwt.decode(token.session_token) as any).user_id;
 }

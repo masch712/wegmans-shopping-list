@@ -3,15 +3,15 @@ import { logDuration, logger } from "./Logger";
 import { productRequestHistoryDao } from "./ProductRequestHistoryDao";
 
 import {
-  getUsernameFromToken,
-  AccessToken,
-  getStoreIdFromTokens,
+  getUserIdFromToken,
+  WedgiesOAuthToken,
   isAccessTokenExpired,
   getTokenInfo,
+  wrapWegmansTokens,
+  unwrapWedgiesToken,
 } from "../models/AccessToken";
-
+import { BrowserLoginTokens, toCookieJar } from "../models/BrowserLoginTokens";
 import { WegmansDao } from "./WegmansDao";
-import { ProductSearch } from "./ProductSearch";
 import { AccessCodeDao } from "./AccessCodeDao";
 import { AccessTokenNotFoundLoggedEvent } from "../models/logged-events/AccessTokenNotFound";
 import { config } from "./config";
@@ -30,7 +30,7 @@ export class WegmansService {
     return this._wegmansDao;
   }
 
-  async searchForProductWithTimeout(productQuery: string, tokens: AccessToken, timeout: number) {
+  async searchForProductWithTimeout(productQuery: string, tokens: WedgiesOAuthToken, timeout: number) {
     let product;
     let didSearchTimeout = false;
     const searchStartTime = new Date().valueOf();
@@ -64,7 +64,7 @@ export class WegmansService {
 
     return { product, didSearchTimeout };
   }
-  async handleAddtoShoppingList(productQuery: string, tokens: AccessToken, shortCircuitMillis = 1500) {
+  async handleAddtoShoppingList(productQuery: string, tokens: WedgiesOAuthToken, shortCircuitMillis = 1500) {
     logger().debug(JSON.stringify({ shortCircuitMillis }));
     // Bail if we couldn't get tokens
     if (!tokens) {
@@ -72,11 +72,9 @@ export class WegmansService {
       return "Sorry, Wedgies is having trouble logging in to Wegmans.  Please try again later.";
     }
     logger().debug(JSON.stringify(getTokenInfo(tokens)));
-
     //TODO: the race should ONLY time the search bit.  Maybe just use bluebird?
     //      neeed to distinguish between search-fidining-no-product and timeout
     const searchStartTime = new Date().valueOf();
-
     const { product, didSearchTimeout } = await this.searchForProductWithTimeout(
       productQuery,
       tokens,
@@ -113,53 +111,51 @@ export class WegmansService {
       );
       msg = `Sorry, Wegmans doesn't sell ${productQuery}.`;
     }
-
     logger().info(new LoggedEvent("response").addProperty("msg", msg).toString());
     return msg;
   }
 
-  async searchForProduct(productQuery: string, tokens: AccessToken) {
-    const storeId = getStoreIdFromTokens(tokens);
+  async searchForProduct(productQuery: string, tokens: WedgiesOAuthToken): Promise<Product | void> {
+    toCookieJar(unwrapWedgiesToken(tokens.access, config.get("jwtSecret")));
+    // const storeId = getStoreIdFromTokens(tokens);
     // Find a product
-    const [orderHistoryResult, pastRequestedProduct] = await Promise.all([
-      logDuration("wegmansDao.getOrderHistory", this._wegmansDao.getOrderHistory(tokens.access, storeId)),
-      logDuration(
-        "productRequestHistoryDao.get",
-        productRequestHistoryDao.get(getUsernameFromToken(tokens), productQuery)
-      ),
-    ]);
-    const { orderedProducts, cacheUpdatePromise } = orderHistoryResult || {};
-    const product =
-      (pastRequestedProduct && pastRequestedProduct.chosenProduct) ||
-      (await logDuration(
-        "ProductSearch.searchForProductPreferHistory",
-        ProductSearch.searchForProductPreferHistory(orderedProducts || [], productQuery, storeId)
-      ));
-
-    if (cacheUpdatePromise) {
-      cacheUpdatePromise.then(() => logger().info("updated cache")); // TODO: do this in the background AFTER alexa has responded
-    }
-
-    // Store the search result for later
-    product && productRequestHistoryDao.put(getUsernameFromToken(tokens), productQuery, product);
-    return product;
+    // // const [orderHistoryResult, pastRequestedProduct] = await Promise.all([
+    // //   logDuration("wegmansDao.getOrderHistory", this._wegmansDao.getOrderHistory(tokens.access, storeId)),
+    // //   logDuration(
+    // //     "productRequestHistoryDao.get",
+    // //     productRequestHistoryDao.get(getUsernameFromToken(tokens), productQuery)
+    // //   ),
+    // // ]);
+    // // const { orderedProducts, cacheUpdatePromise } = orderHistoryResult || {};
+    // // const product =
+    // //   (pastRequestedProduct && pastRequestedProduct.chosenProduct) ||
+    // //   (await logDuration(
+    // //     "ProductSearch.searchForProductPreferHistory",
+    // //     ProductSearch.searchForProductPreferHistory(orderedProducts || [], productQuery, storeId)
+    // //   ));
+    // // if (cacheUpdatePromise) {
+    // //   cacheUpdatePromise.then(() => logger().info("updated cache")); // TODO: do this in the background AFTER alexa has responded
+    // // }
+    // // // Store the search result for later
+    // // product && productRequestHistoryDao.put(getUsernameFromToken(tokens), productQuery, product);
+    // return product;
   }
 
   async getFreshTokensOrLogin(accessToken?: string) {
-    // Get skill access token from request and match it up with wegmans auth tokens from dynamo
-    logger().debug(
-      new LoggedEvent("WegmansService.getTokensFromAccess").addProperty("accessToken", accessToken).toString()
-    );
-    let tokensPromise: Promise<AccessToken>;
+    const jwtSecret = config.get("jwtSecret");
+    // Get wedgies access token from request and match it up with wegmans tokens from db
+    let tokensPromise: Promise<WedgiesOAuthToken>;
     if (accessToken) {
       tokensPromise = this._accessCodeDao.getTokensByAccess(accessToken);
     } else {
-      //TODO: do both these approaches work?
       logger().info(new AccessTokenNotFoundLoggedEvent().toString());
-      // tokensPromise = this._wegmansDao.login(config.get("wegmans.email"), config.get("wegmans.password"));
+      tokensPromise = (async () => {
+        const wegmansTokens = await this._wegmansDao.login(config.get("wegmans.email"), config.get("wegmans.password"));
+        return wrapWegmansTokens(wegmansTokens, jwtSecret);
+      })();
     }
 
-    let tokens: AccessToken = { access: "fda", refresh: "asf", user: "asdf" }; //await tokensPromise;
+    let tokens: WedgiesOAuthToken = { access: "fda", refresh: "asf" };
 
     // HACK / TEMPORARY: If the token is expired, grab the pre-refreshed token
     // This shouldn't normally happen, because alexa should be refreshing tokens on its own by calling our auth-server lambda.
@@ -175,18 +171,20 @@ export class WegmansService {
         logger().debug(
           "preRefreshedToken was: " + (preRefreshedTokens && JSON.stringify(decode(preRefreshedTokens.access)))
         );
-        const freshTokens = await logDuration(
+        const freshWegmansTokens = await logDuration(
           "refreshingTokens",
-          this._wegmansDao.refreshTokens(tokens.refresh, tokens.user)
+          this._wegmansDao.refreshTokens(unwrapWedgiesToken(tokens.access, jwtSecret))
         );
+        const freshWedgiesTokens = wrapWegmansTokens(freshWegmansTokens, jwtSecret);
+
         await logDuration(
           "putPreRefreshedTokens",
           this._accessCodeDao.putPreRefreshedTokens({
             refreshed_by: tokens.refresh,
-            ...freshTokens,
+            ...freshWedgiesTokens,
           })
         );
-        tokens = freshTokens;
+        tokens = freshWedgiesTokens;
       } else {
         tokens = preRefreshedTokens;
       }
@@ -205,7 +203,7 @@ export class WegmansService {
     return this.wegmansDao.enqueue_addProductToShoppingList(accessToken, product, quantity, note);
   }
 
-  async enqueue_searchAndAddProductToShoppingList(accessToken: AccessToken, productQuery: string, quantity = 1) {
+  async enqueue_searchAndAddProductToShoppingList(accessToken: WedgiesOAuthToken, productQuery: string, quantity = 1) {
     return this.wegmansDao.enqueue_searchThenAddProductToShoppingList(accessToken, productQuery, quantity);
   }
 }
