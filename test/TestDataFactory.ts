@@ -45,6 +45,7 @@ export const tokenFactory = Factory.Sync.makeFactory<BrowserLoginTokens>({
     session_prd_weg: new Cookie({
       key: "session_prd_weg",
       value: `${i}`,
+      maxAge: 86400,
     }).toString(),
   })),
 });
