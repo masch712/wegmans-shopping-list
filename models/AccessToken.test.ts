@@ -35,9 +35,10 @@ describe("unwrapWegmansTokens", () => {
     const unwrappedTokens = unwrapWedgiesToken(wrappedTokens.access, secret);
     expect(unwrappedTokens).toEqual(fakeToken);
   });
-  it("returns null for token signed by someone else", () => {
-    const foreignToken = sign(JSON.stringify(fakeToken), secret + "___something more");
-    const unwrappedTokens = unwrapWedgiesToken(foreignToken, secret);
-    expect(unwrappedTokens).toBeNull();
+  it("throws for token signed by someone else", () => {
+    expect(() => {
+      const foreignToken = sign(JSON.stringify(fakeToken), secret + "___something more");
+      unwrapWedgiesToken(foreignToken, secret);
+    }).toThrow();
   });
 });
