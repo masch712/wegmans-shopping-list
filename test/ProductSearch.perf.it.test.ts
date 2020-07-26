@@ -15,51 +15,53 @@
 //   cacheUpdatePromise?: Promise<void>;
 // };
 
-// describe.skip("10 searches", async () => {
-//   const queries = [
-//     "grapefruit",
-//     "ice cream",
-//     "olive oil",
-//     "cheerios",
-//     "milk",
-//     "yogurt",
-//     "ground cinnamon",
-//     "all-purpose flour",
-//     "san pellegrino",
-//     "scotch whiskey"
-//   ];
-//   beforeAll(async () => {
-//     orderHistory = await wegmans.getOrderHistory(tokens.access, storeId);
-//     tokens = await wegmans.login(
-//       config.get("wegmans.email"),
-//       config.get("wegmans.password")
-//     );
-//     storeId = getStoreIdFromTokens(tokens);
-//     expect(tokens).toBeDefined();
-//   });
-//   const numTests = 3;
-//   for (const skuMax of _.rangeRight(1, numTests + 1)) {
-//     test(((100 * skuMax) / numTests).toString() + " of skus", async () => {
-//       const numSkus = skuMax * (orderHistory.orderedProducts.length / numTests);
-//       const trimmedOrderedProducts = _.slice(
-//         orderHistory.orderedProducts,
-//         0,
-//         numSkus
-//       );
-//       const durations: number[] = [];
-//       for (const query of queries) {
-//         const startTime = new Date().getTime();
-//         await ProductSearch.wegmansSearchSkus(
-//           trimmedOrderedProducts.map(op => op.sku),
-//           query,
-//           storeId
-//         );
-//         const endTime = new Date().getTime();
-//         durations.push(endTime - startTime);
-//       }
-
-//       console.log(_.mean(durations));
-//     });
-//   }
-//   return;
-// });
+describe("10 searches", () => {
+  it("just pass for now", () => {
+    expect(true).toBeTruthy();
+  });
+  //   const queries = [
+  //     "grapefruit",
+  //     "ice cream",
+  //     "olive oil",
+  //     "cheerios",
+  //     "milk",
+  //     "yogurt",
+  //     "ground cinnamon",
+  //     "all-purpose flour",
+  //     "san pellegrino",
+  //     "scotch whiskey"
+  //   ];
+  //   beforeAll(async () => {
+  //     orderHistory = await wegmans.getOrderHistory(tokens.access, storeId);
+  //     tokens = await wegmans.login(
+  //       config.get("wegmans.email"),
+  //       config.get("wegmans.password")
+  //     );
+  //     storeId = getStoreIdFromTokens(tokens);
+  //     expect(tokens).toBeDefined();
+  //   });
+  //   const numTests = 3;
+  //   for (const skuMax of _.rangeRight(1, numTests + 1)) {
+  //     test(((100 * skuMax) / numTests).toString() + " of skus", async () => {
+  //       const numSkus = skuMax * (orderHistory.orderedProducts.length / numTests);
+  //       const trimmedOrderedProducts = _.slice(
+  //         orderHistory.orderedProducts,
+  //         0,
+  //         numSkus
+  //       );
+  //       const durations: number[] = [];
+  //       for (const query of queries) {
+  //         const startTime = new Date().getTime();
+  //         await ProductSearch.wegmansSearchSkus(
+  //           trimmedOrderedProducts.map(op => op.sku),
+  //           query,
+  //           storeId
+  //         );
+  //         const endTime = new Date().getTime();
+  //         durations.push(endTime - startTime);
+  //       }
+  //       console.log(_.mean(durations));
+  //     });
+  //   }
+  //   return;
+});
