@@ -94,6 +94,7 @@ export class WegmansCdkStack extends cdk.Stack {
         // loggingLevel: apigw.MethodLoggingLevel.Info,
       },
     });
+    // TODO: why does the API GW trigger  have /test-invoke-stage/ in its path?  Should have /prod/
     const wegmansAuthResource = authServerApi.root.addResource("wegmans-auth");
     const accessCodeRsource = wegmansAuthResource.addResource("access-code");
     accessCodeRsource.addMethod("POST", new apigw.LambdaIntegration(authServerLambdaGenerateAccessCode));
