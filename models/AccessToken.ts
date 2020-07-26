@@ -31,7 +31,7 @@ export interface WrappedWegmansTokens extends BrowserLoginTokens {
 
 export function wrapWegmansTokens(wegmansTokens: BrowserLoginTokens, jwtSecret: string): WedgiesOAuthToken {
   const nowEpochSecs = Math.floor(new Date().getTime() / 1000);
-  const expiryEpochSecs = (Cookie.parse(wegmansTokens.cookies.session_prd_weg)?.expiryTime() || 0) / 1000;
+  const expiryEpochSecs = (Cookie.parse(wegmansTokens.cookies["session-prd-weg"])?.expiryTime() || 0) / 1000;
   // tslint:disable-next-line:variable-name
   logger().debug("expiryEpochSecs: " + expiryEpochSecs);
   logger().debug("nowEpochSecs: " + nowEpochSecs);

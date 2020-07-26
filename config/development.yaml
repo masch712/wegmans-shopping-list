@@ -12,10 +12,10 @@ aws:
   dynamodb:
     tableNamePrefix: dev
     tableNames:
-      TOKENSBYCODE: devWegmansTokensByAccessCode
-      TOKENSBYACCESS: devWegmansTokensByAccessToken
-      TOKENSBYREFRESH: devWegmansTokensByRefreshToken
-      PREREFRESHEDTOKENSBYREFRESH: devWegmansPreRefreshedTokensByRefreshToken
+      TOKENSBYCODE: devWedgiesTokensByAccessCode
+      TOKENSBYACCESS: devWedgiesTokensByAccessToken
+      TOKENSBYREFRESH: devWedgiesTokensByRefreshToken
+      PREREFRESHEDTOKENSBYREFRESH: devWedgiesPreRefreshedTokensByRefreshToken
       PRODUCTREQUESTHISTORY: devWegmansProductRequestHistory
       ORDERHISTORYBYUSER: devWegmansOrderHistoryByUser
 

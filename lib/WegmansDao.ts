@@ -70,7 +70,7 @@ export class WegmansDao {
     });
     // We gotta execute some js in the response page in order to get the "tx" query param for the next step
     const jquery = jqueryBase(new jsdom.JSDOM(oauthRes).window);
-    const jsDataContainer = jquery.find("head script[data-container]")[0].text;
+    const jsDataContainer = jquery.find("head script[data-container]")[0].textContent;
     const settings = eval("'use strict'; " + jsDataContainer + " SETTINGS;");
     const tx = settings.transId;
 

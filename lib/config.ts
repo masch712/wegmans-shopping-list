@@ -79,22 +79,22 @@ export const config = convict({
         TOKENSBYCODE: {
           doc: "Table for blah",
           format: String,
-          default: "WegmansTokensByAccessCode",
+          default: "WedgiesTokensByAccessCode",
         },
         TOKENSBYACCESS: {
           doc: "Table for blah",
           format: String,
-          default: "WegmansTokensByAccessToken",
+          default: "WedgiesTokensByAccessToken",
         },
         TOKENSBYREFRESH: {
           doc: "Table for blah",
           format: String,
-          default: "WegmansTokensByRefreshToken",
+          default: "WedgiesTokensByRefreshToken",
         },
         PREREFRESHEDTOKENSBYREFRESH: {
           doc: "Table for blah",
           format: String,
-          default: "WegmansPreRefreshedTokensByRefreshToken",
+          default: "WedgiesPreRefreshedTokensByRefreshToken",
         },
         PRODUCTREQUESTHISTORY: {
           doc: "Table for alexa request history",
@@ -105,6 +105,7 @@ export const config = convict({
     },
     lambda: {
       functionNames: {
+        //TODO: this seems silly?  just have a "prefix" config instead?
         "cdk-wegmans-shopping-list": {
           doc: "lambda function name",
           format: String,

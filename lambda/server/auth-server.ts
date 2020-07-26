@@ -56,13 +56,13 @@ export const generateAccessCode: APIGatewayProxyHandler = async (event): Promise
   if (username === "test") {
     logger().debug("Test login found");
     wegmansTokens = {
-      cookies: { session_prd_weg: "session_prd_weg" + uuid() },
+      cookies: { "session-prd-weg": "session-prd-weg" + uuid() },
       session_token: "session_token" + uuid(),
     };
   } else {
     wegmansTokens = await wegmansDao.login(username, password);
   }
-
+  logger().debug(JSON.stringify({ wegmansTokens }));
   const wedgiesTokens = wrapWegmansTokens(wegmansTokens, jwtSecret);
 
   logger().debug("Login resolved");

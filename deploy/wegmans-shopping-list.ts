@@ -6,15 +6,20 @@ import * as sqs from "@aws-cdk/aws-sqs";
 import * as iam from "@aws-cdk/aws-iam";
 import * as events from "@aws-cdk/aws-events";
 import * as events_targets from "@aws-cdk/aws-events-targets";
+import { RemovalPolicy } from "@aws-cdk/core/lib/removal-policy";
 import { SqsEventSource } from "@aws-cdk/aws-lambda-event-sources";
 import {
   tableTokensByAccessToken,
   tableTokensByRefresh,
   tableTokensByCode,
   tablePreRefreshedTokensByRefresh,
+  TABLENAME_TOKENSBYACCESS,
+  TABLENAME_TOKENSBYREFRESH,
+  TABLENAME_TOKENSBYCODE,
+  TABLENAME_PREREFRESHEDTOKENSBYREFRESH,
 } from "../lib/AccessCodeDao";
-import { PolicyStatement, Effect } from "@aws-cdk/aws-iam";
-import { tableOrderHistoryByUser } from "../lib/OrderHistoryDao";
+import { PolicyStatement, Effect, ServicePrincipal } from "@aws-cdk/aws-iam";
+import { tableOrderHistoryByUser, TABLENAME_ORDERHISTORYBYUSER } from "../lib/OrderHistoryDao";
 import { WorkType } from "../lib/BasicAsyncQueue";
 import { config } from "../lib/config";
 import { TABLENAME_PRODUCTREQUESTHISTORY, tableProductRequestHistory } from "../lib/ProductRequestHistoryDao";
@@ -53,11 +58,17 @@ export class WegmansCdkStack extends cdk.Stack {
       environment.LIVE_RUN = "1";
     }
 
-    new WegmansLambda(this, "AlexaLambdaWegmansShoppingList", {
+    const alexaSkillLambda = new WegmansLambda(this, "AlexaLambdaWegmansShoppingList", {
       handler: "dist/lambda/alexa/index.handler",
       functionName: config.get("aws.lambda.functionNames.cdk-wegmans-shopping-list"),
       memorySize: 384,
       environment,
+    });
+
+    alexaSkillLambda.addPermission("alexaTrigger", {
+      principal: new ServicePrincipal("alexa-appkit.amazon.com"),
+      action: "lambda:InvokeFunction",
+      eventSourceToken: config.get("alexa.skill.id"),
     });
 
     const authServerLambdaGenerateAccessCode = new WegmansLambda(this, "LambdaWegmansAuthServerGenerateAccessCode", {
@@ -95,31 +106,31 @@ export class WegmansCdkStack extends cdk.Stack {
     const dynamoOrderHistoryTables = dynamoTablesFromSdk(this, [
       {
         tableParams: tableOrderHistoryByUser,
-        resourceName: "WegmansDynamoOrderHistoryByUser", // TODO: dont need custom resourcenames anymore because tablenames match resourcenames
+        resourceName: TABLENAME_ORDERHISTORYBYUSER, // TODO: dont need custom resourcenames anymore because tablenames match resourcenames
       },
     ]);
     const dynamoTokensTables = dynamoTablesFromSdk(this, [
       {
         tableParams: tableTokensByAccessToken,
-        resourceName: "WegmansTokensByAccessToken",
+        resourceName: TABLENAME_TOKENSBYACCESS,
       },
       {
         tableParams: tableTokensByRefresh,
-        resourceName: "WegmansTokensByRefreshToken",
+        resourceName: TABLENAME_TOKENSBYREFRESH,
       },
       {
         tableParams: tableTokensByCode,
-        resourceName: "WegmansTokensByAccessCode",
+        resourceName: TABLENAME_TOKENSBYCODE,
       },
       {
         tableParams: tablePreRefreshedTokensByRefresh,
-        resourceName: "WegmansPreRefreshedTokens",
+        resourceName: TABLENAME_PREREFRESHEDTOKENSBYREFRESH,
       },
     ]);
     const dynamoProductRequestHistoryTables = dynamoTablesFromSdk(this, [
       {
         tableParams: tableProductRequestHistory,
-        resourceName: "WegmansDynamoProductRequestHistory",
+        resourceName: TABLENAME_PRODUCTREQUESTHISTORY,
       },
     ]);
     //TODO: delete the dynamo autoscaling alarms in cloudwatch, they cost like $3.20 a month
@@ -267,6 +278,7 @@ class WegmansLambda extends lambda.Function {
     new LogGroup(scope, id + "Logs", {
       logGroupName: `/aws/lambda/${this.functionName}`,
       retention: 7,
+      removalPolicy: RemovalPolicy.DESTROY,
     });
   }
 
@@ -312,6 +324,7 @@ class QueueAndWorker {
     new LogGroup(scope, lambdaId + "Logs", {
       logGroupName: `/aws/lambda/${functionName}`,
       retention: RetentionDays.ONE_WEEK,
+      removalPolicy: RemovalPolicy.DESTROY,
     });
 
     this._worker = new lambda.Function(scope, lambdaId, {

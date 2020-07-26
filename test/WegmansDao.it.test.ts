@@ -14,7 +14,7 @@ jest.setTimeout(3000000);
 //Skip these normally; dont wanna spam wegmans
 describe("wegmans dao", () => {
   const wegmans = new WegmansDao(config.get("wegmans.apikey"));
-  const cookieJar = request.jar();
+  let cookieJar = request.jar();
   let tokens: BrowserLoginTokens;
   beforeAll(async () => {
     tokens = await wegmans.login(config.get("wegmans.email"), config.get("wegmans.password"));
@@ -28,19 +28,21 @@ describe("wegmans dao", () => {
     await 1;
   });
 
-  test.only("deserialized serialized cookie is usable", async () => {
+  test("deserialized serialized cookie is usable", async () => {
     const deserializedCookies = toCookieJar(tokens);
 
     const products = await wegmans.searchProducts(deserializedCookies, "strawberries", 10);
     expect(products).toBeTruthy();
   });
 
-  test.only("refreshed cookie is usable", async () => {
+  test("refreshed cookie is usable", async () => {
     const freshTokens = await wegmans.refreshTokens(tokens);
     expect(freshTokens).not.toEqual(tokens);
     const freshCookieJar = toCookieJar(freshTokens);
     const products = await wegmans.searchProducts(freshCookieJar, "strawberries", 10);
     expect(products).toBeTruthy();
+    tokens = freshTokens;
+    cookieJar = freshCookieJar;
   });
 
   describe("search products", () => {
@@ -57,18 +59,6 @@ describe("wegmans dao", () => {
   });
   //TODO: revive the product search regression suite for the new API
 
-  // test.only("refreshes token", async () => {
-  //   const freshTokens = await wegmans.refreshTokens(tokens.refresh, tokens.user);
-  //   expect(freshTokens.access).toBeDefined();
-  // });
-  // test("gets shopping list id", async () => {
-  //   const shoppingListId = await wegmans.getShoppingListId(tokens.access);
-  //   expect(shoppingListId).toBeGreaterThan(0);
-  // });
-  // test("adds goat cheese to list", async () => {
-  //   const [goat] = await ProductSearch.wegmansSearchForProduct("goat cheese", storeId);
-  //   await wegmans.addProductToShoppingList(tokens.access, goat!, 1, "IGNORE ME");
-  // });
   // describe("purchase history", () => {
   //   test("gets purchase history", async () => {
   //     const userId = getUsernameFromToken(tokens);
