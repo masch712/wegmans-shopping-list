@@ -9,7 +9,7 @@ import { Cookie } from "tough-cookie";
 export interface WedgiesOAuthToken {
   access: string;
   refresh: string;
-  access_code?: string;
+  authorization_code?: string;
 }
 
 export interface PreRefreshedAccessToken extends WedgiesOAuthToken {

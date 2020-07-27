@@ -12,7 +12,7 @@ import {
 } from "../models/AccessToken";
 import { BrowserLoginTokens, toCookieJar, wegmansTokenInfo } from "../models/BrowserLoginTokens";
 import { WegmansDao } from "./WegmansDao";
-import { AccessCodeDao } from "./AccessCodeDao";
+import { WedgiesOAuthDao } from "./AccessCodeDao";
 import { AccessTokenNotFoundLoggedEvent } from "../models/logged-events/AccessTokenNotFound";
 import { config } from "./config";
 import { StoreProductItem } from "../models/StoreProductItem";
@@ -24,7 +24,7 @@ import { DateTime } from "luxon";
 export class WegmansService {
   constructor(
     private _wegmansDao: WegmansDao,
-    private _accessCodeDao: AccessCodeDao,
+    private _accessCodeDao: WedgiesOAuthDao,
     private _timezonePromise?: Promise<string>
   ) {}
   get wegmansDao() {

@@ -3,7 +3,7 @@ import * as basic from "basic-auth";
 import { decode, sign } from "jsonwebtoken";
 import * as querystring from "querystring";
 import * as uuid from "uuid/v4";
-import { accessCodeDao } from "../../lib/AccessCodeDao";
+import { accessCodeDao as wedgiesOAuthDao } from "../../lib/AccessCodeDao";
 import { config } from "../../lib/config";
 import { decryptionPromise } from "../../lib/decrypt-config";
 import { logger, logDuration } from "../../lib/Logger";
@@ -17,14 +17,13 @@ import {
 } from "../../models/AccessToken";
 import { BrowserLoginTokens } from "../../models/BrowserLoginTokens";
 import request = require("request");
-import { Cookie } from "tough-cookie";
 
 const wegmansDaoPromise = decryptionPromise.then(() => new WegmansDao(config.get("wegmans.apikey")));
 
 /**
  * Accept request from the React Login UI containing username, password
  * Login to wegmans
- * Generate an access code, save it to the database with the given credentials.
+ * Generate an authorization code, save it to the database with the given credentials.
  * Overwrite any code that's already in the db for the given user.
  * Respond with the code.
  */
@@ -67,10 +66,13 @@ export const generateAccessCode: APIGatewayProxyHandler = async (event): Promise
 
   logger().debug("Login resolved");
 
-  await accessCodeDao.initTables();
+  await wedgiesOAuthDao.initTables();
 
   logger().debug("Putting wedgiesTokens to db");
-  await accessCodeDao.put(wedgiesTokens);
+  await wedgiesOAuthDao.put({
+    ...wedgiesTokens,
+    authorization_code: code,
+  });
 
   return {
     body: JSON.stringify({
@@ -113,17 +115,17 @@ export const getTokens: APIGatewayProxyHandler = async (event): Promise<APIGatew
   let deletePromise;
   const jwtSecret = config.get("jwtSecret");
 
-  // If Alexa is sending us an access_code and waants tokens, that means we're finishing up account linking.
-  // Get the tokens and delete the access code; don't need it again.
+  // If Alexa is sending us an authorization_code and waants tokens, that means we're finishing up account linking.
+  // Get the tokens and delete the authorization_code; don't need it again.
   // https://developer.amazon.com/docs/account-linking/configure-authorization-code-grant.html
   if (body.code) {
-    logger().debug("getting token by code");
-    freshWedgiesTokens = await accessCodeDao.getTokensByCode(body.code as string);
+    logger().debug("getting token by authorization_code");
+    freshWedgiesTokens = await wedgiesOAuthDao.getTokensByCode(body.code as string);
 
-    logger().debug("deleting access code");
-    deletePromise = accessCodeDao
-      .deleteAccessCode(body.code as string)
-      .then(() => logger().debug("access code delete complete."))
+    logger().debug("deleting authorization_code");
+    deletePromise = wedgiesOAuthDao
+      .deleteAuthorizationCode(body.code as string)
+      .then(() => logger().debug("authorization_code delete complete."))
       .catch(logger().error);
   }
 
@@ -134,14 +136,14 @@ export const getTokens: APIGatewayProxyHandler = async (event): Promise<APIGatew
     // Wedgies tokens should refresh in sync with wegmans tokens
     const oldWedgiesTokens = await logDuration(
       "getTokensByRefresh",
-      accessCodeDao.getTokensByRefresh(body.refresh_token as string)
+      wedgiesOAuthDao.getTokensByRefresh(body.refresh_token as string)
     );
 
     if (config.get("usePreRefreshedTokens")) {
       // First try gettting wegmans tokens from the pre-refreshed tokens table
       const preRefreshedTokens = await logDuration(
         "getPreRefreshedToken",
-        accessCodeDao.getPreRefreshedToken(oldWedgiesTokens.refresh)
+        wedgiesOAuthDao.getPreRefreshedToken(oldWedgiesTokens.refresh)
       );
       if (preRefreshedTokens) {
         if (!isAccessTokenExpired(preRefreshedTokens)) {
@@ -152,7 +154,7 @@ export const getTokens: APIGatewayProxyHandler = async (event): Promise<APIGatew
         }
         cleanupOldPreRefreshedTokensPromise = logDuration(
           "cleanupOldPreRefreshedTokens",
-          accessCodeDao.deletePreRefreshedTokens(oldWedgiesTokens.refresh)
+          wedgiesOAuthDao.deletePreRefreshedTokens(oldWedgiesTokens.refresh)
         );
       }
     }
@@ -165,9 +167,9 @@ export const getTokens: APIGatewayProxyHandler = async (event): Promise<APIGatew
       await logDuration(
         "saveAndCleanupTokens",
         Promise.all([
-          accessCodeDao.put(freshWedgiesTokens),
-          accessCodeDao.deleteRefreshCode(oldWedgiesTokens.refresh),
-          accessCodeDao.deleteAccess(oldWedgiesTokens.access),
+          wedgiesOAuthDao.put(freshWedgiesTokens),
+          wedgiesOAuthDao.deleteRefreshCode(oldWedgiesTokens.refresh),
+          wedgiesOAuthDao.deleteAccess(oldWedgiesTokens.access),
           cleanupOldPreRefreshedTokensPromise,
         ])
       );

@@ -5,11 +5,11 @@ import { ResponseBuilder } from "ask-sdk-core";
 import { Response } from "ask-sdk-model";
 import { tokenFactory, productFactory } from "../../test/TestDataFactory";
 import { WegmansDao } from "../../lib";
-import { AccessCodeDao } from "../../lib/AccessCodeDao";
+import { WedgiesOAuthDao } from "../../lib/AccessCodeDao";
 import { wrapWegmansTokens } from "../../models/AccessToken";
 
 const mockWegmansDao = mock(WegmansDao);
-const mockAccessCodeDao = mock(AccessCodeDao);
+const mockAccessCodeDao = mock(WedgiesOAuthDao);
 
 describe("Given a product is found", () => {
   it("adds to shopping list via queue", async () => {

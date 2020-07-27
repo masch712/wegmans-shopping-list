@@ -1,10 +1,10 @@
 import { WegmansService } from "./WegmansService";
 import { mock, instance, spy, when } from "ts-mockito";
 import { WegmansDao } from "./WegmansDao";
-import { AccessCodeDao } from "./AccessCodeDao";
+import { WedgiesOAuthDao } from "./AccessCodeDao";
 import { tokenFactory, productFactory } from "../test/TestDataFactory";
 const mockWegmansDao = mock(WegmansDao);
-const mockAccessCodeDao = mock(AccessCodeDao);
+const mockAccessCodeDao = mock(WedgiesOAuthDao);
 
 describe("WegmansService.searchForProductWithTimeout", () => {
   it("shortcircuits when it times out", async () => {

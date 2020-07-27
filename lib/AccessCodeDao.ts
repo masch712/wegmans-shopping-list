@@ -16,9 +16,9 @@ AWS.config.update({
 export const tableTokensByCode: AWS.DynamoDB.CreateTableInput = {
   TableName: TABLENAME_TOKENSBYCODE,
   KeySchema: [
-    { AttributeName: "access_code", KeyType: "HASH" }, // Partition key
+    { AttributeName: "authorization_code", KeyType: "HASH" }, // Partition key
   ],
-  AttributeDefinitions: [{ AttributeName: "access_code", AttributeType: "S" }],
+  AttributeDefinitions: [{ AttributeName: "authorization_code", AttributeType: "S" }],
   ProvisionedThroughput: {
     ReadCapacityUnits: 10,
     WriteCapacityUnits: 10,
@@ -61,7 +61,7 @@ export const tablePreRefreshedTokensByRefresh: AWS.DynamoDB.CreateTableInput = {
   },
 };
 
-export class AccessCodeDao extends DynamoDao {
+export class WedgiesOAuthDao extends DynamoDao {
   async getAllAccessTokens(): Promise<WedgiesOAuthToken[]> {
     const dbTokens = await this.docClient
       .scan({
@@ -89,13 +89,13 @@ export class AccessCodeDao extends DynamoDao {
       .promise();
   }
 
-  static getInstance(endpoint: string): AccessCodeDao {
-    if (!AccessCodeDao._instance) {
-      AccessCodeDao._instance = new AccessCodeDao(endpoint);
+  static getInstance(endpoint: string): WedgiesOAuthDao {
+    if (!WedgiesOAuthDao._instance) {
+      WedgiesOAuthDao._instance = new WedgiesOAuthDao(endpoint);
     }
-    return AccessCodeDao._instance;
+    return WedgiesOAuthDao._instance;
   }
-  private static _instance: AccessCodeDao;
+  private static _instance: WedgiesOAuthDao;
 
   tableParams: AWS.DynamoDB.CreateTableInput[] = [
     tableTokensByCode,
@@ -108,7 +108,7 @@ export class AccessCodeDao extends DynamoDao {
     const dbTokens = await this.docClient
       .get({
         Key: {
-          access_code: code,
+          authorization_code: code,
         },
         TableName: TABLENAME_TOKENSBYCODE,
       })
@@ -164,7 +164,7 @@ export class AccessCodeDao extends DynamoDao {
   }
 
   async put(item: WedgiesOAuthToken): Promise<void> {
-    const tokensByCodePromise = item.access_code
+    const tokensByCodePromise = item.authorization_code
       ? this.docClient
           .put({
             Item: item,
@@ -191,11 +191,11 @@ export class AccessCodeDao extends DynamoDao {
     return Promise.all([tokensByRefreshTokenPromise, tokensByCodePromise, tokensByAccessTokenPromise]).then(() => {});
   }
 
-  async deleteAccessCode(access_code: string): Promise<void> {
+  async deleteAuthorizationCode(authorization_code: string): Promise<void> {
     const result = await this.docClient
       .delete({
         TableName: TABLENAME_TOKENSBYCODE,
-        Key: { access_code },
+        Key: { authorization_code },
       })
       .promise();
 
@@ -214,4 +214,4 @@ export class AccessCodeDao extends DynamoDao {
   }
 }
 
-export const accessCodeDao = AccessCodeDao.getInstance(config.get("aws.dynamodb.endpoint"));
+export const accessCodeDao = WedgiesOAuthDao.getInstance(config.get("aws.dynamodb.endpoint"));

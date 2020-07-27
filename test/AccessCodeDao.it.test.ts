@@ -50,7 +50,7 @@ describe("login", () => {
     };
 
     const tokenWithCode = {
-      access_code: "niner",
+      authorization_code: "niner",
       ...token,
     };
 
@@ -82,12 +82,12 @@ describe("login", () => {
       access: "123",
       refresh: "456",
       user: "789",
-      access_code: "43214321",
+      authorization_code: "43214321",
     };
 
     await accessCodeDao.put(token);
 
-    await accessCodeDao.deleteAccessCode(token.access_code);
+    await accessCodeDao.deleteAuthorizationCode(token.authorization_code);
     const byCode = await accessCodeDao.getTokensByCode("43214321");
     expect(byCode).toBeFalsy();
   });
