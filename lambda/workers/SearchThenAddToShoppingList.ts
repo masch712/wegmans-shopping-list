@@ -8,7 +8,7 @@ import { decode } from "jsonwebtoken";
 import { QueuedWork, WorkType } from "../../lib/BasicAsyncQueue";
 import { WegmansService } from "../../lib/WegmansService";
 import { LoggedEvent } from "../../models/LoggedEvent";
-import { getWorkType as addToShoppingListWorkType } from "./PutToShoppingCart";
+import { getWorkType as addToShoppingListWorkType } from "./PutItemToCart";
 import { WedgiesOAuthToken } from "../../models/AccessToken";
 import { BrowserLoginTokens } from "../../models/BrowserLoginTokens";
 

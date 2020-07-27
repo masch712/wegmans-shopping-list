@@ -23,7 +23,7 @@ import { tableOrderHistoryByUser, TABLENAME_ORDERHISTORYBYUSER } from "../lib/Or
 import { WorkType } from "../lib/BasicAsyncQueue";
 import { config } from "../lib/config";
 import { TABLENAME_PRODUCTREQUESTHISTORY, tableProductRequestHistory } from "../lib/ProductRequestHistoryDao";
-import { getWorkType as addToShoppingListWorkType } from "../lambda/workers/PutToShoppingCart";
+import { getWorkType as addToShoppingListWorkType } from "../lambda/workers/PutItemToCart";
 import { getWorkType as searchThenAddToShoppingListWorkType } from "../lambda/workers/SearchThenAddToShoppingList";
 import { LogGroup, RetentionDays } from "@aws-cdk/aws-logs";
 import { Duration } from "@aws-cdk/core";

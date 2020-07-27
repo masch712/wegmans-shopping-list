@@ -11,7 +11,7 @@ import * as jwt from "jsonwebtoken";
 import Fuse = require("fuse.js");
 import { config } from "../lib/config";
 import { BasicAsyncQueueClient, WorkType } from "./BasicAsyncQueue";
-import { PutItemToCartWork, getWorkType as addToShoppingListWorkType } from "../lambda/workers/PutToShoppingCart";
+import { PutItemToCartWork, getWorkType as addToShoppingListWorkType } from "../lambda/workers/PutItemToCart";
 import {
   SearchThenPutItemToCartWork,
   getWorkType as searchThenAddToShoppingListWorkType,

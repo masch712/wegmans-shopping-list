@@ -13,7 +13,7 @@ import { getUserIdFromWegmansToken } from "../../models/AccessToken";
 
 export function getWorkType(): WorkType {
   return {
-    name: "PutItemToCart",
+    name: "PutItemToCart", //TODO: dynamically get worktype form filename?
     enqueuesTo: [],
   };
 }
