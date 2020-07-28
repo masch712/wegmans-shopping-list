@@ -18,10 +18,11 @@ describe("wegmans dao", () => {
   let tokens: BrowserLoginTokens;
   beforeAll(async () => {
     tokens = await wegmans.login(config.get("wegmans.email"), config.get("wegmans.password"));
+    cookieJar = toCookieJar(tokens);
+
     expect(tokens).toBeDefined();
     expect(tokens.session_token).toBeTruthy();
     expect(tokens.cookies).toBeTruthy();
-    // storeId = getStoreIdFromTokens(tokens);
   });
 
   test("search requires auth, booo", async () => {
@@ -45,9 +46,13 @@ describe("wegmans dao", () => {
     cookieJar = freshCookieJar;
   });
 
-  test.only("add strawberries to shopping cart", async () => {
-    const products = await wegmans.searchProducts(cookieJar, "strawberries", 10);
-    await wegmans.putProductToCart(cookieJar, products[0]);
+  test("add (then remove) strawberries to shopping cart", async () => {
+    const products = await wegmans.searchProducts(cookieJar, "frozen peas", 10);
+    const cart_with_strawbs = await wegmans.putProductToCart(cookieJar, products[0]);
+    expect(cart_with_strawbs.items.map((i) => i.store_product.id)).toContainEqual(products[0].id);
+
+    const cart_without_strawbs = await wegmans.putProductToCart(cookieJar, products[0], 0);
+    expect(cart_without_strawbs.items.map((i) => i.store_product.id)).not.toContainEqual(products[0].id);
   });
 
   describe("search products", () => {

@@ -21,6 +21,7 @@ import jqueryBase = require("jquery");
 import { BrowserLoginTokens, toCookieJar, CookieStringByKey } from "../models/BrowserLoginTokens";
 import { deprecate } from "util";
 import { StoreProductItem } from "../models/StoreProductItem";
+import { Cart } from "../models/Cart";
 interface OrderHistoryResponseItem {
   LastPurchaseDate: string;
   Quantity: number;
@@ -392,7 +393,7 @@ export class WegmansDao {
     );
   }
 
-  async putProductToCart(cookieJar: CookieJar, product: StoreProductItem) {
+  async putProductToCart(cookieJar: CookieJar, product: StoreProductItem, quantity = 1): Promise<Cart> {
     const response = await request({
       method: "PUT",
       headers: {
@@ -403,14 +404,18 @@ export class WegmansDao {
         items: [
           {
             id: product.id,
-            quantity: 1,
+            quantity,
             store_product: product,
             item_type: "store_product",
+            order_by_weight: false,
+            product_config: null,
           },
         ],
       }),
+      jar: cookieJar,
     });
-    return;
+    const cart = JSON.parse(response) as Cart;
+    return cart;
   }
 
   //TODO: refactor this garbage
