@@ -45,6 +45,11 @@ describe("wegmans dao", () => {
     cookieJar = freshCookieJar;
   });
 
+  test.only("add strawberries to shopping cart", async () => {
+    const products = await wegmans.searchProducts(cookieJar, "strawberries", 10);
+    await wegmans.putProductToCart(cookieJar, products[0]);
+  });
+
   describe("search products", () => {
     test("strawberries", async () => {
       const products = await wegmans.searchProducts(cookieJar, "strawberries", 10);

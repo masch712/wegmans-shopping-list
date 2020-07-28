@@ -13,7 +13,7 @@ import { getUserIdFromWegmansToken } from "../../models/AccessToken";
 
 export function getWorkType(): WorkType {
   return {
-    name: "PutItemToCart", //TODO: dynamically get worktype form filename?
+    name: "PutItemToCart", //TODO: dynamically get worktype from filename?
     enqueuesTo: [],
   };
 }
@@ -27,6 +27,7 @@ export interface PutItemToCartWork extends QueuedWork {
 }
 
 export async function handler(event: SQSEvent) {
+  logger().debug(JSON.stringify({ event }));
   const initTablesPromise = accessCodeDao.initTables();
   const wegmansDaoPromise = Promise.all([decryptionPromise, initTablesPromise]).then(
     () => new WegmansDao(config.get("wegmans.apikey"))
