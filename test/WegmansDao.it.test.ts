@@ -3,6 +3,7 @@ import { WegmansDao } from "../lib/WegmansDao";
 import { BrowserLoginTokens, toCookieJar } from "../models/BrowserLoginTokens";
 import request = require("request");
 import { Cookie } from "tough-cookie";
+import { productFactory } from "./TestDataFactory";
 jest.setTimeout(3000000);
 
 /***************************************************************
@@ -53,6 +54,35 @@ describe("wegmans dao", () => {
 
     const cart_without_strawbs = await wegmans.putProductToCart(cookieJar, products[0], 0);
     expect(cart_without_strawbs.items.map((i) => i.store_product.id)).not.toContainEqual(products[0].id);
+  });
+
+  describe.only("Re-use old wegmans tokens", () => {
+    test("search, search", async () => {
+      const oldCookieJar = toCookieJar({
+        cookies: wegmans.serializeCookieJar(cookieJar),
+        session_token: tokens.session_token,
+      });
+      const [product_first] = await wegmans.searchProducts(cookieJar, "frozen peas", 10);
+      const [product_second] = await wegmans.searchProducts(oldCookieJar, "frozen peas", 10);
+
+      expect(product_first).toEqual(product_second);
+    });
+    test.only("search, put to cart, seasrch", async () => {
+      const oldCookieJar = toCookieJar({
+        cookies: wegmans.serializeCookieJar(cookieJar),
+        session_token: tokens.session_token,
+      });
+
+      const [product] = await wegmans.searchProducts(cookieJar, "frozen peas", 10);
+      const cart = await wegmans.putProductToCart(cookieJar, product);
+
+      const [product_second] = await wegmans.searchProducts(oldCookieJar, "frozen peas", 10);
+
+      expect(product_second.id).toEqual(product.id);
+    });
+    //TODO: runthis same style of test but at the WegmansService layer instead; i.e. what is directly called from alexa handler.
+    // gotta figure out why the search after adding to cart is failing...
+    // What if I increase alexa handler timeout to sometihng huge??
   });
 
   describe("search products", () => {

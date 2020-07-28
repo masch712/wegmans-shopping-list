@@ -182,7 +182,7 @@ export class WegmansDao {
     return tokens;
   }
 
-  private serializeCookieJar(cookieJar: CookieJar): CookieStringByKey {
+  public serializeCookieJar(cookieJar: CookieJar): CookieStringByKey {
     return cookieJar.getCookies("https://shop.wegmans.com").reduce<CookieStringByKey>((prev, curr) => {
       prev[curr.key] = curr.toString();
       return prev;

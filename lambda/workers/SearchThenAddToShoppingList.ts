@@ -30,6 +30,7 @@ export interface SearchThenPutItemToCartWork extends QueuedWork {
 }
 
 export async function handler(event: SQSEvent) {
+  logger().debug(JSON.stringify({ event })); //TODO: turn off debug logging at some point; shouldn't be logging these tokens
   const initTablesPromise = accessCodeDao.initTables();
   const wegmansDaoPromise = Promise.all([decryptionPromise, initTablesPromise]).then(
     () => new WegmansDao(config.get("wegmans.apikey"))

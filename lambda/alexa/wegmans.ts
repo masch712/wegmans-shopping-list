@@ -8,7 +8,7 @@ import { accessCodeDao } from "../../lib/AccessCodeDao";
 import { WegmansService } from "../../lib/WegmansService";
 import { cancelAllRequests } from "../../lib/CancelAllRequestsUtils";
 import { unwrapWedgiesToken } from "../../models/AccessToken";
-import { logDuration } from "../../lib/Logger";
+import { logDuration, logger } from "../../lib/Logger";
 
 //TODO: support adding quantities: "add 5 goat cheeses"
 
@@ -70,6 +70,7 @@ export const addToShoppingList: RequestHandler = {
       unwrapWedgiesToken(wrappedWegmansTokens, config.get("jwtSecret")) ||
       (await logDuration("getTokens", wegmansService.getFreshTokensOrLogin(wrappedWegmansTokens)));
 
+    logger().debug(JSON.stringify({ wegmansTokens }));
     const responseMessage = await wegmansService.handleAddtoShoppingList(
       productQuery,
       wegmansTokens,
