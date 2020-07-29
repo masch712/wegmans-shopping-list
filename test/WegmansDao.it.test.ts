@@ -56,7 +56,7 @@ describe("wegmans dao", () => {
     expect(cart_without_strawbs.items.map((i) => i.store_product.id)).not.toContainEqual(products[0].id);
   });
 
-  describe.only("Re-use old wegmans tokens", () => {
+  describe("Re-use old wegmans tokens", () => {
     test("search, search", async () => {
       const oldCookieJar = toCookieJar({
         cookies: wegmans.serializeCookieJar(cookieJar),
@@ -65,9 +65,9 @@ describe("wegmans dao", () => {
       const [product_first] = await wegmans.searchProducts(cookieJar, "frozen peas", 10);
       const [product_second] = await wegmans.searchProducts(oldCookieJar, "frozen peas", 10);
 
-      expect(product_first).toEqual(product_second);
+      expect(product_first.id).toEqual(product_second.id);
     });
-    test.only("search, put to cart, seasrch", async () => {
+    test("search, put to cart, seasrch", async () => {
       const oldCookieJar = toCookieJar({
         cookies: wegmans.serializeCookieJar(cookieJar),
         session_token: tokens.session_token,

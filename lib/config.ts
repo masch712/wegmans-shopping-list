@@ -154,6 +154,12 @@ export const config = convict({
       default: "derp",
     },
   },
+  runWorkersInProcess: {
+    doc: "Whether to run work in-process rather than enqueueing it",
+    default: false,
+    format: Boolean,
+    env: "RUN_WORKERS_IN_PROCESS",
+  },
   wegmans: {
     email: {
       doc: "Wegmans email login",

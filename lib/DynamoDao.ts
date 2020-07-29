@@ -8,7 +8,7 @@ import { LoggedEvent } from "../models/LoggedEvent";
 import _ = require("lodash");
 
 AWS.config.update({
-  region: "us-east-1"
+  region: "us-east-1",
 });
 
 export abstract class DynamoDao {
@@ -48,7 +48,7 @@ export abstract class DynamoDao {
       try {
         data = await this.dynamodb
           .describeTable({
-            TableName: tableName
+            TableName: tableName,
           })
           .promise();
       } catch (err) {
@@ -66,10 +66,10 @@ export abstract class DynamoDao {
 
   // @traceMethod
   async dropTables(tableNames: string[]) {
-    const promises = tableNames.map(table =>
+    const promises = tableNames.map((table) =>
       this.dynamodb
         .deleteTable({
-          TableName: table
+          TableName: table,
         })
         .promise()
     );
@@ -89,7 +89,7 @@ export abstract class DynamoDao {
     }
     // TODO: why do i need this?
     const self = this;
-    const promises = tableParam.map(param => {
+    const promises = tableParam.map((param) => {
       if (!tableExists[param.TableName]) {
         return self.dynamodb
           .createTable(param)
@@ -107,5 +107,5 @@ export abstract class DynamoDao {
 }
 
 export function sleep(time: number) {
-  return new Promise(resolve => setTimeout(() => resolve(true), time));
+  return new Promise((resolve) => setTimeout(() => resolve(true), time));
 }

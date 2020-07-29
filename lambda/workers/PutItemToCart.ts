@@ -29,10 +29,15 @@ export interface PutItemToCartWork extends QueuedWork {
 export async function handler(event: SQSEvent) {
   logger().debug(JSON.stringify({ event }));
   const initTablesPromise = accessCodeDao.initTables();
-  const wegmansDaoPromise = Promise.all([decryptionPromise, initTablesPromise]).then(
-    () => new WegmansDao(config.get("wegmans.apikey"))
-  );
-  const wegmansDao = await wegmansDaoPromise;
+  // TEST
+  await decryptionPromise;
+  await initTablesPromise;
+  const wegmansDao = new WegmansDao(config.get("wegmans.apikey"));
+  //endTEST
+  // const wegmansDaoPromise = Promise.all([decryptionPromise, initTablesPromise]).then(
+  //   () => new WegmansDao(config.get("wegmans.apikey"))
+  // );
+  // const wegmansDao = await wegmansDaoPromise;
 
   const messageBodies = event.Records.map((r: { body: string }) => r.body);
 

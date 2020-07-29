@@ -1,5 +1,8 @@
 import { SQS } from "aws-sdk";
 import { config } from "./config";
+import { SQSEvent } from "aws-lambda";
+import * as uuid from "uuid/v4";
+import { sqsEventFactory } from "../test/TestDataFactory";
 
 export interface WorkType {
   name: string;
@@ -26,11 +29,24 @@ export class BasicAsyncQueueClient<T extends QueuedWork> {
   }
 
   async enqueue(work: T) {
-    await this.sqsClient
-      .sendMessage({
-        MessageBody: JSON.stringify(work),
-        QueueUrl: getEndpointFromQueueName(this.workType.name)
-      })
-      .promise();
+    if (config.get("runWorkersInProcess")) {
+      import(`../lambda/workers/${this.workType.name}`).then(async (worker) => {
+        const mockEvent: SQSEvent = {
+          Records: [
+            sqsEventFactory.build({
+              body: JSON.stringify(work),
+            }),
+          ],
+        };
+        await worker.handler(mockEvent);
+      });
+    } else {
+      await this.sqsClient
+        .sendMessage({
+          MessageBody: JSON.stringify(work),
+          QueueUrl: getEndpointFromQueueName(this.workType.name),
+        })
+        .promise();
+    }
   }
 }

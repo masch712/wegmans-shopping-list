@@ -7,6 +7,7 @@ import { BrowserLoginTokens } from "../models/BrowserLoginTokens";
 import { CfnUserToGroupAddition } from "@aws-cdk/aws-iam";
 import * as uuid from "uuid/v4";
 import { Cookie } from "tough-cookie";
+import { SQSEvent, SQSRecord } from "aws-lambda";
 
 export const productFactory = Factory.Sync.makeFactory<StoreProductItem>({
   name: Factory.each((i) => `name ${i}`),
@@ -48,4 +49,20 @@ export const tokenFactory = Factory.Sync.makeFactory<BrowserLoginTokens>({
       maxAge: 86400,
     }).toString(),
   })),
+});
+
+export const sqsEventFactory = Factory.Sync.makeFactoryWithRequired<SQSRecord, "body">({
+  messageId: uuid(),
+  attributes: {
+    ApproximateFirstReceiveTimestamp: "",
+    ApproximateReceiveCount: "",
+    SenderId: "",
+    SentTimestamp: "",
+  },
+  awsRegion: "",
+  eventSource: "local",
+  eventSourceARN: "local",
+  md5OfBody: "",
+  messageAttributes: {},
+  receiptHandle: "",
 });
