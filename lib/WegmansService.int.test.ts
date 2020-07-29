@@ -2,9 +2,9 @@ import { WedgiesOAuthDao, accessCodeDao } from "./AccessCodeDao";
 import { WegmansService } from "./WegmansService";
 import { WegmansDao } from "./WegmansDao";
 import { config } from "./config";
+import { logger } from "./Logger";
 
-jest.setTimeout(30_000);
-
+jest.setTimeout(1000 * 60 * 10);
 describe("handleAddToShoppingList", () => {
   test("fresh tokens", async () => {
     const wegmansDao = new WegmansDao("blah");

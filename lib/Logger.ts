@@ -11,9 +11,18 @@ const _logger = new winston.Logger({
     new winston.transports.Console({
       timestamp: true,
       showLevel: true,
-      level: config.get("logging.level")
-    })
-  ]
+      level: config.get("logging.level"),
+    }),
+    new winston.transports.File({
+      dirname: "./logs",
+      filename: "wtf.log",
+      timestamp: true,
+      showLevel: true,
+      level: config.get("logging.level"),
+      maxsize: 1024 * 1024,
+      maxFiles: 10,
+    }),
+  ],
 });
 
 export function logger() {

@@ -30,16 +30,15 @@ export class BasicAsyncQueueClient<T extends QueuedWork> {
 
   async enqueue(work: T) {
     if (config.get("runWorkersInProcess")) {
-      import(`../lambda/workers/${this.workType.name}`).then(async (worker) => {
-        const mockEvent: SQSEvent = {
-          Records: [
-            sqsEventFactory.build({
-              body: JSON.stringify(work),
-            }),
-          ],
-        };
-        await worker.handler(mockEvent);
-      });
+      const worker = await import(`../lambda/workers/${this.workType.name}`);
+      const mockEvent: SQSEvent = {
+        Records: [
+          sqsEventFactory.build({
+            body: JSON.stringify(work),
+          }),
+        ],
+      };
+      await worker.handler(mockEvent);
     } else {
       await this.sqsClient
         .sendMessage({

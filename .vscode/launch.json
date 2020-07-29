@@ -10,11 +10,12 @@
       "name": "Jest file",
       "request": "launch",
       "program": "${workspaceFolder}/node_modules/jest/bin/jest",
-      "args": ["${fileBasename}", "--detectOpenHandles"],
+      "args": ["${fileBasename}", "--detectOpenHandles", "--verbose=false"],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
-      "smartStep": false
+      "smartStep": false,
+      "skipFiles": ["<node_internals>/**/*.js"]
     },
     {
       "type": "node",
