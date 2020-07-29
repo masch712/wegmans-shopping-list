@@ -12,3 +12,9 @@ export function cancelAllRequests() {
   productRequestHistoryDao.cancelRequests(cancelReason);
   orderHistoryDao.cancelRequests(cancelReason);
 }
+
+export function resetGlobalCanceler() {
+  cancelHttpRequestsToken.reset();
+  orderHistoryDao.reset();
+  productRequestHistoryDao.reset();
+}

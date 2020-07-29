@@ -27,6 +27,10 @@ export abstract class DynamoDao {
     this._canceler.cancel(reason);
   }
 
+  reset() {
+    this._canceler.reset();
+  }
+
   protected makeCancellable<D, E>(awsRequest: Request<D, E>) {
     this._canceler.token.promise.then(() => {
       logger().debug(
