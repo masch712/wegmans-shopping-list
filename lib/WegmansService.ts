@@ -37,9 +37,11 @@ export class WegmansService {
     const searchStartTime = new Date().valueOf();
     const searchTimeoutError = new Error("search timed out");
 
+    //TODO: factor out this timeout stuff
     const timeoutPromise = new Promise((resolve, reject) => {
+      // TODO: cancel this if search finishes first?  or not? whatever
       setTimeout(() => {
-        logger().debug(new LoggedEvent("searchShortCircuit.resolvingPromise").toString());
+        logger().debug(new LoggedEvent("searchShortCircuit.rejectingPromise").toString());
         reject(searchTimeoutError);
       }, Math.max(0, timeout));
     }) as Promise<void>;
@@ -54,7 +56,7 @@ export class WegmansService {
         })(),
       ]);
     } catch (err) {
-      logger().debug(new LoggedEvent("searchShortCircuit.caughtError").addProperty("error", err).toString());
+      logger().debug(new LoggedEvent("searchShortCircuit.caughtError").addProperty("error", err.message).toString());
       if (err === searchTimeoutError) {
         didSearchTimeout = true;
         logger().warn(
@@ -65,6 +67,7 @@ export class WegmansService {
 
     return { product, didSearchTimeout };
   }
+
   async handleAddtoShoppingList(productQuery: string, tokens: BrowserLoginTokens, shortCircuitMillis = 1500) {
     logger().debug(JSON.stringify({ shortCircuitMillis }));
     // Bail if we couldn't get tokens

@@ -181,8 +181,7 @@ export const getTokens: APIGatewayProxyHandler = async (event): Promise<APIGatew
   }
 
   logger().debug("got tokens");
-  const expires_in =
-    config.get("jwtOverrideExpiresInSeconds") || secondsTilExpiry(freshWedgiesTokens.access, jwtSecret);
+  const expires_in = config.get("jwtOverrideExpiresInSeconds") || secondsTilExpiry(freshWedgiesTokens.access);
 
   const response: APIGatewayProxyResult = {
     body: JSON.stringify({

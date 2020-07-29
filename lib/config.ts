@@ -186,6 +186,12 @@ export const config = convict({
     format: Boolean,
     env: "AWS_ENCRYPTED",
   },
+  jwtInsecure: {
+    doc: "Set to true to skip verification of signature of JWTs",
+    default: false,
+    format: Boolean,
+    env: "JWT_INSECURE",
+  },
   jwtSecret: {
     doc: "Secret string for signing our own JWT tokens",
     default: "super duper secret!  tehe",

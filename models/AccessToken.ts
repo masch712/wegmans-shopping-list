@@ -57,8 +57,8 @@ export function wrapWegmansTokens(wegmansTokens: BrowserLoginTokens, jwtSecret: 
   };
 }
 
-export function secondsTilExpiry(accessToken: string, jwtSecret: string) {
-  const { exp, iat } = jwt.verify(accessToken, jwtSecret) as any;
+export function secondsTilExpiry(accessToken: string) {
+  const { exp, iat } = jwt.decode(accessToken) as any;
   return exp - iat;
 }
 
@@ -66,7 +66,11 @@ export function unwrapWedgiesToken(wrappedJwt: string, secret: string): BrowserL
   let decodedWrappedToken: WrappedWegmansTokens | null = null;
 
   try {
-    decodedWrappedToken = jwt.verify(wrappedJwt, secret) as WrappedWegmansTokens;
+    if (config.get("jwtInsecure")) {
+      decodedWrappedToken = jwt.decode(wrappedJwt) as WrappedWegmansTokens;
+    } else {
+      decodedWrappedToken = jwt.verify(wrappedJwt, secret) as WrappedWegmansTokens;
+    }
   } catch (err) {
     logger().error(err.message);
     //TODO: do i need this shit??
