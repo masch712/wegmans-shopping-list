@@ -22,6 +22,7 @@ import { BrowserLoginTokens, toCookieJar, CookieStringByKey } from "../models/Br
 import { deprecate } from "util";
 import { StoreProductItem } from "../models/StoreProductItem";
 import { Cart } from "../models/Cart";
+import { Orders as OrderSummaries, OrderDetail } from "../models/Orders";
 interface OrderHistoryResponseItem {
   LastPurchaseDate: string;
   Quantity: number;
@@ -292,46 +293,6 @@ export class WegmansDao {
     });
   }
 
-  // TODO: pull out auth shit into AcccessCodeDao and rename it to AuthDao
-  /**
-   * Send a refresh token to Wegmans and get back fresh access and user tokens.
-   * @param refreshToken The refresh token
-   */
-  // async refreshTokens(refreshToken: string, userToken: string): Promise<AccessToken> {
-  //   let res: any;
-  //   try {
-  //     const jar = request.jar();
-  //     const refreshCookie = request.cookie(`wegmans_refresh=${refreshToken}`)!;
-  //     const userCookie = request.cookie(`wegmans_user=${userToken}`)!;
-  //     jar.setCookie(refreshCookie, "https://www.wegmans.com");
-  //     jar.setCookie(userCookie, "https://www.wegmans.com");
-
-  //     res = await request({
-  //       method: "GET",
-  //       jar,
-  //       url: "https://www.wegmans.com/j_security_check",
-  //       headers: {
-  //         "Content-Type": "application/x-www-form-urlencoded",
-  //         "Cache-Control": "no-cache",
-  //       },
-  //     });
-  //   } catch (err) {
-  //     // We get a redirect response, which `request` considers an error.  whotevs
-  //     const access = WegmansDao.getCookie(err.response, "wegmans_access");
-  //     const refresh = WegmansDao.getCookie(err.response, "wegmans_refresh");
-  //     const user = WegmansDao.getCookie(err.response, "wegmans_user");
-  //     if (!access || !refresh || !user) {
-  //       logger().debug(JSON.stringify(err, null, 2));
-  //       throw new Error("No access tokens in response; bad login credentials?");
-  //     }
-  //     const tokens: AccessToken = { access, refresh, user };
-  //     logger().debug("Logged in and got access token of length " + access.length);
-  //     return tokens;
-  //   }
-
-  //   throw new Error("Unable to refresh access token");
-  // }
-
   static getCookie(response: Response, cookieKey: string) {
     const cookie = _.find<string>(response.headers["set-cookie"], (cookie: string) => !!cookie.match(`${cookieKey}=`));
     if (!cookie) {
@@ -416,6 +377,64 @@ export class WegmansDao {
     });
     const cart = JSON.parse(response) as Cart;
     return cart;
+  }
+
+  async getCart(cookieJar: CookieJar): Promise<Cart> {
+    const response = await request({
+      method: "GET",
+      // headers: {
+      //   "Content-Type": "application/json",
+      // },
+      url: "https://shop.wegmans.com/api/v2/cart",
+      jar: cookieJar,
+    });
+    const cart = JSON.parse(response) as Cart;
+    return cart;
+  }
+
+  async getNextOrder(cookieJar: CookieJar) {
+    const ordersResponse = await request({
+      method: "GET",
+      // headers: {
+      //   "Content-Type": "application/json",
+      // },
+      url: "https://shop.wegmans.com/api/v2/orders",
+      jar: cookieJar,
+    });
+    const orders = JSON.parse(ordersResponse) as OrderSummaries;
+
+    if (orders.item_count < 1) {
+      return null;
+    }
+
+    const nextOrderResponse = await request({
+      method: "GET",
+      url: `https://shop.wegmans.com/api/v2/orders/${orders.items[0].id}`,
+    });
+
+    const order = JSON.parse(nextOrderResponse) as OrderDetail;
+    return order;
+  }
+
+  async addProductToOrder(cookieJar: CookieJar, order: OrderDetail) {
+    /**
+     * Get cart
+     * pass { ...cart, order } to cart/modify_order
+     * ???
+     */
+    const cart = await this.
+    await request({
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      url: "https://shop.wegmans.com/api/v2/cart/modify_order",
+      body: JSON.stringify({ 
+        items: 
+      }),
+      jar: cookieJar,
+    });
+    })
   }
 
   //TODO: refactor this garbage

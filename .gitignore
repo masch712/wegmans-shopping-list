@@ -70,3 +70,5 @@ hax.ts
 #generated CDK cloudformation
 deploy/*.yaml
 cdk.out
+
+hax*.json
