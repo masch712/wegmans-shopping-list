@@ -13,15 +13,15 @@ const _logger = new winston.Logger({
       showLevel: true,
       level: config.get("logging.level"),
     }),
-    new winston.transports.File({
-      dirname: "./logs",
-      filename: "wtf.log",
-      timestamp: true,
-      showLevel: true,
-      level: config.get("logging.level"),
-      maxsize: 1024 * 1024,
-      maxFiles: 10,
-    }),
+    // new winston.transports.File({
+    //   dirname: "./logs",
+    //   filename: "wtf.log",
+    //   timestamp: true,
+    //   showLevel: true,
+    //   level: config.get("logging.level"),
+    //   maxsize: 1024 * 1024,
+    //   maxFiles: 10,
+    // }),
   ],
 });
 
