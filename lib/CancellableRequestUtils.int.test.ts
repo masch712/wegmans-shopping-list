@@ -1,5 +1,6 @@
 import * as cancellableRequest from "./CancellableRequest";
 import { cancelAllRequests, resetGlobalCanceler } from "./CancelAllRequestsUtils";
+import { resetCanceler, cancelAllRequestsToken } from "./CancellableRequestUtils";
 
 async function delay(ms: number, responseRepo: any[]) {
   const res = await cancellableRequest.get({
@@ -11,10 +12,10 @@ async function delay(ms: number, responseRepo: any[]) {
 }
 
 beforeEach(() => {
-  resetGlobalCanceler();
+  resetCanceler(cancelAllRequestsToken);
 });
 describe("CancellableRequest - many requests", () => {
-  it.only("is cancelled when cancelAllRequests() is called", async () => {
+  it("is cancelled when cancelAllRequests() is called", async () => {
     const responsesReceived: any[] = [];
     const fast = delay(10, responsesReceived);
     const slow = delay(10000, responsesReceived);

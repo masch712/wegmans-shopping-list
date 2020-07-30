@@ -3,7 +3,7 @@ import { CreateTableInput, DescribeTableOutput } from "aws-sdk/clients/dynamodb"
 import { logger } from "../lib/Logger";
 import { config } from "../lib/config";
 import { Request } from "aws-sdk";
-import { Canceler, createCanceler } from "./CancellableRequestUtils";
+import { Canceler, createCanceler, resetCanceler } from "./CancellableRequestUtils";
 import { LoggedEvent } from "../models/LoggedEvent";
 import _ = require("lodash");
 
@@ -28,7 +28,7 @@ export abstract class DynamoDao {
   }
 
   reset() {
-    this._canceler.reset();
+    resetCanceler(this._canceler);
   }
 
   protected makeCancellable<D, E>(awsRequest: Request<D, E>) {

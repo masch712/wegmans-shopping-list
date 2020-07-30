@@ -14,11 +14,6 @@ export interface Canceler {
    * call this to cancel requests (by resolving the token promise)
    */
   cancel: (reason: string) => void;
-
-  /**
-   * call this to clean the slate so you can send new requests again.
-   */
-  reset: () => void;
 }
 
 export function createCanceler(): Canceler {
@@ -33,15 +28,14 @@ export function createCanceler(): Canceler {
       };
     }),
   };
-
-  const reset = () => {
-    token.promise = new Promise((resolve) => {
-      cancel = (reason) => {
-        token.reason = reason;
-        resolve(reason);
-      };
-    });
-  };
-  return { token, cancel, reset };
+  return { token, cancel };
 }
+
+//TODO comments for these functions
+export function resetCanceler(canceler: Canceler) {
+  const newCanceler = createCanceler();
+  canceler.token = newCanceler.token;
+  canceler.cancel = newCanceler.cancel;
+}
+
 export const cancelAllRequestsToken = createCanceler();
