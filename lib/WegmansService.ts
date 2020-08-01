@@ -114,10 +114,13 @@ export class WegmansService {
     return msg;
   }
 
-  async searchForProduct(productQuery: string, tokens: BrowserLoginTokens): Promise<StoreProductItem | void> {
+  async searchForProduct(productQuery: string, tokens: BrowserLoginTokens): Promise<StoreProductItem> {
     const cookieJar = toCookieJar(tokens);
-    const products = await this.wegmansDao.searchProducts(cookieJar, productQuery, 1);
-    return products[0];
+    const [products, purchasedProducts] = await Promise.all([
+      this.wegmansDao.searchProducts(cookieJar, productQuery, 1),
+      this.wegmansDao.searchProductsPurchased(cookieJar, productQuery),
+    ]);
+    return purchasedProducts[0] || products[0];
     // const storeId = getStoreIdFromTokens(tokens);
     // Find a product
     // // const [orderHistoryResult, pastRequestedProduct] = await Promise.all([

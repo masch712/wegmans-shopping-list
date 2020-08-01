@@ -247,7 +247,7 @@ export class WegmansDao {
     // TODO: handle error responses?
     const storeProductSearchResult = JSON.parse(response) as StoreProductSearchResult;
 
-    return storeProductSearchResult.items;
+    return storeProductSearchResult.items || [];
   }
 
   private async getUser(cookieJar: CookieJar) {
@@ -402,7 +402,7 @@ export class WegmansDao {
       jar: cookieJar,
     });
     const orders = JSON.parse(ordersResponse) as OrderSummaries;
-
+    //TODO: throw if no order
     if (orders.item_count < 1) {
       return null;
     }
@@ -416,25 +416,42 @@ export class WegmansDao {
     return order;
   }
 
-  async addProductToOrder(cookieJar: CookieJar, order: OrderDetail) {
+  async addProductToOrder(cookieJar: CookieJar, order: OrderDetail, product: StoreProductItem) {
     /**
-     * Get cart
-     * pass { ...cart, order } to cart/modify_order
-     * ???
+     * GET order
+     * POST cart/modify_order
+     * validate cart?
+     * do some payment API shits?
      */
-    const cart = await this.
+    const nextOrder = await this.getNextOrder(cookieJar);
     await request({
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       url: "https://shop.wegmans.com/api/v2/cart/modify_order",
-      body: JSON.stringify({ 
-        items: 
+      body: JSON.stringify({
+        order: nextOrder,
       }),
       jar: cookieJar,
     });
-    })
+    // await fetch("https://shop.wegmans.com/api/v2/cart/validate", {
+    //   credentials: "include",
+    //   headers: {
+    //     "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0",
+    //     Accept: "*/*",
+    //     "Accept-Language": "en-US,en;q=0.5",
+    //     "Content-Type": "application/json",
+    //     "User-Context": "eyJTdG9yZUlkIjoiNzIiLCJGdWxmaWxsbWVudFR5cGUiOiJwaWNrdXAifQ==",
+    //     Pragma: "no-cache",
+    //     "Cache-Control": "no-cache",
+    //   },
+    //   referrer: "https://shop.wegmans.com/checkout/v2/review",
+    //   body:
+    //     {"with_fees":true,"timeslot":{"allow_alcohol":null,"banner_id":1,"cutoff_delta":null,"day_of_week":"friday","delivery_fee":null,"delivery_fee_plu":null,"exp":1596107001,"ext_id":"174229950","from_time":"10:00:00","fulfillment_type":"pickup","iat":1596105801,"id":"1284729","is_free":null,"jwt_token":"eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjEyODQ3MjkiLCJwb2x5dHlwZSI6InNjaGVkdWxlZCIsImZ1bGZpbGxtZW50X3R5cGUiOiJwaWNrdXAiLCJkYXlfb2Zfd2VlayI6ImZyaWRheSIsImZyb21fdGltZSI6IjEwOjAwOjAwIiwidG9fdGltZSI6IjExOjAwOjAwIiwid2l0aGluX2hvdXJzIjpudWxsLCJhbGxvd19hbGNvaG9sIjpudWxsLCJsYWJlbCI6bnVsbCwidW5hdmFpbGFibGUiOmZhbHNlLCJ1bmF2YWlsYWJpbGl0eV9yZWFzb25zIjpudWxsLCJwb3N0YWxfY29kZXMiOltdLCJleHRfaWQiOiIxNzQyMjk5NTAiLCJpc19mcmVlIjpudWxsLCJzaG9wX2ZlZV9wbHUiOm51bGwsInNob3BfZmVlIjoiMC4wMCIsIm9yaWdpbmFsX3Nob3BfZmVlIjpudWxsLCJkZWxpdmVyeV9mZWVfcGx1IjpudWxsLCJkZWxpdmVyeV9mZWUiOm51bGwsIm9yaWdpbmFsX2RlbGl2ZXJ5X2ZlZSI6bnVsbCwic291cmNlIjoiaWNfdGltZXNsb3QiLCJjdXRvZmZfZGVsdGEiOm51bGwsImJhbm5lcl9pZCI6MSwiaWF0IjoxNTk2MTA1ODAxLCJleHAiOjE1OTYxMDcwMDF9.w1PaRizug5MzCpCZ8pD99qoB02BBsNgd6iQlX96hJIA","label":null,"original_delivery_fee":null,"original_shop_fee":null,"polytype":"scheduled","postal_codes":[],"shop_fee":"0.00","shop_fee_plu":null,"source":"ic_timeslot","to_time":"11:00:00","unavailability_reasons":null,"unavailable":false,"within_hours":null},"user_birthday":"1989-09-13T04:00:00.000Z","store":{"address":{"address1":"53 Third Avenue","address2":null,"address3":null,"city":"Burlington","country":"USA","postal_code":"01803","province":"MASSACHUSETTS"},"amenities":"Coin Counting Kiosk, Lottery, Wi-Fi Internet Access","banner":"wegmans","ext_id":"59","external_url":"https://www.wegmans.com/stores/burlington-ma","has_catering":null,"has_delivery":true,"has_ecommerce":true,"has_pickup":true,"href":"/stores/72","id":"72","is_b2b":false,"last_purchased":"2020-07-24T04:00:00+00:00","location":{"latitude":"42.48690","longitude":"-71.22570"},"name":"BURLINGTON","partial":null,"payment_types":{"delivery":["auth_capture"],"pickup":["auth_capture"]},"phone_number":"781-418-0700","show_catering":null,"show_delivery":true,"show_ecommerce":true,"show_pickup":true,"store_banner":{"ext_id":"231","key":"wegmans","name":"wegmans"},"store_hours":null},"contact_info":{"first_name":"Mary","last_name":"Asch","phone_number":"7816082759"},"cart_id":450937},
+    //   method: "POST",
+    //   mode: "cors",
+    // });
   }
 
   //TODO: refactor this garbage
