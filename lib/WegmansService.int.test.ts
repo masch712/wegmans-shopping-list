@@ -8,22 +8,34 @@ import { StoreProductItem } from "../models/StoreProductItem";
 jest.setTimeout(30000);
 describe("product search regression", () => {
   const tests = [
+    // {
+    //   query: "strawberries",
+    //   expected: {
+    //     name: /strawberries/i,
+    //   },
+    // },
+    // {
+    //   query: "olive oil",
+    //   expected: {
+    //     name: /olive oil, extra virgin/i,
+    //   },
+    // },
+    // {
+    //   query: "raisin bran",
+    //   expected: {
+    //     name: /raisin bran/i,
+    //   },
+    // },
     {
-      query: "strawberries",
+      query: "bananas",
       expected: {
-        name: /strawberries/i,
+        name: /banana/i,
       },
     },
     {
-      query: "olive oil",
+      query: "cara cara oranges",
       expected: {
-        name: /olive oil, extra virgin/i,
-      },
-    },
-    {
-      query: "raisin bran",
-      expected: {
-        name: /raisin bran/i,
+        name: /oranges/i,
       },
     },
   ];

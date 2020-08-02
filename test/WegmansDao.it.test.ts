@@ -6,6 +6,7 @@ import { Cookie } from "tough-cookie";
 import { productFactory } from "./TestDataFactory";
 jest.setTimeout(3000000);
 
+const TEST_PRODUCT_NOTE = "[DELETE ME] - aaron";
 /***************************************************************
  * NOTE: IF YOU'RE SEEING TIMEOUTS, MAKE SURE YOU HAVE ALOCAL
  * DYNAMODB RUNNING
@@ -49,10 +50,10 @@ describe("wegmans dao", () => {
 
   test("add (then remove) strawberries to shopping cart", async () => {
     const products = await wegmans.searchProducts(cookieJar, "frozen peas", 10);
-    const cart_with_strawbs = await wegmans.putProductToCart(cookieJar, products[0]);
+    const cart_with_strawbs = await wegmans.putProductToCart(cookieJar, products[0], TEST_PRODUCT_NOTE);
     expect(cart_with_strawbs.items.map((i) => i.store_product.id)).toContainEqual(products[0].id);
 
-    const cart_without_strawbs = await wegmans.putProductToCart(cookieJar, products[0], 0);
+    const cart_without_strawbs = await wegmans.putProductToCart(cookieJar, products[0], TEST_PRODUCT_NOTE, 0);
     expect(cart_without_strawbs.items.map((i) => i.store_product.id)).not.toContainEqual(products[0].id);
   });
 
@@ -74,7 +75,7 @@ describe("wegmans dao", () => {
       });
 
       const [product] = await wegmans.searchProducts(cookieJar, "frozen peas", 10);
-      const cart = await wegmans.putProductToCart(cookieJar, product);
+      const cart = await wegmans.putProductToCart(cookieJar, product, TEST_PRODUCT_NOTE);
 
       const [product_second] = await wegmans.searchProducts(oldCookieJar, "frozen peas", 10);
 

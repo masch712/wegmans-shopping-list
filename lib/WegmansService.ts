@@ -117,8 +117,8 @@ export class WegmansService {
   async searchForProduct(productQuery: string, tokens: BrowserLoginTokens): Promise<StoreProductItem> {
     const cookieJar = toCookieJar(tokens);
     const [products, purchasedProducts] = await Promise.all([
-      this.wegmansDao.searchProducts(cookieJar, productQuery, 1),
-      this.wegmansDao.searchProductsPurchased(cookieJar, productQuery),
+      logDuration("searchProducts", this.wegmansDao.searchProducts(cookieJar, productQuery, 1)),
+      logDuration("searchProductsPurchased", this.wegmansDao.searchProductsPurchased(cookieJar, productQuery)),
     ]);
     return purchasedProducts[0] || products[0];
     // const storeId = getStoreIdFromTokens(tokens);

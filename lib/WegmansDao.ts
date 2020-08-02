@@ -354,7 +354,12 @@ export class WegmansDao {
     );
   }
 
-  async putProductToCart(cookieJar: CookieJar, product: StoreProductItem, quantity = 1): Promise<Cart> {
+  async putProductToCart(
+    cookieJar: CookieJar,
+    product: StoreProductItem,
+    comment: string,
+    quantity = 1
+  ): Promise<Cart> {
     const response = await request({
       method: "PUT",
       headers: {
@@ -365,6 +370,7 @@ export class WegmansDao {
         items: [
           {
             id: product.id,
+            comment,
             quantity,
             store_product: product,
             item_type: "store_product",
@@ -372,7 +378,7 @@ export class WegmansDao {
             product_config: null,
           },
         ],
-      }),
+      } as Cart),
       jar: cookieJar,
     });
     const cart = JSON.parse(response) as Cart;
@@ -392,7 +398,7 @@ export class WegmansDao {
     return cart;
   }
 
-  async getNextOrder(cookieJar: CookieJar) {
+  async getOrderSummaries(cookieJar: CookieJar) {
     const ordersResponse = await request({
       method: "GET",
       // headers: {
@@ -402,17 +408,26 @@ export class WegmansDao {
       jar: cookieJar,
     });
     const orders = JSON.parse(ordersResponse) as OrderSummaries;
+    return orders;
+  }
+
+  async getOrderDetail(cookieJar: CookieJar, orderId: string) {
+    const orderResponse = await request({
+      method: "GET",
+      url: `https://shop.wegmans.com/api/v2/orders/${orderId}`,
+    });
+
+    const order = JSON.parse(orderResponse) as OrderDetail;
+  }
+
+  async getNextOrder(cookieJar: CookieJar) {
+    const orders = await this.getOrderSummaries(cookieJar);
     //TODO: throw if no order
     if (orders.item_count < 1) {
       return null;
     }
 
-    const nextOrderResponse = await request({
-      method: "GET",
-      url: `https://shop.wegmans.com/api/v2/orders/${orders.items[0].id}`,
-    });
-
-    const order = JSON.parse(nextOrderResponse) as OrderDetail;
+    const nextOrderResponse = 
     return order;
   }
 

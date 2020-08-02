@@ -46,6 +46,10 @@ export async function handler(event: SQSEvent) {
     const userId = getUserIdFromWegmansToken(message.payload.wegmansTokens);
     logger().debug("adding " + message.payload.product.id + " for " + userId);
     //TODO: add the note as well
-    await wegmansDao.putProductToCart(toCookieJar(message.payload.wegmansTokens), message.payload.product);
+    await wegmansDao.putProductToCart(
+      toCookieJar(message.payload.wegmansTokens),
+      message.payload.product,
+      message.payload.note
+    );
   }
 }

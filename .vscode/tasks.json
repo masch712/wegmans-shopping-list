@@ -7,9 +7,7 @@
       "label": "TypeScript compile",
       "type": "shell",
       "command": "npx tsc",
-      "problemMatcher": [
-        "$tsc"
-      ],
+      "problemMatcher": ["$tsc"],
       "group": {
         "kind": "build",
         "isDefault": true
