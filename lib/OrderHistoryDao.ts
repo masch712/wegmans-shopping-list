@@ -2,26 +2,33 @@ import * as AWS from "aws-sdk";
 import { DateTime } from "luxon";
 import { config } from "./config";
 import { DynamoDao } from "./DynamoDao";
-import { OrderedProduct, OrderedProductForDynamo } from "../models/OrderedProduct";
+import { OrderedProduct, OrderHistoryTableItem } from "../models/OrderedProduct";
 import { Product } from "../models/Product";
 import * as _ from "lodash";
+import { StoreProductItem } from "../models/StoreProductItem";
 export const TABLENAME_ORDERHISTORYBYUSER = config.get("aws.dynamodb.tableNames.ORDERHISTORYBYUSER");
 
 AWS.config.update({
-  region: "us-east-1"
+  region: "us-east-1",
 });
+
+export interface OrderHistoryTableItem {
+  purchaseMsSinceEpoch: number;
+  quantity: number;
+  product: StoreProductItem;
+}
 
 export const tableOrderHistoryByUser: AWS.DynamoDB.CreateTableInput = {
   TableName: TABLENAME_ORDERHISTORYBYUSER,
   KeySchema: [
-    { AttributeName: "userId", KeyType: "HASH" } // Partition key
+    { AttributeName: "userId", KeyType: "HASH" }, // Partition key
   ],
   AttributeDefinitions: [{ AttributeName: "userId", AttributeType: "S" }],
-  BillingMode: "PAY_PER_REQUEST"
+  BillingMode: "PAY_PER_REQUEST",
 };
 
 interface OrderHistoryItem {
-  orderedProducts: OrderedProductForDynamo[];
+  orderedProducts: OrderHistoryTableItem[];
   endDateMsSinceEpoch: number;
   userId: string;
 }
@@ -43,8 +50,8 @@ class OrderHistoryDao extends DynamoDao {
       .delete({
         TableName: TABLENAME_ORDERHISTORYBYUSER,
         Key: {
-          userId
-        }
+          userId,
+        },
       })
       .promise();
   }
@@ -54,17 +61,17 @@ class OrderHistoryDao extends DynamoDao {
     const orderedProductsResult = await this.makeCancellable(
       this.docClient.get({
         Key: {
-          userId
+          userId,
         },
-        TableName: TABLENAME_ORDERHISTORYBYUSER
+        TableName: TABLENAME_ORDERHISTORYBYUSER,
       })
     ).promise();
 
     if (orderedProductsResult.Item) {
-      const itemOrderedProducts = orderedProductsResult.Item.orderedProducts as OrderedProductForDynamo[];
+      const itemOrderedProducts = orderedProductsResult.Item.orderedProducts as OrderHistoryTableItem[];
 
       return {
-        orderedProducts: itemOrderedProducts.map(i => {
+        orderedProducts: itemOrderedProducts.map((i) => {
           const product: Product | undefined = i.product && {
             // Dynamo doesn't allow empty strings, so when we're creating OrderedProducts from dynamo entries, we gotta re-vivify the emptystrings
             brand: i.product.brand || "",
@@ -74,14 +81,14 @@ class OrderHistoryDao extends DynamoDao {
             name: i.product.name || "",
             productLine: i.product.productLine || "",
             sku: i.product.sku!,
-            subcategory: i.product.subcategory || ""
+            subcategory: i.product.subcategory || "",
           };
           return {
             ...i,
-            product
+            product,
           };
         }),
-        lastCachedMillisSinceEpoch: orderedProductsResult.Item.endDateMsSinceEpoch as number
+        lastCachedMillisSinceEpoch: orderedProductsResult.Item.endDateMsSinceEpoch as number,
       };
     } else {
       return null;
@@ -93,10 +100,10 @@ class OrderHistoryDao extends DynamoDao {
     const endDateResult = await this.docClient
       .get({
         Key: {
-          userId
+          userId,
         },
         ProjectionExpression: "endDateMsSinceEpoch",
-        TableName: TABLENAME_ORDERHISTORYBYUSER
+        TableName: TABLENAME_ORDERHISTORYBYUSER,
       })
       .promise();
 
@@ -109,7 +116,7 @@ class OrderHistoryDao extends DynamoDao {
     await this.initTables();
 
     // Strip out any empty-string values because dynamo sucks
-    const cleanOrderedProducts = item.map(rawOp => {
+    const cleanOrderedProducts = item.map((rawOp) => {
       //TODO: not 'any' type
       const product: Product = {
         brand: rawOp.product!.brand,
@@ -119,11 +126,11 @@ class OrderHistoryDao extends DynamoDao {
         name: rawOp.product!.name,
         productLine: rawOp.product!.productLine,
         sku: rawOp.product!.sku,
-        subcategory: rawOp.product!.subcategory
+        subcategory: rawOp.product!.subcategory,
       };
       const cleanOorderedProduct = {
         ...rawOp,
-        product: _.omitBy(product, val => !val)
+        product: _.omitBy(product, (val) => !val),
       };
       return cleanOorderedProduct;
     });
@@ -131,13 +138,13 @@ class OrderHistoryDao extends DynamoDao {
     const dbItem: OrderHistoryItem = {
       endDateMsSinceEpoch: freshAsOfEpochMs,
       orderedProducts: cleanOrderedProducts,
-      userId: username
+      userId: username,
     };
 
     await this.docClient
       .put({
         Item: dbItem,
-        TableName: TABLENAME_ORDERHISTORYBYUSER
+        TableName: TABLENAME_ORDERHISTORYBYUSER,
       })
       .promise();
     return;

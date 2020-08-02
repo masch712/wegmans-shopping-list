@@ -12,6 +12,9 @@ import {
   unwrapWedgiesToken,
 } from "../../models/AccessToken";
 import * as _ from "lodash";
+import { toCookieJar } from "../../models/BrowserLoginTokens";
+import { DateTime } from "luxon";
+import { orderHistoryDao } from "../../lib/OrderHistoryDao";
 
 const initTablesPromise = accessCodeDao.initTables();
 const wegmansDaoPromise = Promise.all([decryptionPromise, initTablesPromise]).then(
@@ -39,12 +42,14 @@ export async function handler() {
       wegmansToken = newToken;
     }
 
-    const result = await wegmansDao.getOrderHistory(wedgiesToken.access, storeId, true);
-    if (result.cacheUpdatePromise) {
-      logger().info("updating cache for user " + userId); //TODO: parse user token into a type
-      if (isLiveRun) {
-        await result.cacheUpdatePromise;
-      }
-    }
+    const cookieJar = toCookieJar(wegmansToken);
+    const fromDate = new DateTime().minus({ days: 180 });
+
+    const [orderHistory, purchaseHistory] = await Promise.all([
+      wegmansDao.getOrderSummaries(cookieJar, fromDate),
+      wegmansDao.getPurchaseSummaries(cookieJar, fromDate),
+    ]);
+
+    orderHistoryDao.put();
   }
 }

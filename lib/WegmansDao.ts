@@ -23,6 +23,7 @@ import { deprecate } from "util";
 import { StoreProductItem } from "../models/StoreProductItem";
 import { Cart } from "../models/Cart";
 import { Orders as OrderSummaries, OrderDetail } from "../models/Orders";
+import { PurchaseDetails } from "../models/Purchases";
 interface OrderHistoryResponseItem {
   LastPurchaseDate: string;
   Quantity: number;
@@ -398,16 +399,35 @@ export class WegmansDao {
     return cart;
   }
 
-  async getOrderSummaries(cookieJar: CookieJar) {
+  async getOrderSummaries(cookieJar: CookieJar, fromDate: DateTime) {
     const ordersResponse = await request({
       method: "GET",
       // headers: {
       //   "Content-Type": "application/json",
       // },
       url: "https://shop.wegmans.com/api/v2/orders",
+      qs: {
+        fromDate: fromDate.toFormat("yyyy-MM-ddTHH:mm:ss"),
+      },
       jar: cookieJar,
     });
     const orders = JSON.parse(ordersResponse) as OrderSummaries;
+    return orders;
+  }
+
+  async getPurchaseSummaries(cookieJar: CookieJar, fromDate: DateTime) {
+    const purchasesResponse = await request({
+      method: "GET",
+      // headers: {
+      //   "Content-Type": "application/json",
+      // },
+      url: "https://shop.wegmans.com/api/v2/purchases",
+      qs: {
+        fromDate: fromDate.toFormat("yyyy-MM-ddTHH:mm:ss"),
+      },
+      jar: cookieJar,
+    });
+    const orders = JSON.parse(purchasesResponse) as OrderSummaries;
     return orders;
   }
 
@@ -418,17 +438,26 @@ export class WegmansDao {
     });
 
     const order = JSON.parse(orderResponse) as OrderDetail;
+    return order;
+  }
+
+  async getPurchaseDetail(cookieJar: CookieJar, purchaseId: number) {
+    const purchaseResponse = await request({
+      method: "GET",
+      url: `https://shop.wegmans.com/api/v2/purchases/${purchaseId}`,
+    });
+    const purchase = JSON.parse(purchaseResponse) as PurchaseDetails;
+    return purchase;
   }
 
   async getNextOrder(cookieJar: CookieJar) {
-    const orders = await this.getOrderSummaries(cookieJar);
-    //TODO: throw if no order
-    if (orders.item_count < 1) {
-      return null;
-    }
-
-    const nextOrderResponse = 
-    return order;
+    // const orders = await this.getOrderSummaries(cookieJar, new DateTime());
+    // //TODO: throw if no order
+    // if (orders.item_count < 1) {
+    //   return null;
+    // }
+    // const nextOrderResponse =
+    // return order;
   }
 
   async addProductToOrder(cookieJar: CookieJar, order: OrderDetail, product: StoreProductItem) {
@@ -469,88 +498,6 @@ export class WegmansDao {
     // });
   }
 
-  //TODO: refactor this garbage
-  async getOrderHistory(accessToken: string, storeId: number, forceCacheUpdate?: boolean) {
-    // const userId = (jwt.decode(accessToken) as { sub: string }).sub;
-    // const orderHistory = await logDuration("orderHistoryDao.get(userId)", orderHistoryDao.get(userId));
-    // let orderedProducts: OrderedProduct[] = [];
-    // let updateCachePromise = undefined;
-    // logger().debug("gotOrderHistoryCachedAt: " + (orderHistory && orderHistory.lastCachedMillisSinceEpoch));
-    // // Update cache if oldre than 24 hours
-    // if (
-    //   !orderHistory ||
-    //   !orderHistory.orderedProducts ||
-    //   !orderHistory.orderedProducts.length ||
-    //   orderHistory.lastCachedMillisSinceEpoch < DateTime.utc().valueOf() - 24 * 3600 * 1000 ||
-    //   orderHistory.lastCachedMillisSinceEpoch < 1551646031169 || // Before 3/3/2019, when I fixed a bug that requires me to re-cache order history
-    //   forceCacheUpdate
-    // ) {
-    //   logger().debug("order history cache miss");
-    //   const response = await logDuration(
-    //     "wegmansRequestOrderHistory",
-    //     request({
-    //       method: "GET",
-    //       url: `https://wegapi.azure-api.net/purchases/history/summary/${storeId}`,
-    //       qs: {
-    //         offset: 0,
-    //         records: 1000,
-    //         start: DateTime.local().plus({ days: -120 }).toFormat("MM/dd/yyyy"),
-    //         end: DateTime.local().toFormat("MM/dd/yyyy"),
-    //         onlineshopping: "False",
-    //         sortBy: "popularity",
-    //         sortOrder: "desc",
-    //         "api-version": "1.0",
-    //       },
-    //       headers: {
-    //         "Ocp-Apim-Subscription-Key": this.apiKey,
-    //         Authorization: accessToken,
-    //         Accept: "application/json",
-    //       },
-    //     }).then(_.identity())
-    //   ); //TODO: wtf is up with ts and this _.identity business?  return type undefined?
-    //   const body = JSON.parse(response) as OrderHistoryResponseItem[];
-    //   orderedProducts = body.map((item) => {
-    //     const epochStr = item.LastPurchaseDate.substring(6, 19);
-    //     const epoch = Number.parseInt(epochStr, 10);
-    //     const orderedProduct: OrderedProduct = {
-    //       sku: item.Sku,
-    //       purchaseMsSinceEpoch: epoch,
-    //       quantity: item.Quantity,
-    //     };
-    //     return orderedProduct;
-    //   });
-    //   // Get the actual products.  These are useful later for in-memory fuzzy search
-    //   const skus = orderedProducts.map((orderedProduct) => orderedProduct.sku);
-    //   //TODO: this seems....slow
-    //   const productsBySku = await logDuration(
-    //     "map_getProductBySku",
-    //     ProductSearch.getProductBySku(
-    //       skus.map((sku) => `SKU_${sku}`),
-    //       storeId
-    //     )
-    //   );
-    //   for (let index = orderedProducts.length - 1; index >= 0; index--) {
-    //     const orderedProduct = orderedProducts[index];
-    //     // The product may no longer exist, in which case its SKU won't be in productsBySku;
-    //     // In that case, remove it from order history
-    //     if (productsBySku[orderedProduct.sku]) {
-    //       orderedProduct.product = productsBySku[orderedProduct.sku][0];
-    //     } else {
-    //       orderedProducts.splice(index, 1);
-    //     }
-    //   }
-    //   logger().debug("writing order history to cache");
-    //   updateCachePromise = orderHistoryDao.put(userId, orderedProducts).then(() => {
-    //     logger().debug("order history cache written");
-    //   });
-    // } else {
-    //   logger().debug("order history cache hit");
-    //   orderedProducts = orderHistory.orderedProducts;
-    // }
-    // const sortedOrderedProducts = _.sortBy(orderedProducts, (op: OrderedProduct) => op.sku);
-    // return {
-    //   orderedProducts: sortedOrderedProducts,
-    //   cacheUpdatePromise: updateCachePromise,
-    // };
+
   }
 }
