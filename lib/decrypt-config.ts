@@ -9,13 +9,12 @@ if (config.get("encrypted")) {
   // Decrypt code should run once and variables stored outside of the function
   // handler so that these are decrypted once per container
   const encryptedKeys = [
-    "wegmans.apikey",
     "wegmans.email",
     "wegmans.password",
-    "alexa.skill.secret" //TODO: delete this thing?  it's never used?  wtf
+    "alexa.skill.secret", //TODO: delete this thing?  it's never used?  wtf
   ];
   const decryptionPromises: Array<Promise<void>> = [];
-  encryptedKeys.forEach(key => {
+  encryptedKeys.forEach((key) => {
     if (config.get(key)) {
       decryptionPromises.push(decryptKMS(key));
     }

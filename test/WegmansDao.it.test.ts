@@ -15,7 +15,7 @@ const TEST_PRODUCT_NOTE = "[DELETE ME] - aaron";
 
 //Skip these normally; dont wanna spam wegmans
 describe("wegmans dao", () => {
-  const wegmans = new WegmansDao(config.get("wegmans.apikey"));
+  const wegmans = new WegmansDao();
   let cookieJar = request.jar();
   let tokens: BrowserLoginTokens;
   beforeAll(async () => {
