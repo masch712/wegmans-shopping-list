@@ -47,7 +47,7 @@ describe("product search regression", () => {
     }
   };
 
-  const wegmansDao = new WegmansDao("");
+  const wegmansDao = new WegmansDao();
   const wegmansService = new WegmansService(wegmansDao, accessCodeDao);
 
   let tokens: BrowserLoginTokens;

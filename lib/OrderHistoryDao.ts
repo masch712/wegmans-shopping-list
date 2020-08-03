@@ -2,8 +2,6 @@ import * as AWS from "aws-sdk";
 import { DateTime } from "luxon";
 import { config } from "./config";
 import { DynamoDao } from "./DynamoDao";
-import { OrderedProduct, OrderHistoryTableItem } from "../models/OrderedProduct";
-import { Product } from "../models/Product";
 import * as _ from "lodash";
 import { StoreProductItem } from "../models/StoreProductItem";
 export const TABLENAME_ORDERHISTORYBYUSER = config.get("aws.dynamodb.tableNames.ORDERHISTORYBYUSER");
@@ -12,10 +10,10 @@ AWS.config.update({
   region: "us-east-1",
 });
 
-export interface OrderHistoryTableItem {
+export interface OrderHistoryItem {
   purchaseMsSinceEpoch: number;
   quantity: number;
-  product: StoreProductItem;
+  storeProduct: StoreProductItem;
 }
 
 export const tableOrderHistoryByUser: AWS.DynamoDB.CreateTableInput = {
@@ -27,8 +25,8 @@ export const tableOrderHistoryByUser: AWS.DynamoDB.CreateTableInput = {
   BillingMode: "PAY_PER_REQUEST",
 };
 
-interface OrderHistoryItem {
-  orderedProducts: OrderHistoryTableItem[];
+interface OrderHistoryTableRow {
+  orderedItems: OrderHistoryItem[];
   endDateMsSinceEpoch: number;
   userId: string;
 }
@@ -56,7 +54,7 @@ class OrderHistoryDao extends DynamoDao {
       .promise();
   }
 
-  async get(userId: string): Promise<{ orderedProducts: OrderedProduct[]; lastCachedMillisSinceEpoch: number } | null> {
+  async get(userId: string): Promise<OrderHistoryTableRow | null> {
     await this.initTables();
     const orderedProductsResult = await this.makeCancellable(
       this.docClient.get({
@@ -68,28 +66,9 @@ class OrderHistoryDao extends DynamoDao {
     ).promise();
 
     if (orderedProductsResult.Item) {
-      const itemOrderedProducts = orderedProductsResult.Item.orderedProducts as OrderHistoryTableItem[];
-
-      return {
-        orderedProducts: itemOrderedProducts.map((i) => {
-          const product: Product | undefined = i.product && {
-            // Dynamo doesn't allow empty strings, so when we're creating OrderedProducts from dynamo entries, we gotta re-vivify the emptystrings
-            brand: i.product.brand || "",
-            category: i.product.category || "",
-            department: i.product.department || "",
-            details: i.product.details || "",
-            name: i.product.name || "",
-            productLine: i.product.productLine || "",
-            sku: i.product.sku!,
-            subcategory: i.product.subcategory || "",
-          };
-          return {
-            ...i,
-            product,
-          };
-        }),
-        lastCachedMillisSinceEpoch: orderedProductsResult.Item.endDateMsSinceEpoch as number,
-      };
+      const row = orderedProductsResult.Item as OrderHistoryTableRow;
+      // TODO: Item seems to be a Map.  Is that ok?
+      return row;
     } else {
       return null;
     }
@@ -112,38 +91,12 @@ class OrderHistoryDao extends DynamoDao {
     return endDateMsSinceEpoch as number;
   }
 
-  async put(username: string, item: OrderedProduct[], freshAsOfEpochMs = DateTime.utc().valueOf()): Promise<void> {
+  async put(row: OrderHistoryTableRow): Promise<void> {
     await this.initTables();
-
-    // Strip out any empty-string values because dynamo sucks
-    const cleanOrderedProducts = item.map((rawOp) => {
-      //TODO: not 'any' type
-      const product: Product = {
-        brand: rawOp.product!.brand,
-        category: rawOp.product!.category,
-        department: rawOp.product!.department,
-        details: rawOp.product!.details,
-        name: rawOp.product!.name,
-        productLine: rawOp.product!.productLine,
-        sku: rawOp.product!.sku,
-        subcategory: rawOp.product!.subcategory,
-      };
-      const cleanOorderedProduct = {
-        ...rawOp,
-        product: _.omitBy(product, (val) => !val),
-      };
-      return cleanOorderedProduct;
-    });
-
-    const dbItem: OrderHistoryItem = {
-      endDateMsSinceEpoch: freshAsOfEpochMs,
-      orderedProducts: cleanOrderedProducts,
-      userId: username,
-    };
 
     await this.docClient
       .put({
-        Item: dbItem,
+        Item: row,
         TableName: TABLENAME_ORDERHISTORYBYUSER,
       })
       .promise();

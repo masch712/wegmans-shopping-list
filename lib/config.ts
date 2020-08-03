@@ -173,12 +173,6 @@ export const config = convict({
       format: String,
       env: "WEGMANS_PASSWORD",
     },
-    apikey: {
-      doc: "Wegmans API key (for Ocp-Apim-Subscription-Key header)",
-      default: "",
-      format: String,
-      env: "WEGMANS_APIKEY",
-    },
   },
   encrypted: {
     doc: "Whether AWS KMS encryption was used to encrypt credentials",

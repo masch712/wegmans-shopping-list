@@ -29,6 +29,14 @@ export interface OrderSummary {
 
 export interface OrderDetail extends OrderSummary {
   order_items: OrderItem[];
+  /**
+   * eg.: 2020-07-28T12:50:54.118338-04:00
+   */
+  timestamp: string;
+  /**
+   * eg.: 2020-07-31T04:00:00+00:00
+   */
+  fulfillment_date: string;
 }
 
 export interface OrderItem {

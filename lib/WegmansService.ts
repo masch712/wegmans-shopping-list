@@ -1,7 +1,5 @@
 import { logDuration, logger } from "./Logger";
 
-import { productRequestHistoryDao } from "./ProductRequestHistoryDao";
-
 import {
   getUserIdFromToken,
   WedgiesOAuthToken,
@@ -18,7 +16,6 @@ import { config } from "./config";
 import { StoreProductItem } from "../models/StoreProductItem";
 import { decode } from "jsonwebtoken";
 import { LoggedEvent } from "../models/LoggedEvent";
-import { Product } from "../models/Product";
 import { cancelAllRequests } from "./CancelAllRequestsUtils";
 import { DateTime } from "luxon";
 export class WegmansService {
@@ -120,6 +117,7 @@ export class WegmansService {
       logDuration("searchProducts", this.wegmansDao.searchProducts(cookieJar, productQuery, 1)),
       logDuration("searchProductsPurchased", this.wegmansDao.searchProductsPurchased(cookieJar, productQuery)),
     ]);
+    //TODO: put to productRequestHistory!
     return purchasedProducts[0] || products[0];
     // const storeId = getStoreIdFromTokens(tokens);
     // Find a product

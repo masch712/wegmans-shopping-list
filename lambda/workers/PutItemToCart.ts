@@ -1,5 +1,4 @@
 import { SQS } from "aws-sdk";
-import { Product } from "../../models/Product";
 import { accessCodeDao } from "../../lib/AccessCodeDao";
 import { decryptionPromise } from "../../lib/decrypt-config";
 import { WegmansDao } from "../../lib/WegmansDao";
@@ -32,7 +31,7 @@ export async function handler(event: SQSEvent) {
   // TEST
   await decryptionPromise;
   await initTablesPromise;
-  const wegmansDao = new WegmansDao(config.get("wegmans.apikey"));
+  const wegmansDao = new WegmansDao();
   //endTEST
   // const wegmansDaoPromise = Promise.all([decryptionPromise, initTablesPromise]).then(
   //   () => new WegmansDao(config.get("wegmans.apikey"))

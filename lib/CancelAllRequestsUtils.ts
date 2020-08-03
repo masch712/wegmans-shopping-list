@@ -1,7 +1,6 @@
 import { logger } from "./Logger";
 import { LoggedEvent } from "../models/LoggedEvent";
 import { cancelAllRequestsToken as cancelHttpRequestsToken, resetCanceler } from "./CancellableRequestUtils";
-import { productRequestHistoryDao } from "./ProductRequestHistoryDao";
 import { orderHistoryDao } from "./OrderHistoryDao";
 
 export function cancelAllRequests() {
@@ -9,12 +8,10 @@ export function cancelAllRequests() {
   const cancelReason = "globally cancelled";
 
   cancelHttpRequestsToken.cancel(cancelReason);
-  productRequestHistoryDao.cancelRequests(cancelReason);
   orderHistoryDao.cancelRequests(cancelReason);
 }
 
 export function resetGlobalCanceler() {
   resetCanceler(cancelHttpRequestsToken);
   orderHistoryDao.reset();
-  productRequestHistoryDao.reset();
 }

@@ -1,27 +1,27 @@
 import * as AWS from "aws-sdk";
 import { config } from "./config";
 import { DynamoDao } from "./DynamoDao";
-import { Product } from "../models/Product";
 import * as _ from "lodash";
+import { StoreProductItem } from "../models/StoreProductItem";
 export const TABLENAME_PRODUCTREQUESTHISTORY = config.get("aws.dynamodb.tableNames.PRODUCTREQUESTHISTORY");
 
 AWS.config.update({
-  region: "us-east-1"
+  region: "us-east-1",
 });
 
 export const tableProductRequestHistory: AWS.DynamoDB.CreateTableInput = {
   TableName: TABLENAME_PRODUCTREQUESTHISTORY,
   KeySchema: [
-    { AttributeName: "user_query", KeyType: "HASH" } // Partition key
+    { AttributeName: "user_query", KeyType: "HASH" }, // Partition key
   ],
   AttributeDefinitions: [{ AttributeName: "user_query", AttributeType: "S" }],
-  BillingMode: "PAY_PER_REQUEST"
+  BillingMode: "PAY_PER_REQUEST",
 };
 
 const USER_QUERY_DELIMITER = "::";
 
 interface ProductRequestHistoryItem {
-  chosenProduct: Partial<Product>;
+  chosenProduct: StoreProductItem;
   lastRequestDateEpoch: number;
   user_query: string;
 }
@@ -46,9 +46,9 @@ class ProductRequestHistoryDao extends DynamoDao {
     const requestHistoryResult = await this.makeCancellable(
       this.docClient.get({
         Key: {
-          user_query: getUserQuery(userId, query)
+          user_query: getUserQuery(userId, query),
         },
-        TableName: TABLENAME_PRODUCTREQUESTHISTORY
+        TableName: TABLENAME_PRODUCTREQUESTHISTORY,
       })
     ).promise();
 
@@ -58,39 +58,26 @@ class ProductRequestHistoryDao extends DynamoDao {
       return null;
     }
 
-    const chosenProduct: Product | undefined = i.chosenProduct && {
-      // Dynamo doesn't allow empty strings, so when we're creating OrderedProducts from dynamo entries, we gotta re-vivify the emptystrings
-      brand: i.chosenProduct.brand || "",
-      category: i.chosenProduct.category || "",
-      department: i.chosenProduct.department || "",
-      details: i.chosenProduct.details || "",
-      name: i.chosenProduct.name || "",
-      productLine: i.chosenProduct.productLine || "",
-      sku: i.chosenProduct.sku!,
-      subcategory: i.chosenProduct.subcategory || ""
-    };
+    const chosenProduct = i.chosenProduct;
     return {
       ...i,
-      chosenProduct
+      chosenProduct,
     };
   }
 
-  async put(username: string, query: string, chosenProduct: Product) {
+  async put(username: string, query: string, chosenProduct: StoreProductItem) {
     await this.initTables();
-
-    // Strip out any empty-string values because dynamo sucks
-    const cleanProduct = _.omitBy(chosenProduct, val => !val);
 
     const dbItem: ProductRequestHistoryItem = {
       user_query: getUserQuery(username, query),
-      chosenProduct: cleanProduct,
-      lastRequestDateEpoch: new Date().valueOf()
+      chosenProduct,
+      lastRequestDateEpoch: new Date().valueOf(),
     };
 
     await this.docClient
       .put({
         Item: dbItem,
-        TableName: TABLENAME_PRODUCTREQUESTHISTORY
+        TableName: TABLENAME_PRODUCTREQUESTHISTORY,
       })
       .promise();
     return;

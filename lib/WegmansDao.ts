@@ -1,16 +1,9 @@
 import * as _ from "lodash";
 import * as request from "./CancellableRequest";
-import { WedgiesOAuthToken } from "../models/AccessToken";
-import { Product } from "../models/Product";
-import { logger, logDuration } from "./Logger";
+import { logDuration } from "./Logger";
 import { Response, CookieJar } from "request";
-import { OrderedProduct } from "../models/OrderedProduct";
 import { DateTime } from "luxon";
-import { orderHistoryDao } from "./OrderHistoryDao";
-import * as jwt from "jsonwebtoken";
-import Fuse = require("fuse.js");
-import { config } from "../lib/config";
-import { BasicAsyncQueueClient, WorkType } from "./BasicAsyncQueue";
+import { BasicAsyncQueueClient } from "./BasicAsyncQueue";
 import { PutItemToCartWork, getWorkType as addToShoppingListWorkType } from "../lambda/workers/PutItemToCart";
 import {
   SearchThenPutItemToCartWork,
@@ -19,16 +12,10 @@ import {
 import jsdom = require("jsdom");
 import jqueryBase = require("jquery");
 import { BrowserLoginTokens, toCookieJar, CookieStringByKey } from "../models/BrowserLoginTokens";
-import { deprecate } from "util";
 import { StoreProductItem } from "../models/StoreProductItem";
 import { Cart } from "../models/Cart";
 import { Orders as OrderSummaries, OrderDetail } from "../models/Orders";
 import { PurchaseDetails } from "../models/Purchases";
-interface OrderHistoryResponseItem {
-  LastPurchaseDate: string;
-  Quantity: number;
-  Sku: number;
-}
 
 interface StoreProductSearchResult {
   item_count: number;
@@ -38,13 +25,9 @@ interface StoreProductSearchResult {
 const CLIENT_ID = "7c0edc2c-5aa9-4a85-9ab0-ae11c5bb251e"; //This appears to be statically set in wegmans JS static content
 
 export class WegmansDao {
-  private apiKey: string;
-  private shoppingListId: number | undefined;
-
   private putItemToCardWorkQueue: BasicAsyncQueueClient<PutItemToCartWork>;
   private searchThenPutItemToCartWorkQueue: BasicAsyncQueueClient<SearchThenPutItemToCartWork>;
-  constructor(apiKey: string) {
-    this.apiKey = apiKey;
+  constructor() {
     this.putItemToCardWorkQueue = new BasicAsyncQueueClient(addToShoppingListWorkType());
     this.searchThenPutItemToCartWorkQueue = new BasicAsyncQueueClient(searchThenAddToShoppingListWorkType());
   }
@@ -59,7 +42,7 @@ export class WegmansDao {
     const cookieJar = request.jar();
     const oauthRes = await request({
       method: "GET",
-      url: "https://myaccount.wegmans.com/wegmansonline.onmicrosoft.com/oauth2/v2.0/authorize",
+      url: "https://wegmans.com/wegmansonline.onmicrosoft.com/oauth2/v2.0/authorize",
       qs: {
         client_id: CLIENT_ID,
         p: "B2C_1A_signup_signin",
@@ -80,23 +63,6 @@ export class WegmansDao {
     const csrfCookie = cookieJar
       .getCookies("https://myaccount.wegmans.com")
       .find((cookie) => cookie.key === "x-ms-cpim-csrf")?.value;
-    const loginRes = await request({
-      method: "POST",
-      url: "https://myaccount.wegmans.com/wegmansonline.onmicrosoft.com/B2C_1A_signup_signin/SelfAsserted",
-      qs: {
-        tx,
-        p: "B2C_1A_signup_signin",
-      },
-      headers: {
-        "X-CSRF-TOKEN": csrfCookie,
-      },
-      form: {
-        request_type: "RESPONSE",
-        signInName: email,
-        password,
-      },
-      jar: cookieJar,
-    });
 
     const getRedirect = await request({
       method: "GET",
@@ -127,49 +93,8 @@ export class WegmansDao {
     // // it's normal for userSessions.body.session_token JWT to have a null user_id at this point
 
     //TODO: do i need this request?
-    const users = await request({
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      url: "https://shop.wegmans.com/api/v2/users",
-      body: JSON.stringify({}),
-      jar: cookieJar,
-      followRedirect: false,
-      simple: false,
-      resolveWithFullResponse: true,
-    });
-
-    const auth = await request({
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      url: "https://shop.wegmans.com/api/v2/auth/external",
-      body: JSON.stringify({
-        identifier_polytype: "wegmans_idp",
-        identifier_data: {
-          redirect_response: redirectLocation,
-        },
-      }),
-      jar: cookieJar,
-      followRedirect: false,
-      simple: false,
-      resolveWithFullResponse: true,
-    });
 
     // OOOOOHH this is returning the right shit! we fuckin did it!
-    const user = await request({
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      url: "https://shop.wegmans.com/api/v2/user",
-      jar: cookieJar,
-      followRedirect: false,
-      simple: false,
-      resolveWithFullResponse: true,
-    });
 
     const userSessions = await this.createUserSession(cookieJar);
 
@@ -304,25 +229,6 @@ export class WegmansDao {
     return value;
   }
 
-  async getShoppingListId(accessToken: string): Promise<number> {
-    if (this.shoppingListId) {
-      return this.shoppingListId;
-    }
-
-    const response = await request.get("https://wegapi.azure-api.net/shoppinglists/all/?api-version=1.0", {
-      headers: {
-        Authorization: accessToken,
-        "Ocp-Apim-Subscription-Key": this.apiKey,
-      },
-      json: true,
-    });
-
-    const shoppingListId = response[0].Id;
-    this.shoppingListId = shoppingListId;
-
-    return shoppingListId;
-  }
-
   async searchThenPutItemToCart(wegmansTokens: BrowserLoginTokens, productQuery: string, quantity: number) {
     await logDuration(
       "enqueue_searchThenPutItemToCartWorkQueue",
@@ -435,6 +341,7 @@ export class WegmansDao {
     const orderResponse = await request({
       method: "GET",
       url: `https://shop.wegmans.com/api/v2/orders/${orderId}`,
+      jar: cookieJar,
     });
 
     const order = JSON.parse(orderResponse) as OrderDetail;
@@ -445,12 +352,13 @@ export class WegmansDao {
     const purchaseResponse = await request({
       method: "GET",
       url: `https://shop.wegmans.com/api/v2/purchases/${purchaseId}`,
+      jar: cookieJar,
     });
     const purchase = JSON.parse(purchaseResponse) as PurchaseDetails;
     return purchase;
   }
 
-  async getNextOrder(cookieJar: CookieJar) {
+  async getNextOrder() {
     // const orders = await this.getOrderSummaries(cookieJar, new DateTime());
     // //TODO: throw if no order
     // if (orders.item_count < 1) {
@@ -460,14 +368,14 @@ export class WegmansDao {
     // return order;
   }
 
-  async addProductToOrder(cookieJar: CookieJar, order: OrderDetail, product: StoreProductItem) {
+  async addProductToOrder(cookieJar: CookieJar) {
     /**
      * GET order
      * POST cart/modify_order
      * validate cart?
      * do some payment API shits?
      */
-    const nextOrder = await this.getNextOrder(cookieJar);
+    const nextOrder = await this.getNextOrder();
     await request({
       method: "POST",
       headers: {
@@ -496,8 +404,5 @@ export class WegmansDao {
     //   method: "POST",
     //   mode: "cors",
     // });
-  }
-
-
   }
 }

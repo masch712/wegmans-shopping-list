@@ -15,9 +15,7 @@ import {
 import * as _ from "lodash";
 
 const initTablesPromise = accessCodeDao.initTables();
-const wegmansDaoPromise = Promise.all([decryptionPromise, initTablesPromise]).then(
-  () => new WegmansDao(config.get("wegmans.apikey"))
-);
+const wegmansDaoPromise = Promise.all([decryptionPromise, initTablesPromise]).then(() => new WegmansDao());
 
 /**
  * Every night, we pre-refresh each user's tokens via Wegmans so that when Alexa sends us a

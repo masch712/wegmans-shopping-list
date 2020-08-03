@@ -15,10 +15,7 @@ import { logDuration, logger } from "../../lib/Logger";
 const PRODUCT_SLOT = "product";
 
 const initTablesPromise = accessCodeDao.initTables(); //TODO: this initTables pattern sucks ass.  shouldn't be calling this everywhere
-const wegmansDaoPromise = Promise.all([decryptionPromise, initTablesPromise]).then(
-  () => new WegmansDao(config.get("wegmans.apikey"))
-);
-
+const wegmansDaoPromise = Promise.all([decryptionPromise, initTablesPromise]).then(() => new WegmansDao());
 export const splashResponse: RequestHandler = {
   canHandle(handlerInput: HandlerInput): Promise<boolean> | boolean {
     const request = handlerInput.requestEnvelope.request;

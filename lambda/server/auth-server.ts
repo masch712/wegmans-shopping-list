@@ -18,7 +18,7 @@ import {
 import { BrowserLoginTokens } from "../../models/BrowserLoginTokens";
 import request = require("request");
 
-const wegmansDaoPromise = decryptionPromise.then(() => new WegmansDao(config.get("wegmans.apikey")));
+const wegmansDaoPromise = decryptionPromise.then(() => new WegmansDao());
 
 /**
  * Accept request from the React Login UI containing username, password

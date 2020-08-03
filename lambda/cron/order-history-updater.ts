@@ -14,12 +14,10 @@ import {
 import * as _ from "lodash";
 import { toCookieJar } from "../../models/BrowserLoginTokens";
 import { DateTime } from "luxon";
-import { orderHistoryDao } from "../../lib/OrderHistoryDao";
+import { orderHistoryDao, OrderHistoryItem } from "../../lib/OrderHistoryDao";
 
 const initTablesPromise = accessCodeDao.initTables();
-const wegmansDaoPromise = Promise.all([decryptionPromise, initTablesPromise]).then(
-  () => new WegmansDao(config.get("wegmans.apikey"))
-);
+const wegmansDaoPromise = Promise.all([decryptionPromise, initTablesPromise]).then(() => new WegmansDao());
 
 const isLiveRun = !!process.env["LIVE_RUN"];
 
@@ -50,6 +48,36 @@ export async function handler() {
       wegmansDao.getPurchaseSummaries(cookieJar, fromDate),
     ]);
 
-    orderHistoryDao.put();
+    const [orderDetailses, purchaseDetailses] = await Promise.all([
+      Promise.all(orderHistory.items.map((oH) => wegmansDao.getOrderDetail(cookieJar, oH.id))),
+      Promise.all(
+        purchaseHistory.items.map((pH) => wegmansDao.getPurchaseDetail(cookieJar, Number.parseInt(pH.id, 10)))
+      ),
+    ]);
+
+    const orderedItems: OrderHistoryItem[] = orderDetailses.flatMap((oD) =>
+      oD.order_items.map((oI) => ({
+        purchaseMsSinceEpoch: DateTime.fromISO(oD.fulfillment_date).valueOf(),
+        quantity: oI.quantity,
+        storeProduct: oI.store_product,
+      }))
+    );
+    const purchasedItems: OrderHistoryItem[] = purchaseDetailses.flatMap((pD) =>
+      pD.items.map((pI) => ({
+        purchaseMsSinceEpoch: DateTime.fromISO(pD.timestamp).valueOf(),
+        quantity: pI.quantity,
+        storeProduct: pI.store_product,
+      }))
+    );
+
+    const orderHistoryItemsSorted = [...orderedItems, ...purchasedItems].sort(
+      (a, b) => a.purchaseMsSinceEpoch - b.purchaseMsSinceEpoch
+    );
+
+    await orderHistoryDao.put({
+      userId,
+      endDateMsSinceEpoch: new Date().valueOf(),
+      orderedItems: orderHistoryItemsSorted,
+    });
   }
 }
