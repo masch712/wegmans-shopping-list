@@ -27,11 +27,11 @@ describe("wegmans dao", () => {
     expect(tokens.cookies).toBeTruthy();
   });
 
-  test("search requires auth, booo", async () => {
+  test.only("search requires auth, booo", async () => {
     await 1;
   });
 
-  test("deserialized serialized cookie is usable", async () => {
+  test.only("deserialized serialized cookie is usable", async () => {
     const deserializedCookies = toCookieJar(tokens);
 
     const products = await wegmans.searchProducts(deserializedCookies, "strawberries", 10);

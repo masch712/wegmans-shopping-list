@@ -1,13 +1,6 @@
 import { logDuration, logger } from "./Logger";
 
-import {
-  getUserIdFromToken,
-  WedgiesOAuthToken,
-  isAccessTokenExpired,
-  getTokenInfo,
-  wrapWegmansTokens,
-  unwrapWedgiesToken,
-} from "../models/AccessToken";
+import { WedgiesOAuthToken, isAccessTokenExpired, wrapWegmansTokens, unwrapWedgiesToken } from "../models/AccessToken";
 import { BrowserLoginTokens, toCookieJar, wegmansTokenInfo } from "../models/BrowserLoginTokens";
 import { WegmansDao } from "./WegmansDao";
 import { WedgiesOAuthDao } from "./AccessCodeDao";
@@ -119,28 +112,6 @@ export class WegmansService {
     ]);
     //TODO: put to productRequestHistory!
     return purchasedProducts[0] || products[0];
-    // const storeId = getStoreIdFromTokens(tokens);
-    // Find a product
-    // // const [orderHistoryResult, pastRequestedProduct] = await Promise.all([
-    // //   logDuration("wegmansDao.getOrderHistory", this._wegmansDao.getOrderHistory(tokens.access, storeId)),
-    // //   logDuration(
-    // //     "productRequestHistoryDao.get",
-    // //     productRequestHistoryDao.get(getUsernameFromToken(tokens), productQuery)
-    // //   ),
-    // // ]);
-    // // const { orderedProducts, cacheUpdatePromise } = orderHistoryResult || {};
-    // // const product =
-    // //   (pastRequestedProduct && pastRequestedProduct.chosenProduct) ||
-    // //   (await logDuration(
-    // //     "ProductSearch.searchForProductPreferHistory",
-    // //     ProductSearch.searchForProductPreferHistory(orderedProducts || [], productQuery, storeId)
-    // //   ));
-    // // if (cacheUpdatePromise) {
-    // //   cacheUpdatePromise.then(() => logger().info("updated cache")); // TODO: do this in the background AFTER alexa has responded
-    // // }
-    // // // Store the search result for later
-    // // product && productRequestHistoryDao.put(getUsernameFromToken(tokens), productQuery, product);
-    // return product;
   }
 
   async getFreshTokensOrLogin(tokens: WedgiesOAuthToken) {

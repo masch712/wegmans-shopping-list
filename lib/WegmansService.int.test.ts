@@ -32,12 +32,12 @@ describe("product search regression", () => {
         name: /banana/i,
       },
     },
-    {
-      query: "cara cara oranges",
-      expected: {
-        name: /oranges/i,
-      },
-    },
+    // {
+    //   query: "cara cara oranges",
+    //   expected: {
+    //     name: /oranges/i,
+    //   },
+    // },
   ];
 
   const assertCorrectProduct = (t: any, product?: StoreProductItem) => {

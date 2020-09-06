@@ -42,7 +42,7 @@ export class WegmansDao {
     const cookieJar = request.jar();
     const oauthRes = await request({
       method: "GET",
-      url: "https://wegmans.com/wegmansonline.onmicrosoft.com/oauth2/v2.0/authorize",
+      url: "https://myaccount.wegmans.com/wegmansonline.onmicrosoft.com/oauth2/v2.0/authorize",
       qs: {
         client_id: CLIENT_ID,
         p: "B2C_1A_signup_signin",
@@ -63,6 +63,23 @@ export class WegmansDao {
     const csrfCookie = cookieJar
       .getCookies("https://myaccount.wegmans.com")
       .find((cookie) => cookie.key === "x-ms-cpim-csrf")?.value;
+    const loginRes = await request({
+      method: "POST",
+      url: "https://myaccount.wegmans.com/wegmansonline.onmicrosoft.com/B2C_1A_signup_signin/SelfAsserted",
+      qs: {
+        tx,
+        p: "B2C_1A_signup_signin",
+      },
+      headers: {
+        "X-CSRF-TOKEN": csrfCookie,
+      },
+      form: {
+        request_type: "RESPONSE",
+        signInName: email,
+        password,
+      },
+      jar: cookieJar,
+    });
 
     const getRedirect = await request({
       method: "GET",
@@ -93,8 +110,49 @@ export class WegmansDao {
     // // it's normal for userSessions.body.session_token JWT to have a null user_id at this point
 
     //TODO: do i need this request?
+    const users = await request({
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      url: "https://shop.wegmans.com/api/v2/users",
+      body: JSON.stringify({}),
+      jar: cookieJar,
+      followRedirect: false,
+      simple: false,
+      resolveWithFullResponse: true,
+    });
+
+    const auth = await request({
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      url: "https://shop.wegmans.com/api/v2/auth/external",
+      body: JSON.stringify({
+        identifier_polytype: "wegmans_idp",
+        identifier_data: {
+          redirect_response: redirectLocation,
+        },
+      }),
+      jar: cookieJar,
+      followRedirect: false,
+      simple: false,
+      resolveWithFullResponse: true,
+    });
 
     // OOOOOHH this is returning the right shit! we fuckin did it!
+    const user = await request({
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      url: "https://shop.wegmans.com/api/v2/user",
+      jar: cookieJar,
+      followRedirect: false,
+      simple: false,
+      resolveWithFullResponse: true,
+    });
 
     const userSessions = await this.createUserSession(cookieJar);
 

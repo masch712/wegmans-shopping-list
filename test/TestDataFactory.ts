@@ -1,13 +1,10 @@
 import * as Factory from "factory.ts";
-import { Product } from "../models/Product";
-import { WedgiesOAuthToken } from "../models/AccessToken";
 import * as jwt from "jsonwebtoken";
 import { StoreProductItem } from "../models/StoreProductItem";
 import { BrowserLoginTokens } from "../models/BrowserLoginTokens";
-import { CfnUserToGroupAddition } from "@aws-cdk/aws-iam";
 import * as uuid from "uuid/v4";
 import { Cookie } from "tough-cookie";
-import { SQSEvent, SQSRecord } from "aws-lambda";
+import { SQSRecord } from "aws-lambda";
 
 export const productFactory = Factory.Sync.makeFactory<StoreProductItem>({
   name: Factory.each((i) => `name ${i}`),
