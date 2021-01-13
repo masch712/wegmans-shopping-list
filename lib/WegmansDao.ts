@@ -417,7 +417,7 @@ export class WegmansDao {
   }
 
   async getNextOrder() {
-    // const orders = await this.getOrderSummaries(cookieJar, new DateTime());
+    // const orders = await this.getOrderSummaries(cookieJar, DateTime.utc());
     // //TODO: throw if no order
     // if (orders.item_count < 1) {
     //   return null;

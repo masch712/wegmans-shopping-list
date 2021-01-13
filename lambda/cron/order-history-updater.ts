@@ -22,6 +22,7 @@ const wegmansDaoPromise = Promise.all([decryptionPromise, initTablesPromise]).th
 const isLiveRun = !!process.env["LIVE_RUN"];
 
 export async function handler() {
+  console.log("***" + logger().level);
   logger().debug("getting wegmansDao");
   const wegmansDao = await wegmansDaoPromise;
   logger().debug("getAllAccessTokens");
@@ -41,7 +42,7 @@ export async function handler() {
     }
 
     const cookieJar = toCookieJar(wegmansToken);
-    const fromDate = new DateTime().minus({ days: 180 });
+    const fromDate = DateTime.utc().minus({ days: 180 });
 
     const [orderHistory, purchaseHistory] = await Promise.all([
       wegmansDao.getOrderSummaries(cookieJar, fromDate),
