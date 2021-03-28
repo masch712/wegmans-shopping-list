@@ -1,8 +1,8 @@
 import * as _ from "lodash";
 import * as request from "./CancellableRequest";
-import { logDuration } from "./Logger";
+import { logDuration, logger } from "./Logger";
 import { Response, CookieJar } from "request";
-import { DateTime } from "luxon";
+import { DateTime, Duration } from "luxon";
 import { BasicAsyncQueueClient } from "./BasicAsyncQueue";
 import { PutItemToCartWork, getWorkType as addToShoppingListWorkType } from "../lambda/workers/PutItemToCart";
 import {
@@ -14,7 +14,7 @@ import jqueryBase = require("jquery");
 import { BrowserLoginTokens, toCookieJar, CookieStringByKey } from "../models/BrowserLoginTokens";
 import { StoreProductItem } from "../models/StoreProductItem";
 import { Cart } from "../models/Cart";
-import { Orders as OrderSummaries, OrderDetail } from "../models/Orders";
+import { Orders as OrderSummaries, OrderDetail, Orders, OrderSummary, OrderItem } from "../models/Orders";
 import { PurchaseDetails } from "../models/Purchases";
 
 interface StoreProductSearchResult {
@@ -363,20 +363,18 @@ export class WegmansDao {
     return cart;
   }
 
-  async getOrderSummaries(cookieJar: CookieJar, fromDate: DateTime) {
+  async getOrderSummaries(cookieJar: CookieJar, fromDate: DateTime, toDate: DateTime) {
     const ordersResponse = await request({
       method: "GET",
-      // headers: {
-      //   "Content-Type": "application/json",
-      // },
       url: "https://shop.wegmans.com/api/v2/orders",
       qs: {
-        fromDate: fromDate.toFormat("yyyy-MM-ddTHH:mm:ss"),
+        from_date: fromDate.toFormat("yyyy-MM-dd'T'HH:mm:ss"),
+        to_date: toDate.toFormat("yyyy-MM-dd'T'HH:mm:ss"),
       },
       jar: cookieJar,
     });
-    const orders = JSON.parse(ordersResponse) as OrderSummaries;
-    return orders;
+    const orders = JSON.parse(ordersResponse) as Orders;
+    return orders.items;
   }
 
   async getPurchaseSummaries(cookieJar: CookieJar, fromDate: DateTime) {
@@ -416,51 +414,57 @@ export class WegmansDao {
     return purchase;
   }
 
-  async getNextOrder() {
-    // const orders = await this.getOrderSummaries(cookieJar, DateTime.utc());
-    // //TODO: throw if no order
-    // if (orders.item_count < 1) {
-    //   return null;
-    // }
-    // const nextOrderResponse =
-    // return order;
+  async getNextOrderSummary(cookieJar: CookieJar) {
+    const orders = await this.getOrderSummaries(
+      cookieJar,
+      DateTime.utc().minus({ days: 7 }),
+      DateTime.utc().endOf("day")
+    );
+    if (!orders || orders.length < 1) {
+      return null;
+    }
+
+    const nextOrder = orders[0];
+
+    const fulfillmentDate = DateTime.fromFormat(nextOrder.fulfillment_date, "yyyy-MM-dd'T'HH:mm:ssZZ");
+    if (fulfillmentDate < DateTime.utc()) {
+      logger().warn(`next order's fulfillment date (${fulfillmentDate}) is in the past!`);
+      return null;
+    }
+    return nextOrder;
   }
 
-  async addProductToOrder(cookieJar: CookieJar) {
-    /**
-     * GET order
-     * POST cart/modify_order
-     * validate cart?
-     * do some payment API shits?
-     */
-    const nextOrder = await this.getNextOrder();
+  async addProductToOrder(cookieJar: CookieJar, product: StoreProductItem, order: OrderDetail, note = "") {
+    const newOrderIteams = order.order_items;
+    const newOrderItem: OrderItem = {
+      actual_quantity: 1,
+      allow_substitutions: true,
+      customer_comment:
+        note ||
+        `[added by wedgies ${DateTime.utc()
+          .setZone("America/New_York")
+          .toLocaleString({ ...DateTime.DATETIME_SHORT, timeZoneName: "short" })}]`,
+      quantity: 1,
+      id: product.id,
+      line_number: order.order_items.length + 1,
+      store_product: product,
+      ext_data: {},
+      isReorderable: true,
+      status: "original",
+      sub_total: product.base_price,
+      uom: product.display_uom.toUpperCase(),
+    };
+    newOrderIteams.push(newOrderItem);
     await request({
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      url: "https://shop.wegmans.com/api/v2/cart/modify_order",
+      url: `https://shop.wegmans.com/api/v2/orders/${order.id}/modify`,
       body: JSON.stringify({
-        order: nextOrder,
+        order_items: newOrderIteams,
       }),
       jar: cookieJar,
     });
-    // await fetch("https://shop.wegmans.com/api/v2/cart/validate", {
-    //   credentials: "include",
-    //   headers: {
-    //     "User-Agent": "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0",
-    //     Accept: "*/*",
-    //     "Accept-Language": "en-US,en;q=0.5",
-    //     "Content-Type": "application/json",
-    //     "User-Context": "eyJTdG9yZUlkIjoiNzIiLCJGdWxmaWxsbWVudFR5cGUiOiJwaWNrdXAifQ==",
-    //     Pragma: "no-cache",
-    //     "Cache-Control": "no-cache",
-    //   },
-    //   referrer: "https://shop.wegmans.com/checkout/v2/review",
-    //   body:
-    //     {"with_fees":true,"timeslot":{"allow_alcohol":null,"banner_id":1,"cutoff_delta":null,"day_of_week":"friday","delivery_fee":null,"delivery_fee_plu":null,"exp":1596107001,"ext_id":"174229950","from_time":"10:00:00","fulfillment_type":"pickup","iat":1596105801,"id":"1284729","is_free":null,"jwt_token":"eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjEyODQ3MjkiLCJwb2x5dHlwZSI6InNjaGVkdWxlZCIsImZ1bGZpbGxtZW50X3R5cGUiOiJwaWNrdXAiLCJkYXlfb2Zfd2VlayI6ImZyaWRheSIsImZyb21fdGltZSI6IjEwOjAwOjAwIiwidG9fdGltZSI6IjExOjAwOjAwIiwid2l0aGluX2hvdXJzIjpudWxsLCJhbGxvd19hbGNvaG9sIjpudWxsLCJsYWJlbCI6bnVsbCwidW5hdmFpbGFibGUiOmZhbHNlLCJ1bmF2YWlsYWJpbGl0eV9yZWFzb25zIjpudWxsLCJwb3N0YWxfY29kZXMiOltdLCJleHRfaWQiOiIxNzQyMjk5NTAiLCJpc19mcmVlIjpudWxsLCJzaG9wX2ZlZV9wbHUiOm51bGwsInNob3BfZmVlIjoiMC4wMCIsIm9yaWdpbmFsX3Nob3BfZmVlIjpudWxsLCJkZWxpdmVyeV9mZWVfcGx1IjpudWxsLCJkZWxpdmVyeV9mZWUiOm51bGwsIm9yaWdpbmFsX2RlbGl2ZXJ5X2ZlZSI6bnVsbCwic291cmNlIjoiaWNfdGltZXNsb3QiLCJjdXRvZmZfZGVsdGEiOm51bGwsImJhbm5lcl9pZCI6MSwiaWF0IjoxNTk2MTA1ODAxLCJleHAiOjE1OTYxMDcwMDF9.w1PaRizug5MzCpCZ8pD99qoB02BBsNgd6iQlX96hJIA","label":null,"original_delivery_fee":null,"original_shop_fee":null,"polytype":"scheduled","postal_codes":[],"shop_fee":"0.00","shop_fee_plu":null,"source":"ic_timeslot","to_time":"11:00:00","unavailability_reasons":null,"unavailable":false,"within_hours":null},"user_birthday":"1989-09-13T04:00:00.000Z","store":{"address":{"address1":"53 Third Avenue","address2":null,"address3":null,"city":"Burlington","country":"USA","postal_code":"01803","province":"MASSACHUSETTS"},"amenities":"Coin Counting Kiosk, Lottery, Wi-Fi Internet Access","banner":"wegmans","ext_id":"59","external_url":"https://www.wegmans.com/stores/burlington-ma","has_catering":null,"has_delivery":true,"has_ecommerce":true,"has_pickup":true,"href":"/stores/72","id":"72","is_b2b":false,"last_purchased":"2020-07-24T04:00:00+00:00","location":{"latitude":"42.48690","longitude":"-71.22570"},"name":"BURLINGTON","partial":null,"payment_types":{"delivery":["auth_capture"],"pickup":["auth_capture"]},"phone_number":"781-418-0700","show_catering":null,"show_delivery":true,"show_ecommerce":true,"show_pickup":true,"store_banner":{"ext_id":"231","key":"wegmans","name":"wegmans"},"store_hours":null},"contact_info":{"first_name":"Mary","last_name":"Asch","phone_number":"7816082759"},"cart_id":450937},
-    //   method: "POST",
-    //   mode: "cors",
-    // });
   }
 }

@@ -8,4 +8,8 @@ export interface StoreProductItem {
   };
   fulfillment_types: string[];
   tags: string[];
+  base_quantity: number;
+  base_price: number;
+  /** usually "ea" */
+  display_uom: any;
 }

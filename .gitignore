@@ -72,3 +72,4 @@ deploy/*.yaml
 cdk.out
 
 hax*.json
+add-to-order-test.sh

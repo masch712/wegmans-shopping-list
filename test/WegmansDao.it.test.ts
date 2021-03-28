@@ -4,6 +4,7 @@ import { BrowserLoginTokens, toCookieJar } from "../models/BrowserLoginTokens";
 import request = require("request");
 import { Cookie } from "tough-cookie";
 import { productFactory } from "./TestDataFactory";
+import uuid = require("uuid");
 jest.setTimeout(3000000);
 
 const TEST_PRODUCT_NOTE = "[DELETE ME] - aaron";
@@ -27,11 +28,7 @@ describe("wegmans dao", () => {
     expect(tokens.cookies).toBeTruthy();
   });
 
-  test.only("search requires auth, booo", async () => {
-    await 1;
-  });
-
-  test.only("deserialized serialized cookie is usable", async () => {
+  test("deserialized serialized cookie is usable", async () => {
     const deserializedCookies = toCookieJar(tokens);
 
     const products = await wegmans.searchProducts(deserializedCookies, "strawberries", 10);
@@ -96,6 +93,30 @@ describe("wegmans dao", () => {
     test("olive oil", async () => {
       const products = await wegmans.searchProductsPurchased(cookieJar, "olive oil", 10);
       expect(products).toBeTruthy();
+    });
+  });
+
+  describe("orders", () => {
+    test("get next orders", async () => {
+      const nextOrderSummary = await wegmans.getNextOrderSummary(cookieJar);
+      if (!nextOrderSummary) {
+        fail();
+      }
+      const nextOrderDetail = await wegmans.getOrderDetail(cookieJar, nextOrderSummary.id);
+      expect(nextOrderDetail).toBeTruthy();
+    });
+
+    test("add to next orders", async () => {
+      const nextOrderSummary = await wegmans.getNextOrderSummary(cookieJar);
+      if (!nextOrderSummary) {
+        fail();
+      }
+      const uniqueId = "_TEST_" + uuid();
+      const nextOrderDetail = await wegmans.getOrderDetail(cookieJar, nextOrderSummary.id);
+      const results = await wegmans.searchProductsPurchased(cookieJar, "grapes");
+      await wegmans.addProductToOrder(cookieJar, results[0], nextOrderDetail, uniqueId);
+      const updatedOrderDetail = await wegmans.getOrderDetail(cookieJar, nextOrderSummary.id);
+      expect(updatedOrderDetail.order_items.map((item) => item.customer_comment)).toContain(uniqueId);
     });
   });
   //TODO: revive the product search regression suite for the new API
