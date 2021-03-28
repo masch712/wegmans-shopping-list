@@ -21,6 +21,9 @@ describe("ProductRequestHistoryDAO", () => {
     },
     reco_rating: 1,
     tags: [],
+    base_price: 0.0,
+    base_quantity: 1,
+    display_uom: "ea",
   };
   test("puts request history", async () => {
     await productRequestHistoryDao.put(TEST_USERID, "derp", testProduct);

@@ -1,8 +1,6 @@
-import { SQS } from "aws-sdk";
 import { accessCodeDao } from "../../lib/AccessCodeDao";
 import { decryptionPromise } from "../../lib/decrypt-config";
 import { WegmansDao } from "../../lib/WegmansDao";
-import { config } from "../../lib/config";
 import { SQSEvent } from "aws-lambda";
 import { logger } from "../../lib/Logger";
 import { QueuedWork, WorkType } from "../../lib/BasicAsyncQueue";
@@ -12,7 +10,7 @@ import { getUserIdFromWegmansToken } from "../../models/AccessToken";
 
 export function getWorkType(): WorkType {
   return {
-    name: "PutItemToCart", //TODO: dynamically get worktype from filename?
+    name: "PutItemToCart",
     enqueuesTo: [],
   };
 }
@@ -33,10 +31,6 @@ export async function handler(event: SQSEvent) {
   await initTablesPromise;
   const wegmansDao = new WegmansDao();
   //endTEST
-  // const wegmansDaoPromise = Promise.all([decryptionPromise, initTablesPromise]).then(
-  //   () => new WegmansDao(config.get("wegmans.apikey"))
-  // );
-  // const wegmansDao = await wegmansDaoPromise;
 
   const messageBodies = event.Records.map((r: { body: string }) => r.body);
 
@@ -44,11 +38,19 @@ export async function handler(event: SQSEvent) {
     const message = JSON.parse(body) as PutItemToCartWork;
     const userId = getUserIdFromWegmansToken(message.payload.wegmansTokens);
     logger().debug("adding " + message.payload.product.id + " for " + userId);
-    //TODO: add the note as well
-    await wegmansDao.putProductToCart(
-      toCookieJar(message.payload.wegmansTokens),
-      message.payload.product,
-      message.payload.note
-    );
+    const cookieJar = toCookieJar(message.payload.wegmansTokens);
+    const nextOrder = await wegmansDao.getNextOrderSummary(cookieJar);
+    if (nextOrder == null) {
+      logger().info("adding to cart");
+      await wegmansDao.putProductToCart(cookieJar, message.payload.product, message.payload.note);
+    } else {
+      logger().info("adding to order " + nextOrder.id);
+      await wegmansDao.addProductToOrder(
+        cookieJar,
+        message.payload.product,
+        await wegmansDao.getOrderDetail(cookieJar, nextOrder.id),
+        message.payload.note
+      );
+    }
   }
 }

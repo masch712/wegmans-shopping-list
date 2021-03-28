@@ -19,7 +19,6 @@ import {
   TABLENAME_PREREFRESHEDTOKENSBYREFRESH,
 } from "../lib/AccessCodeDao";
 import { PolicyStatement, Effect, ServicePrincipal } from "@aws-cdk/aws-iam";
-import { tableOrderHistoryByUser, TABLENAME_ORDERHISTORYBYUSER } from "../lib/OrderHistoryDao";
 import { WorkType } from "../lib/BasicAsyncQueue";
 import { config } from "../lib/config";
 import { TABLENAME_PRODUCTREQUESTHISTORY, tableProductRequestHistory } from "../lib/ProductRequestHistoryDao";
@@ -104,12 +103,6 @@ export class WegmansCdkStack extends cdk.Stack {
     addCorsOptions(accessTokenResource);
 
     // TODO: generate schema from code?
-    const dynamoOrderHistoryTables = dynamoTablesFromSdk(this, [
-      {
-        tableParams: tableOrderHistoryByUser,
-        resourceName: TABLENAME_ORDERHISTORYBYUSER, // TODO: dont need custom resourcenames anymore because tablenames match resourcenames
-      },
-    ]);
     const dynamoTokensTables = dynamoTablesFromSdk(this, [
       {
         tableParams: tableTokensByAccessToken,
@@ -151,7 +144,6 @@ export class WegmansCdkStack extends cdk.Stack {
         "dynamodb:UpdateItem",
       ],
       resources: [
-        ...dynamoOrderHistoryTables.map((t) => t.tableArn),
         ...dynamoTokensTables.map((t) => t.tableArn),
         ...dynamoProductRequestHistoryTables.map((t) => t.tableArn),
       ],
@@ -211,20 +203,6 @@ export class WegmansCdkStack extends cdk.Stack {
 
     // Crons
     //TODO: some cron framework that reads all the cron files?
-    const lambdaOrderHistoryUpdater = new WegmansLambda(this, "LambdaWegmansOrderHistoryUpdater", {
-      environment,
-      functionName: config.get("aws.lambda.functionNames.cdk-wegmans-cron-order-history-updater"),
-      handler: "dist/lambda/cron/order-history-updater.handler",
-      timeout: 180, //TODO: alerting for these lambdas (response / error spikes?)
-    });
-
-    new events.Rule(this, "EventWegmansOrderHistoryUpdater", {
-      description: "Cron trigger for wegmans order history updater",
-      ruleName: config.get("aws.lambda.functionNames.cdk-wegmans-cron-order-history-updater"),
-      schedule: Schedule.expression("cron(0 4 * * ? *)"),
-      targets: [new events_targets.LambdaFunction(lambdaOrderHistoryUpdater)],
-    });
-
     const lambdaTokenRefresher = new WegmansLambda(this, "LambdaWegmansTokenRefresher", {
       environment,
       functionName: config.get("aws.lambda.functionNames.cdk-wegmans-cron-access-token-refresher"),

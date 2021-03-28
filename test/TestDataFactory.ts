@@ -16,6 +16,9 @@ export const productFactory = Factory.Sync.makeFactory<StoreProductItem>({
   })),
   reco_rating: Factory.each((i) => i / 5),
   tags: ["wegmans"],
+  base_price: Factory.each((i) => i),
+  base_quantity: Factory.each((i) => i),
+  display_uom: "ea",
 });
 
 export const FAKE_JWT_SECRET = "niner";

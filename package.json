@@ -77,7 +77,8 @@
     "deploy:diff": "cdk diff --app \"ts-node deploy/deploy.ts\"",
     "deploy": "cdk deploy --app \"ts-node deploy/deploy.ts\"",
     "destroy": "cdk destroy --app \"ts-node deploy/deploy.ts\"",
-    "cicd": "npm-run-all build deploy"
+    "cicd:prod": "LOGICAL_ENV=production npm-run-all build deploy",
+    "cicd:dev": "npm-run-all build deploy"
   },
   "author": "",
   "license": "ISC",
