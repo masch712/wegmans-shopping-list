@@ -8,7 +8,7 @@
     "ask-sdk-model": "^1.25.1",
     "aws-xray-sdk-core": "^2.2.0",
     "basic-auth": "^2.0.0",
-    "convict": "^4.2.0",
+    "convict": "^6.2.4",
     "dotenv": "^8.0.0",
     "fuse.js": "^3.4.2",
     "js-yaml": "^3.13.1",
